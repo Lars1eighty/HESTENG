@@ -1,0 +1,131 @@
+# HESTENG Principles
+
+**Version:** 1.0
+**Status:** Approved
+
+---
+
+# Formål
+
+HESTENG Principles beskriver de grundlæggende principper, som alle arkitektur-, design- og udviklingsbeslutninger skal følge.
+
+Hvis en løsning bryder et princip, skal løsningen revurderes.
+
+---
+
+# Principle 001
+
+## Brugeren skal bruge tid på sporten – ikke på systemet.
+
+HESTENG skal automatisere alle rutineopgaver, hvor det skaber værdi.
+
+Brugeren skal kun træffe beslutninger, når menneskelig vurdering er nødvendig.
+
+---
+
+# Principle 002
+
+## Data registreres én gang.
+
+Alle data registreres én gang og genbruges overalt.
+
+Eksempel:
+
+En kamp registreres én gang.
+
+Derefter opdateres automatisk:
+
+- H-Rating
+- Statistik
+- Ranglister
+- Historik
+- Dashboard
+- Player Card
+
+---
+
+# Principle 003
+
+## Automatisk når det kan – manuelt når det skal.
+
+HESTENG skal selv udføre alle logiske handlinger.
+
+Brugeren skal altid kunne overtage styringen.
+
+Eksempler:
+
+- Automatisk boardfordeling
+- Automatisk næste kamp
+- Manuel flytning af kamp
+- Manuel ændring af board
+
+---
+
+# Principle 004
+
+## Core før moduler.
+
+Core må aldrig indeholde sportspecifik logik.
+
+Alle sportsregler implementeres i de enkelte sportsmoduler.
+
+---
+
+# Principle 005
+
+## Historik slettes aldrig.
+
+Historik er en del af platformens værdi.
+
+Data må arkiveres, men aldrig slettes uden en bevidst administrativ handling.
+
+---
+
+# Principle 006
+
+## Enkelthed før kompleksitet.
+
+Den enkleste løsning vælges altid, hvis den opfylder kravene.
+
+Kompleksitet må kun tilføjes, når den skaber reel værdi.
+
+---
+
+# Principle 007
+
+## Dokumentation før implementering.
+
+Ingen feature implementeres, før:
+
+- Formålet er beskrevet.
+- Domænet er beskrevet.
+- Business Rules er beskrevet.
+- User Story er godkendt.
+
+---
+
+# Principle 008
+
+## Platform før funktion.
+
+HESTENG udvikles som en platform.
+
+Nye funktioner må ikke begrænse fremtidige sportsgrene eller moduler.
+
+---
+
+# Principle 009
+
+## Konfiguration før kode.
+
+Hvis en regel kan konfigureres uden at gøre systemet unødigt komplekst, bør den kunne konfigureres.
+
+---
+
+# Principle 010
+
+## Arkitektur er et produkt.
+
+God arkitektur er en funktion i sig selv.
+
+Den skal beskyttes gennem hele projektets levetid.
