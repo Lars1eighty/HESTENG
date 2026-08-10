@@ -1,7 +1,33 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>HESTENG</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>🏆 HESTENG</h1>
 
-Welcome to your new app.
+<h3>Dashboard</h3>
+
+<p>Velkommen til HESTENG.</p>
+
+<div class="mt-4">
+    <button class="btn btn-primary"
+            @onclick="CreateActivity">
+        Ny aktivitet
+    </button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert alert-success mt-3">
+        @Message
+    </div>
+}
+
+@code
+{
+    private string? Message;
+
+    private void CreateActivity()
+    {
+        Message = "Sprint 3 starter her.";
+    }
+}
