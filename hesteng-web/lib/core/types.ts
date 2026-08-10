@@ -13,3 +13,8 @@ export type Pool = {
   name: string;
   players: SeededEntry[];
 };
+
+export type SeedZone = {
+    size: number;
+    allowedPools: string[];
+};

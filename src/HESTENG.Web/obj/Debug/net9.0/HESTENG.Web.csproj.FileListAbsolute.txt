@@ -13,6 +13,7 @@ C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\HESTENG.Web.AssemblyInfo.cs
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\HESTENG.Web.csproj.CoreCompileInputs.cache
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\HESTENG.Web.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\HESTENG.Web.sourcelink.json
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\rjimswa.dswa.cache.json
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
@@ -76,4 +77,3 @@ C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\HESTENG.Web.pdb
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\HESTENG.Web.genruntimeconfig.cache
 C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\ref\HESTENG.Web.dll
-C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\HESTENG Web\src\HESTENG.Web\obj\Debug\net9.0\HESTENG.Web.sourcelink.json

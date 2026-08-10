@@ -1,10 +1,7 @@
 import { POOL_SIZES } from "./poolSizes";
 import { shuffle } from "./shuffle";
 
-export type Pool = {
-  name: string;
-  players: string[];
-};
+
 
 export function createPools(players: string[]): Pool[] {
   const total = players.length;
