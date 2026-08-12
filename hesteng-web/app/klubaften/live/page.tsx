@@ -7,27 +7,9 @@ import { useKlubaften } from "@/context/KlubaftenContext";
 import { getNextMatchesByBoard } from "@/lib/liveEngine";
 
 export default function LivePage() {
-  const { matches, setMatches } = useKlubaften();
+  const { matches } = useKlubaften();
   const nextMatches = getNextMatchesByBoard(matches);
   const finishedCount = matches.filter((match) => match.status === "finished").length;
-
-  function updateScore(id: string, player: 1 | 2, delta: number) {
-    setMatches(matches.map((match) => {
-      if (match.id !== id || match.status === "finished") return match;
-      return {
-        ...match,
-        score1: player === 1 ? Math.max(0, match.score1 + delta) : match.score1,
-        score2: player === 2 ? Math.max(0, match.score2 + delta) : match.score2,
-        status: "live" as const,
-      };
-    }));
-  }
-
-  function finishMatch(id: string) {
-    setMatches(matches.map((match) =>
-      match.id === id ? { ...match, status: "finished" as const } : match
-    ));
-  }
 
   if (matches.length === 0) {
     return (
@@ -67,40 +49,37 @@ export default function LivePage() {
             Næste kampe på banerne
           </div>
           <p className="mt-1 text-sm text-gray-400">
-            Når en kamp afsluttes, bliver den næste kamp på samme bane automatisk vist.
+            Tryk på en kamp for at åbne den rigtige scoringsskærm.
           </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {nextMatches.map((match) => (
-            <article key={match.id} className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+            <Link
+              key={match.id}
+              href={`/klubaften/kamp/${match.id}`}
+              className="group block rounded-2xl border border-gray-800 bg-gray-900 p-6 transition hover:border-orange-500 hover:bg-gray-800"
+            >
               <div className="mb-5 flex items-center justify-between text-sm text-gray-500">
                 <span>{match.pool} · Runde {match.round}</span>
                 <span className="rounded-full bg-gray-800 px-3 py-1">Bane {match.board}</span>
               </div>
 
-              {[1, 2].map((player) => {
-                const first = player === 1;
-                const name = first ? match.player1 : match.player2;
-                const score = first ? match.score1 : match.score2;
-                return (
-                  <div key={player} className="mb-4 rounded-xl bg-gray-800 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-semibold">{name}</span>
-                      <span className="text-3xl font-bold tabular-nums">{score}</span>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <button onClick={() => updateScore(match.id, first ? 1 : 2, -1)} className="rounded-lg border border-gray-700 px-4 py-2 hover:bg-gray-700">−</button>
-                      <button onClick={() => updateScore(match.id, first ? 1 : 2, 1)} className="flex-1 rounded-lg bg-orange-500 px-4 py-2 font-semibold hover:bg-orange-600">+1</button>
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl bg-gray-800 p-4">
+                  <span className="font-semibold">{match.player1}</span>
+                  <span className="text-2xl font-bold tabular-nums">{match.score1}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-gray-800 p-4">
+                  <span className="font-semibold">{match.player2}</span>
+                  <span className="text-2xl font-bold tabular-nums">{match.score2}</span>
+                </div>
+              </div>
 
-              <button onClick={() => finishMatch(match.id)} className="w-full rounded-xl border border-green-700 px-4 py-3 font-semibold text-green-400 hover:bg-green-500/10">
-                Afslut kamp → næste kamp
-              </button>
-            </article>
+              <div className="mt-5 rounded-xl border border-orange-700/70 bg-orange-500/10 px-4 py-3 text-center font-semibold text-orange-400 group-hover:bg-orange-500 group-hover:text-white">
+                Åbn scoring →
+              </div>
+            </Link>
           ))}
         </div>
 
