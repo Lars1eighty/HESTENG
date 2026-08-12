@@ -18,8 +18,9 @@ type Props = {
   bestOfLegs?: number;
 };
 
-const QUICK_SCORES = [26, 41, 45, 60, 81, 85];
 const NUMBER_ROWS = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+const QUICK_LEFT = [26, 41, 45, 100];
+const QUICK_RIGHT = [60, 81, 85, 140];
 
 function isValidCheckout(score: number) {
   return score >= 2 && score <= 170;
@@ -33,7 +34,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<PlayerScore[][]>([]);
-  const [message, setMessage] = useState("Indtast score");
+  const [message, setMessage] = useState("");
 
   const current = players[currentPlayer];
   const neededLegs = Math.ceil(bestOfLegs / 2);
@@ -42,13 +43,18 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   function addDigit(digit: number) {
     if (matchWinner || input.length >= 3) return;
     setInput((value) => value + digit.toString());
-    setMessage("Tryk ENTER for at registrere scoren");
+    setMessage("");
   }
 
   function chooseScore(score: number) {
     if (matchWinner) return;
     setInput(score.toString());
-    setMessage("Tryk ENTER for at registrere scoren");
+    setMessage("");
+  }
+
+  function clearInput() {
+    setInput("");
+    setMessage("");
   }
 
   function enterScore() {
@@ -63,7 +69,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     if (nextRemaining < 0 || nextRemaining === 1) {
       setInput("");
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
-      setMessage("Bust — ingen score. Næste spiller.");
+      setMessage("Bust — ingen score.");
       return;
     }
 
@@ -71,17 +77,25 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
       if (!isValidCheckout(score)) {
         setInput("");
         setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
-        setMessage("Bust — checkout skal være double out. Næste spiller.");
+        setMessage("Bust — double out.");
         return;
       }
 
       setPlayers((items) => items.map((player, index) => index === currentPlayer
-        ? { ...player, remaining: 501, legs: player.legs + 1, totalScored: player.totalScored + score, entries: player.entries + 1, checkouts: player.checkouts + 1, checkoutAttempts: player.checkoutAttempts + 1 }
+        ? {
+            ...player,
+            remaining: 501,
+            legs: player.legs + 1,
+            totalScored: player.totalScored + score,
+            entries: player.entries + 1,
+            checkouts: player.checkouts + 1,
+            checkoutAttempts: player.checkoutAttempts + 1,
+          }
         : { ...player, remaining: 501 }
       ));
       setInput("");
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
-      setMessage(`${current.name} lukker leggen.`);
+      setMessage("");
       return;
     }
 
@@ -97,7 +111,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     ));
     setInput("");
     setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
-    setMessage("Næste spiller.");
+    setMessage("");
   }
 
   function undo() {
@@ -106,7 +120,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     setPlayers(previous.map((player) => ({ ...player })));
     setHistory((items) => items.slice(0, -1));
     setInput("");
-    setMessage("Sidste indgang fortrudt.");
+    setMessage("");
   }
 
   const stats = players.map((player) => {
@@ -115,47 +129,75 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     return { avg, closePercent };
   });
 
-  return (
-    <div className="space-y-3">
-      <div className="grid gap-3 md:grid-cols-[1fr_150px_1fr]">
-        {players.map((player, index) => (
-          <div key={player.name} className={`rounded-2xl border-2 ${index === 0 ? "border-blue-600" : "border-red-600"} bg-gray-900 p-4`}>
-            <div className={`text-sm font-semibold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>SPILLER {index + 1}</div>
-            <div className="mt-1 text-2xl font-bold">{player.name}</div>
-            <div className="mt-1 flex items-center justify-between">
-              <div className="text-7xl font-bold tabular-nums">{player.remaining}</div>
-              <div className={`rounded-xl px-4 py-2 text-center ${index === 0 ? "bg-blue-500/10 text-blue-400" : "bg-red-500/10 text-red-400"}`}>
-                <div className="text-xs">LEGS</div><div className="text-3xl font-bold">{player.legs}</div>
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-4 border-t border-gray-800 pt-3 text-center text-xs text-gray-400">
-              <div>SNIT / LEG<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
-              <div>SNIT / KAMP<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
-              <div>LUKKET / FORSØGT<br /><b>{player.checkouts} / {player.checkoutAttempts}</b></div>
-              <div>LUKKE %<br /><b>{stats[index].closePercent}%</b></div>
-            </div>
-          </div>
-        ))}
-        <div className="order-first rounded-2xl border border-gray-800 bg-gray-900 p-4 text-center md:order-none">
-          <div className="text-xs text-gray-500">LEGS · BEDST AF {bestOfLegs}</div>
-          <div className="mt-3 text-3xl font-bold"><span className="text-blue-400">{players[0].legs}</span><span className="text-gray-600"> – </span><span className="text-red-400">{players[1].legs}</span></div>
-          <div className="mt-4 text-xs text-gray-500">NÆSTE SPILLER</div>
-          <div className={`mt-1 font-bold ${currentPlayer === 0 ? "text-blue-400" : "text-red-400"}`}>{current.name}</div>
+  const playerCard = (player: PlayerScore, index: 0 | 1) => (
+    <div className={`rounded-2xl border-2 ${index === 0 ? "border-blue-600" : "border-red-600"} bg-gray-900 p-5`}>
+      <div className={`text-sm font-semibold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>SPILLER {index + 1}</div>
+      <div className="mt-1 text-2xl font-bold">{player.name}</div>
+      <div className="mt-2 flex items-center justify-between gap-4">
+        <div className="text-7xl font-bold tabular-nums">{player.remaining}</div>
+        <div className={`rounded-xl px-5 py-3 text-center ${index === 0 ? "bg-blue-500/10 text-blue-400" : "bg-red-500/10 text-red-400"}`}>
+          <div className="text-xs">LEGS</div>
+          <div className="text-3xl font-bold">{player.legs}</div>
         </div>
       </div>
+      <div className="mt-4 grid grid-cols-4 border-t border-gray-800 pt-3 text-center text-xs text-gray-400">
+        <div>SNIT / LEG<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
+        <div>SNIT / KAMP<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
+        <div>LUKKET / FORSØGT<br /><b>{player.checkouts} / {player.checkoutAttempts}</b></div>
+        <div>LUKKE %<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].closePercent}%</b></div>
+      </div>
+    </div>
+  );
 
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-center">
-        <div className="text-xs text-gray-500">INDTASTET TAL</div>
-        <div className="mt-1 min-h-[56px] text-5xl font-bold tabular-nums text-green-400">{input}</div>
-        <div className="mt-1 text-xs text-gray-500">{message}</div>
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_260px_minmax(0,1fr)]">
+        {playerCard(players[0], 0)}
+
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-center">
+          <div className="text-sm text-gray-400">LEGS · BEDST AF {bestOfLegs}</div>
+          <div className="mt-4 text-4xl font-bold tabular-nums">
+            <span className="text-blue-400">{players[0].legs}</span>
+            <span className="text-gray-600"> – </span>
+            <span className="text-red-400">{players[1].legs}</span>
+          </div>
+          <div className="mt-8 text-sm text-gray-500">NÆSTE SPILLER</div>
+          <div className={`mt-1 text-xl font-bold ${currentPlayer === 0 ? "text-blue-400" : "text-red-400"}`}>{current.name}</div>
+        </div>
+
+        {playerCard(players[1], 1)}
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
+        <div className="flex min-h-[76px] items-center rounded-2xl border border-gray-800 bg-gray-900 px-6">
+          <div className="text-2xl font-bold tabular-nums text-white">{input}</div>
+          {!input && <div className="text-gray-500">INDTASTET TAL</div>}
+        </div>
+        <button onClick={clearInput} className="rounded-2xl border border-gray-800 bg-gray-900 text-xl font-bold">CLR</button>
       </div>
 
       <div className="grid grid-cols-5 gap-2">
-        <div className="grid gap-2">{[26, 41, 45, 100].map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>)}</div>
-        <div className="col-span-3 grid gap-2">
-          {NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => addDigit(score)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">{score}</button>)}</div>)}
+        <div className="grid gap-2">
+          {QUICK_LEFT.map((score) => (
+            <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>
+          ))}
         </div>
-        <div className="grid gap-2">{[60, 81, 85, 140].map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>)}</div>
+
+        <div className="col-span-3 grid gap-2">
+          {NUMBER_ROWS.map((row) => (
+            <div key={row[0]} className="grid grid-cols-3 gap-2">
+              {row.map((score) => (
+                <button key={score} onClick={() => addDigit(score)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">{score}</button>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-2">
+          {QUICK_RIGHT.map((score) => (
+            <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -163,6 +205,10 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
         <button onClick={() => chooseScore(180)} className="rounded-xl border border-blue-600 bg-blue-600 py-5 text-2xl font-bold text-white">180</button>
         <button onClick={enterScore} className="rounded-xl bg-green-500 py-5 text-xl font-bold text-black">ENTER →</button>
       </div>
+
+      <div className="text-center text-sm text-gray-500">Hver indgang registreres som én samlet score.</div>
+
+      {message && <div className="text-center text-sm text-gray-400">{message}</div>}
 
       {matchWinner && (
         <div className="rounded-2xl border border-green-800 bg-green-500/10 p-5 text-center">
