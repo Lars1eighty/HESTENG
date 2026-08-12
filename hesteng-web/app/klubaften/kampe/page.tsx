@@ -6,6 +6,7 @@ import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { createThursdayMatches } from "@/lib/matchEngine";
+import { getNextMatchesByBoard } from "@/lib/liveEngine";
 
 export default function KampePage() {
   const { pools, matches, setMatches } = useKlubaften();
@@ -28,6 +29,7 @@ export default function KampePage() {
   }
 
   const boards = Array.from({ length: Math.max(...matches.map((m) => m.board), 6) }, (_, index) => index + 1);
+  const nextMatches = getNextMatchesByBoard(matches);
   const finished = matches.filter((m) => m.status === "finished").length;
 
   return (
@@ -48,8 +50,7 @@ export default function KampePage() {
 
         <div className="mb-10 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {boards.map((board) => {
-            const boardMatches = matches.filter((m) => m.board === board && m.status !== "finished");
-            const next = boardMatches[0];
+            const next = nextMatches.find((match) => match.board === board);
             return (
               <div key={board} className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
                 <div className="text-sm text-gray-500">Bane</div>
