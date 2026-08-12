@@ -33,6 +33,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [input, setInput] = useState("");
+  const [manualInputStarted, setManualInputStarted] = useState(false);
   const [history, setHistory] = useState<PlayerScore[][]>([]);
   const [message, setMessage] = useState("");
 
@@ -43,17 +44,20 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   function addDigit(digit: number) {
     if (matchWinner || input.length >= 3) return;
     setInput((value) => value + digit.toString());
+    setManualInputStarted(true);
     setMessage("");
   }
 
   function chooseScore(score: number) {
     if (matchWinner) return;
     setInput(score.toString());
+    setManualInputStarted(false);
     setMessage("");
   }
 
   function clearInput() {
     setInput("");
+    setManualInputStarted(false);
     setMessage("");
   }
 
@@ -68,6 +72,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
 
     if (nextRemaining < 0 || nextRemaining === 1) {
       setInput("");
+      setManualInputStarted(false);
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
       setMessage("Bust — ingen score.");
       return;
@@ -76,6 +81,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     if (nextRemaining === 0) {
       if (!isValidCheckout(score)) {
         setInput("");
+        setManualInputStarted(false);
         setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
         setMessage("Bust — double out.");
         return;
@@ -94,6 +100,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
         : { ...player, remaining: 501 }
       ));
       setInput("");
+      setManualInputStarted(false);
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
       setMessage("");
       return;
@@ -110,6 +117,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
       : player
     ));
     setInput("");
+    setManualInputStarted(false);
     setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
     setMessage("");
   }
@@ -120,6 +128,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     setPlayers(previous.map((player) => ({ ...player })));
     setHistory((items) => items.slice(0, -1));
     setInput("");
+    setManualInputStarted(false);
     setMessage("");
   }
 
@@ -202,7 +211,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
 
       <div className="grid grid-cols-3 gap-2">
         <button onClick={undo} className="rounded-xl border border-red-900 bg-red-500/10 py-5 text-xl font-bold text-red-400">↶ UNDO</button>
-        <button onClick={() => chooseScore(180)} className="rounded-xl border border-blue-600 bg-blue-600 py-5 text-2xl font-bold text-white">180</button>
+        <button onClick={() => chooseScore(180)} className="rounded-xl border border-blue-600 bg-blue-600 py-5 text-2xl font-bold text-white">{manualInputStarted ? "0" : "180"}</button>
         <button onClick={enterScore} className="rounded-xl bg-green-500 py-5 text-xl font-bold text-black">ENTER →</button>
       </div>
 
