@@ -1,4 +1,11 @@
 @page "/"
+@rendermode InteractiveServer
+
+@using HESTENG.Web.Models
+@using HESTENG.Web.Services
+
+@inject ActivityStore ActivityStore
+@inject NavigationManager Navigation
 
 <PageTitle>HESTENG</PageTitle>
 
@@ -7,26 +14,148 @@
 <h3>Dashboard</h3>
 
 <div class="mt-4">
-    <button class="btn btn-primary"
-            @onclick="CreateActivity">
+    <button class="btn btn-primary" @onclick="OpenCreateActivity">
         Ny aktivitet
     </button>
 </div>
 
-@if (!string.IsNullOrEmpty(Message))
+@if (ActivityStore.Activities.Count > 0)
 {
-    <div class="alert alert-success mt-3">
-        @Message
+    <div class="mt-4">
+        <h4>Aktiviteter</h4>
+
+        <div class="list-group">
+            @foreach (var activity in ActivityStore.Activities)
+            {
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <div>
+                            <strong>@activity.Name</strong>
+
+                            <div class="text-muted small">
+                                @GetStatusText(activity.Status)
+                                ·
+                                @activity.CreatedAt.ToString("dd-MM-yyyy HH:mm")
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-primary"
+                                    @onclick="() => OpenActivity(activity)">
+                                Åbn
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick="() => DeleteActivity(activity)">
+                                Slet
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            }
+        </div>
     </div>
 }
 
-@code {
+@if (ShowCreateActivity)
+{
+    <div class="modal-backdrop fade show"></div>
 
-    private string? Message;
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Ny aktivitet</h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Luk"
+                            @onclick="CloseCreateActivity">
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="activityName" class="form-label">
+                            Navn
+                        </label>
+
+                        <input id="activityName"
+                               class="form-control"
+                               @bind="ActivityName"
+                               placeholder="F.eks. Torsdagsaften" />
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            @onclick="CloseCreateActivity">
+                        Annuller
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-primary"
+                            @onclick="CreateActivity"
+                            disabled="@string.IsNullOrWhiteSpace(ActivityName)">
+                        Opret aktivitet
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@code
+{
+    private bool ShowCreateActivity;
+    private string ActivityName = string.Empty;
+
+    private void OpenCreateActivity()
+    {
+        ActivityName = string.Empty;
+        ShowCreateActivity = true;
+    }
+
+    private void CloseCreateActivity()
+    {
+        ShowCreateActivity = false;
+    }
 
     private void CreateActivity()
     {
-        Message = "Ny aktivitet kommer i Sprint 3.";
+        if (string.IsNullOrWhiteSpace(ActivityName))
+        {
+            return;
+        }
+
+        ActivityStore.Add(ActivityName);
+
+        ShowCreateActivity = false;
     }
 
+    private void OpenActivity(HESTENG.Web.Models.Activity activity)
+    {
+        Navigation.NavigateTo($"/activity/{activity.Id}");
+    }
+
+    private void DeleteActivity(HESTENG.Web.Models.Activity activity)
+    {
+        ActivityStore.Delete(activity.Id);
+    }
+
+    private static string GetStatusText(ActivityStatus status)
+    {
+        return status switch
+        {
+            ActivityStatus.Draft => "Kladde",
+            ActivityStatus.Active => "Aktiv",
+            ActivityStatus.Completed => "Afsluttet",
+            _ => "Ukendt"
+        };
+    }
 }

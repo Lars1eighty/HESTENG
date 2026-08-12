@@ -1,0 +1,1214 @@
+@page "/activity/{Id:guid}"
+@rendermode InteractiveServer
+
+@using HESTENG.Web.Models
+@using HESTENG.Web.Services
+
+@inject ActivityStore ActivityStore
+@inject PoolPlanner PoolPlanner
+@inject CompetitionStageService CompetitionStageService
+@inject NavigationManager Navigation
+
+<PageTitle>@(CurrentActivity?.Name ?? "Aktivitet") - HESTENG</PageTitle>
+
+@if (CurrentActivity is null)
+{
+    <h1>Aktivitet ikke fundet</h1>
+
+    <button class="btn btn-primary" @onclick="GoToDashboard">
+        Tilbage til Dashboard
+    </button>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>🏆 @CurrentActivity.Name</h1>
+
+            <div class="text-muted">
+                Kladde · Oprettet
+                @CurrentActivity.CreatedAt.ToString("dd-MM-yyyy HH:mm")
+            </div>
+        </div>
+
+        <button class="btn btn-outline-secondary"
+                @onclick="GoToDashboard">
+            ← Dashboard
+        </button>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4>🔄 Runder</h4>
+
+                        <button class="btn btn-sm btn-primary"
+                                @onclick="OpenAddRound">
+                            + Ny runde
+                        </button>
+                    </div>
+
+                    @if (CurrentActivity.Rounds.Count == 0)
+                    {
+                        <p class="text-muted mt-3">
+                            Ingen runder oprettet endnu.
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="list-group mt-3">
+
+                            @foreach (var round in CurrentActivity.Rounds.OrderBy(x => x.Number))
+                            {
+                                <div class="list-group-item">
+
+                                    <div class="d-flex justify-content-between align-items-center">
+
+                                        <div>
+                                            <strong>
+                                                Runde @round.Number
+                                            </strong>
+
+                                            <div class="text-muted small">
+                                                @round.Name
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <span class="badge bg-primary">
+                                                @GetRoundTypeText(round.Type)
+                                            </span>
+
+                                            <span class="badge bg-secondary ms-1">
+                                                @GetRoundStatusText(round.Status)
+                                            </span>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="mt-3">
+
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+
+                                            <strong>
+                                                Konkurrencedel
+                                            </strong>
+
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    @onclick="() => OpenAddStage(round)">
+                                                + Tilføj
+                                            </button>
+
+                                        </div>
+
+                                        @if (round.Stages.Count == 0)
+                                        {
+                                            <div class="text-muted small">
+                                                Ingen konkurrencedel oprettet endnu.
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="list-group">
+
+                                                @foreach (var stage in round.Stages.OrderBy(x => x.Order))
+                                                {
+                                                    <div class="list-group-item">
+
+                                                        <div class="d-flex justify-content-between align-items-center">
+
+                                                            <div>
+                                                                <strong>
+                                                                    @stage.Name
+                                                                </strong>
+
+                                                                <div class="text-muted small">
+                                                                    Del @stage.Order
+                                                                </div>
+                                                            </div>
+
+                                                            <span class="badge bg-primary">
+                                                                @GetStageTypeText(stage.Type)
+                                                            </span>
+
+                                                        </div>
+
+                                                    </div>
+                                                }
+
+                                            </div>
+                                        }
+
+                                    </div>
+
+                                </div>
+                            }
+
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4>👥 Deltagere</h4>
+
+                        <button class="btn btn-sm btn-primary"
+                                @onclick="OpenAddParticipant">
+                            + Tilføj
+                        </button>
+                    </div>
+
+                    @if (CurrentActivity.Participants.Count == 0)
+                    {
+                        <p class="text-muted mt-3">
+                            Ingen deltagere endnu.
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="list-group mt-3">
+
+                            @foreach (var participant in CurrentActivity.Participants
+                                .OrderBy(x => x.Seed <= 0 ? int.MaxValue : x.Seed))
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+
+                                    <span>
+                                        @participant.Name
+
+                                        @if (participant.Seed > 0)
+                                        {
+                                            <small class="text-muted">
+                                                · Seed @participant.Seed
+                                            </small>
+                                        }
+                                    </span>
+
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => RemoveParticipant(participant)">
+                                        Slet
+                                    </button>
+
+                                </div>
+                            }
+
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4>🏆 Turneringsformat</h4>
+
+                        <button class="btn btn-sm btn-primary"
+                                @onclick="OpenFormatSelector">
+                            Vælg
+                        </button>
+                    </div>
+
+                    <p class="mt-3">
+                        <strong>
+                            @GetFormatText(CurrentActivity.Format)
+                        </strong>
+                    </p>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4>🎯 Puljer</h4>
+
+                        @if (CurrentActivity.Participants.Count > 0)
+                        {
+                            <button class="btn btn-primary"
+                                    @onclick="CalculatePools">
+                                Beregn puljer
+                            </button>
+                        }
+                    </div>
+
+                    @if (CurrentActivity.Participants.Count == 0)
+                    {
+                        <p class="text-muted mt-3">
+                            Tilføj deltagere først.
+                        </p>
+                    }
+                    else if (PoolPlan is null)
+                    {
+                        <p class="text-muted mt-3">
+                            Klik "Beregn puljer" for at fordele deltagerne automatisk.
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="row g-3 mt-2">
+
+                            @foreach (var pool in PoolPlan.Pools)
+                            {
+                                <div class="col-md-6 col-lg-3">
+
+                                    <div class="card h-100">
+
+                                        <div class="card-header">
+                                            <strong>@pool.Name</strong>
+                                        </div>
+
+                                        <div class="list-group list-group-flush">
+
+                                            @foreach (var participant in pool.Participants)
+                                            {
+                                                <div class="list-group-item">
+
+                                                    <strong>
+                                                        @participant.Name
+                                                    </strong>
+
+                                                    @if (participant.Seed > 0)
+                                                    {
+                                                        <small class="text-muted">
+                                                            · #@participant.Seed
+                                                        </small>
+                                                    }
+
+                                                </div>
+                                            }
+
+                                        </div>
+
+                                        @if (pool.Matches.Count > 0)
+                                        {
+                                            <div class="card-body">
+
+                                                <strong>Kampe</strong>
+
+                                                <div class="mt-2">
+
+                                                    @foreach (var match in pool.Matches)
+                                                    {
+                                                        <div class="border rounded p-2 mb-2">
+
+                                                            <div class="d-flex justify-content-between">
+
+                                                                <span>
+                                                                    @GetParticipantName(pool, match.Player1Id)
+                                                                </span>
+
+                                                                <span class="text-muted">
+                                                                    vs.
+                                                                </span>
+
+                                                                <span>
+                                                                    @GetParticipantName(pool, match.Player2Id)
+                                                                </span>
+
+                                                            </div>
+
+                                                            @if (match.Status == MatchStatus.NotPlayed)
+                                                            {
+                                                                <button class="btn btn-sm btn-primary mt-2"
+                                                                        @onclick="() => OpenMatch(match)">
+                                                                    Åbn kamp
+                                                                </button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="text-muted small mt-2">
+                                                                    Afsluttet:
+                                                                    @match.Player1Score -
+                                                                    @match.Player2Score
+                                                                </div>
+                                                            }
+
+                                                        </div>
+                                                    }
+
+                                                </div>
+
+                                            </div>
+
+                                            <div class="card-body border-top">
+
+                                                <strong>Stilling</strong>
+
+                                                @{
+                                                    var standings =
+                                                        PoolPlanner.CalculateStandings(pool);
+                                                }
+
+                                                <div class="table-responsive mt-2">
+
+                                                    <table class="table table-sm">
+
+                                                        <thead>
+                                                            <tr>
+                                                                <th>#</th>
+                                                                <th>Spiller</th>
+                                                                <th>KP</th>
+                                                                <th>V</th>
+                                                                <th>T</th>
+                                                                <th>P</th>
+                                                            </tr>
+                                                        </thead>
+
+                                                        <tbody>
+
+                                                            @foreach (var standing in standings)
+                                                            {
+                                                                <tr>
+                                                                    <td>
+                                                                        @standing.Position
+                                                                    </td>
+
+                                                                    <td>
+                                                                        @standing.Name
+                                                                    </td>
+
+                                                                    <td>
+                                                                        @standing.Played
+                                                                    </td>
+
+                                                                    <td>
+                                                                        @standing.Wins
+                                                                    </td>
+
+                                                                    <td>
+                                                                        @standing.Losses
+                                                                    </td>
+
+                                                                    <td>
+                                                                        <strong>
+                                                                            @standing.Points
+                                                                        </strong>
+                                                                    </td>
+                                                                </tr>
+                                                            }
+
+                                                        </tbody>
+
+                                                    </table>
+
+                                                </div>
+
+                                            </div>
+                                        }
+
+                                    </div>
+
+                                </div>
+                            }
+
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+
+                    <h4>⚙️ Indstillinger</h4>
+
+                    <p class="text-muted">
+                        Aktivitetens indstillinger.
+                    </p>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+}
+
+@if (ShowMatch)
+{
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal fade show d-block" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        Kamp
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Luk"
+                            @onclick="CloseMatch">
+                    </button>
+
+                </div>
+
+                @if (SelectedMatch is not null && SelectedPool is not null)
+                {
+                    <div class="modal-body">
+
+                        <div class="text-center mb-4">
+
+                            <h5>
+
+                                @GetParticipantName(
+                                    SelectedPool,
+                                    SelectedMatch.Player1Id)
+
+                                <span class="text-muted">
+                                    vs.
+                                </span>
+
+                                @GetParticipantName(
+                                    SelectedPool,
+                                    SelectedMatch.Player2Id)
+
+                            </h5>
+
+                        </div>
+
+                        <div class="row g-3">
+
+                            <div class="col-6">
+
+                                <label class="form-label">
+                                    @GetParticipantName(
+                                        SelectedPool,
+                                        SelectedMatch.Player1Id)
+                                </label>
+
+                                <input type="number"
+                                       min="0"
+                                       class="form-control"
+                                       @bind="Player1Score" />
+
+                            </div>
+
+                            <div class="col-6">
+
+                                <label class="form-label">
+                                    @GetParticipantName(
+                                        SelectedPool,
+                                        SelectedMatch.Player2Id)
+                                </label>
+
+                                <input type="number"
+                                       min="0"
+                                       class="form-control"
+                                       @bind="Player2Score" />
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+
+                        <button class="btn btn-secondary"
+                                @onclick="CloseMatch">
+                            Annuller
+                        </button>
+
+                        <button class="btn btn-primary"
+                                @onclick="CompleteMatch">
+                            Afslut kamp
+                        </button>
+
+                    </div>
+                }
+
+            </div>
+
+        </div>
+
+    </div>
+}
+
+@if (ShowFormatSelector)
+{
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal fade show d-block" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        Turneringsformat
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Luk"
+                            @onclick="CloseFormatSelector">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="d-grid gap-2">
+
+                        <button class="btn btn-outline-primary text-start"
+                                @onclick="() => SelectFormat(TournamentFormat.Pools)">
+
+                            <strong>
+                                Puljespil
+                            </strong>
+
+                            <br />
+
+                            <small>
+                                Spillerne fordeles i puljer.
+                            </small>
+
+                        </button>
+
+                        <button class="btn btn-outline-primary text-start"
+                                @onclick="() => SelectFormat(TournamentFormat.Knockout)">
+
+                            <strong>
+                                Knockout
+                            </strong>
+
+                            <br />
+
+                            <small>
+                                Direkte knockout-format.
+                            </small>
+
+                        </button>
+
+                        <button class="btn btn-outline-primary text-start"
+                                @onclick="() => SelectFormat(TournamentFormat.PoolsAndKnockout)">
+
+                            <strong>
+                                Pulje + knockout
+                            </strong>
+
+                            <br />
+
+                            <small>
+                                Puljespil efterfulgt af knockout.
+                            </small>
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button class="btn btn-secondary"
+                            @onclick="CloseFormatSelector">
+                        Annuller
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+}
+
+@if (ShowAddParticipant)
+{
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal fade show d-block" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        Tilføj deltager
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Luk"
+                            @onclick="CloseAddParticipant">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+
+                        <label for="participantName"
+                               class="form-label">
+                            Navn
+                        </label>
+
+                        <input id="participantName"
+                               class="form-control"
+                               @bind="ParticipantName"
+                               placeholder="Spillerens navn" />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="participantSeed"
+                               class="form-label">
+                            Seed
+                        </label>
+
+                        <input id="participantSeed"
+                               type="number"
+                               min="0"
+                               class="form-control"
+                               @bind="ParticipantSeed" />
+
+                        <div class="form-text">
+                            1 er bedste seed. 0 betyder ingen seed.
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button class="btn btn-secondary"
+                            @onclick="CloseAddParticipant">
+                        Annuller
+                    </button>
+
+                    <button class="btn btn-primary"
+                            @onclick="AddParticipant"
+                            disabled="@string.IsNullOrWhiteSpace(ParticipantName)">
+                        Tilføj deltager
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+}
+
+@if (ShowAddRound)
+{
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal fade show d-block" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        Ny runde
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Luk"
+                            @onclick="CloseAddRound">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+
+                        <label for="roundName"
+                               class="form-label">
+                            Navn
+                        </label>
+
+                        <input id="roundName"
+                               class="form-control"
+                               @bind="RoundName"
+                               placeholder="F.eks. Puljespil" />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="roundType"
+                               class="form-label">
+                            Type
+                        </label>
+
+                        <select id="roundType"
+                                class="form-select"
+                                @bind="RoundType">
+
+                            <option value="@Models.RoundType.Pools">
+                                Puljer
+                            </option>
+
+                            <option value="@Models.RoundType.Knockout">
+                                Knockout
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button class="btn btn-secondary"
+                            @onclick="CloseAddRound">
+                        Annuller
+                    </button>
+
+                    <button class="btn btn-primary"
+                            @onclick="AddRound"
+                            disabled="@string.IsNullOrWhiteSpace(RoundName)">
+                        Opret runde
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+}
+
+@if (ShowAddStage)
+{
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal fade show d-block" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        Ny konkurrencedel
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Luk"
+                            @onclick="CloseAddStage">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    @if (SelectedRound is not null)
+                    {
+                        <div class="text-muted mb-3">
+                            Runde @SelectedRound.Number · @SelectedRound.Name
+                        </div>
+                    }
+
+                    <div class="mb-3">
+
+                        <label for="stageName"
+                               class="form-label">
+                            Navn
+                        </label>
+
+                        <input id="stageName"
+                               class="form-control"
+                               @bind="StageName"
+                               placeholder="F.eks. Puljespil" />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="stageType"
+                               class="form-label">
+                            Type
+                        </label>
+
+                        <select id="stageType"
+                                class="form-select"
+                                @bind="StageType">
+
+                            <option value="@CompetitionStageType.Pools">
+                                Puljer
+                            </option>
+
+                            <option value="@CompetitionStageType.Knockout">
+                                Knockout
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button class="btn btn-secondary"
+                            @onclick="CloseAddStage">
+                        Annuller
+                    </button>
+
+                    <button class="btn btn-primary"
+                            @onclick="AddStage"
+                            disabled="@string.IsNullOrWhiteSpace(StageName)">
+                        Opret konkurrencedel
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+}
+
+@code
+{
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private HESTENG.Web.Models.Activity? CurrentActivity;
+
+    private bool ShowAddParticipant;
+    private bool ShowFormatSelector;
+    private bool ShowMatch;
+    private bool ShowAddRound;
+    private bool ShowAddStage;
+
+    private string ParticipantName = string.Empty;
+    private int ParticipantSeed;
+
+    private string RoundName = string.Empty;
+    private RoundType RoundType = RoundType.Pools;
+
+    private string StageName = string.Empty;
+    private CompetitionStageType StageType = CompetitionStageType.Pools;
+
+    private int Player1Score;
+    private int Player2Score;
+
+    private PoolMatch? SelectedMatch;
+    private Pool? SelectedPool;
+
+    private Round? SelectedRound;
+
+    private PoolPlan? PoolPlan;
+
+    protected override void OnParametersSet()
+    {
+        CurrentActivity = ActivityStore.Get(Id);
+        PoolPlan = null;
+    }
+
+    private void OpenAddRound()
+    {
+        RoundName = string.Empty;
+        RoundType = RoundType.Pools;
+        ShowAddRound = true;
+    }
+
+    private void CloseAddRound()
+    {
+        ShowAddRound = false;
+    }
+
+    private void AddRound()
+    {
+        if (CurrentActivity is null ||
+            string.IsNullOrWhiteSpace(RoundName))
+        {
+            return;
+        }
+
+        var round = ActivityStore.AddRound(
+            CurrentActivity.Id,
+            RoundName.Trim());
+
+        round.Type = RoundType;
+
+        ShowAddRound = false;
+    }
+
+    private void OpenAddStage(Round round)
+    {
+        SelectedRound = round;
+        StageName = string.Empty;
+
+        StageType = round.Type switch
+        {
+            RoundType.Knockout => CompetitionStageType.Knockout,
+            _ => CompetitionStageType.Pools
+        };
+
+        ShowAddStage = true;
+    }
+
+    private void CloseAddStage()
+    {
+        ShowAddStage = false;
+        SelectedRound = null;
+    }
+
+    private void AddStage()
+    {
+        if (CurrentActivity is null ||
+            SelectedRound is null ||
+            string.IsNullOrWhiteSpace(StageName))
+        {
+            return;
+        }
+
+        ActivityStore.AddStage(
+            CurrentActivity.Id,
+            SelectedRound.Id,
+            StageName.Trim(),
+            StageType);
+
+        CloseAddStage();
+    }
+
+    private static string GetStageTypeText(
+        CompetitionStageType type)
+    {
+        return type switch
+        {
+            CompetitionStageType.Pools => "Puljer",
+            CompetitionStageType.Knockout => "Knockout",
+            _ => "Ukendt"
+        };
+    }
+
+    private static string GetRoundTypeText(
+        RoundType type)
+    {
+        return type switch
+        {
+            RoundType.Pools => "Puljer",
+            RoundType.Knockout => "Knockout",
+            _ => "Ukendt"
+        };
+    }
+
+    private static string GetRoundStatusText(
+        RoundStatus status)
+    {
+        return status switch
+        {
+            RoundStatus.NotStarted => "Ikke startet",
+            RoundStatus.Active => "Aktiv",
+            RoundStatus.Completed => "Afsluttet",
+            _ => "Ukendt"
+        };
+    }
+
+    private void OpenAddParticipant()
+    {
+        ParticipantName = string.Empty;
+        ParticipantSeed = 0;
+        ShowAddParticipant = true;
+    }
+
+    private void CloseAddParticipant()
+    {
+        ShowAddParticipant = false;
+    }
+
+    private void AddParticipant()
+    {
+        if (CurrentActivity is null ||
+            string.IsNullOrWhiteSpace(ParticipantName))
+        {
+            return;
+        }
+
+        CurrentActivity.Participants.Add(new Participant
+        {
+            Name = ParticipantName.Trim(),
+            Seed = ParticipantSeed
+        });
+
+        PoolPlan = null;
+        ShowAddParticipant = false;
+    }
+
+    private void RemoveParticipant(Participant participant)
+    {
+        CurrentActivity?.Participants.Remove(participant);
+        PoolPlan = null;
+    }
+
+    private void CalculatePools()
+{
+    if (CurrentActivity is null)
+    {
+        return;
+    }
+
+    PoolPlan =
+        PoolPlanner.Calculate(
+            CurrentActivity.Participants);
+
+    var poolStage = CurrentActivity.Rounds
+        .OrderBy(x => x.Number)
+        .SelectMany(x => x.Stages)
+        .FirstOrDefault(x =>
+            x.Type == CompetitionStageType.Pools);
+
+    if (poolStage is not null)
+    {
+        CompetitionStageService.SyncPools(
+            poolStage,
+            PoolPlan);
+    }
+}
+
+    private void OpenMatch(PoolMatch match)
+    {
+        SelectedMatch = match;
+
+        SelectedPool = PoolPlan?.Pools
+            .FirstOrDefault(x => x.Matches.Contains(match));
+
+        Player1Score = 0;
+        Player2Score = 0;
+
+        ShowMatch = true;
+    }
+
+    private void CloseMatch()
+    {
+        ShowMatch = false;
+        SelectedMatch = null;
+        SelectedPool = null;
+    }
+
+    private void CompleteMatch()
+    {
+        if (SelectedMatch is null)
+        {
+            return;
+        }
+
+        if (Player1Score < 0 ||
+            Player2Score < 0)
+        {
+            return;
+        }
+
+        if (Player1Score == Player2Score)
+        {
+            return;
+        }
+
+        SelectedMatch.Player1Score = Player1Score;
+        SelectedMatch.Player2Score = Player2Score;
+
+        SelectedMatch.WinnerId =
+            Player1Score > Player2Score
+                ? SelectedMatch.Player1Id
+                : SelectedMatch.Player2Id;
+
+        SelectedMatch.Status =
+            MatchStatus.Completed;
+
+        CloseMatch();
+    }
+
+    private string GetParticipantName(
+        Pool pool,
+        Guid participantId)
+    {
+        return pool.Participants
+            .FirstOrDefault(
+                x => x.Id == participantId)?.Name
+            ?? "Ukendt";
+    }
+
+    private void OpenFormatSelector()
+    {
+        ShowFormatSelector = true;
+    }
+
+    private void CloseFormatSelector()
+    {
+        ShowFormatSelector = false;
+    }
+
+    private void SelectFormat(
+        TournamentFormat format)
+    {
+        if (CurrentActivity is not null)
+        {
+            CurrentActivity.Format = format;
+        }
+
+        ShowFormatSelector = false;
+    }
+
+    private static string GetFormatText(
+        TournamentFormat format)
+    {
+        return format switch
+        {
+            TournamentFormat.Pools =>
+                "Puljespil",
+
+            TournamentFormat.Knockout =>
+                "Knockout",
+
+            TournamentFormat.PoolsAndKnockout =>
+                "Pulje + knockout",
+
+            _ =>
+                "Ikke valgt"
+        };
+    }
+
+    private void GoToDashboard()
+    {
+        Navigation.NavigateTo("/");
+    }
+}
