@@ -9,7 +9,7 @@ import { useKlubaften } from "@/context/KlubaftenContext";
 export default function SpillerePage() {
   const { selectedPlayers } = useKlubaften();
 
-  const enabled = selectedPlayers.length >= 4;
+  const enabled = selectedPlayers.length >= 10;
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -18,15 +18,17 @@ export default function SpillerePage() {
       <section className="mx-auto max-w-5xl p-10">
         <BackButton />
 
-        <h1 className="mb-8 text-4xl font-bold">
-          👥 Tilføj spillere
-        </h1>
+        <h1 className="mb-8 text-4xl font-bold">👥 Tilføj spillere</h1>
 
         <PlayerSearch />
 
+        <p className="mt-4 text-sm text-gray-500">
+          Vælg mindst 10 spillere for at kunne oprette puljerne.
+        </p>
+
         <Link
           href={enabled ? "/klubaften/puljer" : "#"}
-          className={`mt-8 block w-full rounded-xl py-3 text-center text-lg font-semibold ${
+          className={`mt-4 block w-full rounded-xl py-3 text-center text-lg font-semibold ${
             enabled
               ? "bg-orange-500 text-white hover:bg-orange-600"
               : "pointer-events-none bg-gray-700 text-gray-400"
