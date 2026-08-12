@@ -28,7 +28,7 @@ export default function KampePage() {
     );
   }
 
-  const boards = Array.from({ length: Math.max(...matches.map((m) => m.board), 6) }, (_, index) => index + 1);
+  const boards = Array.from({ length: Math.max(...matches.map((m) => m.board), 13) }, (_, index) => index + 1);
   const nextMatches = getNextMatchesByBoard(matches);
   const finished = matches.filter((m) => m.status === "finished").length;
 
@@ -48,14 +48,14 @@ export default function KampePage() {
           </div>
         </div>
 
-        <div className="mb-10 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mb-10 grid gap-4 sm:grid-cols-3 lg:grid-cols-7 xl:grid-cols-13">
           {boards.map((board) => {
             const next = nextMatches.find((match) => match.board === board);
             return (
-              <div key={board} className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+              <div key={board} className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
                 <div className="text-sm text-gray-500">Bane</div>
                 <div className="mt-1 text-2xl font-bold">{board}</div>
-                <div className="mt-4 text-sm text-gray-300">{next ? `${next.player1} – ${next.player2}` : "Ledig"}</div>
+                <div className="mt-3 text-sm text-gray-300">{next ? `${next.player1} – ${next.player2}` : "Ledig"}</div>
               </div>
             );
           })}
@@ -70,20 +70,15 @@ export default function KampePage() {
                   <h2 className="text-2xl font-bold">{pool.name}</h2>
                   <span className="text-sm text-gray-500">{poolMatches.length} kampe</span>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="text-gray-500"><tr><th className="pb-3 pr-4">Runde</th><th className="pb-3 pr-4">Bane</th><th className="pb-3 pr-4">Kamp</th><th className="pb-3">Score</th></tr></thead>
-                    <tbody>
-                      {poolMatches.map((match) => (
-                        <tr key={match.id} className="border-t border-gray-800">
-                          <td className="py-3 pr-4">{match.round}</td>
-                          <td className="py-3 pr-4 font-semibold">{match.board}</td>
-                          <td className="py-3 pr-4">{match.player1} <span className="text-gray-600">vs.</span> {match.player2}</td>
-                          <td className="py-3">{match.score1} – {match.score2}{match.status === "finished" && <span className="ml-2 text-green-400">✓</span>}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="space-y-2">
+                  {poolMatches.map((match) => (
+                    <Link key={match.id} href={`/klubaften/kamp/${match.id}`} className="grid grid-cols-[70px_70px_1fr_100px] items-center gap-3 rounded-xl border border-gray-800 bg-gray-950/40 p-4 transition hover:border-gray-600 hover:bg-gray-800">
+                      <span className="text-sm text-gray-400">Runde {match.round}</span>
+                      <span className="font-semibold">Bane {match.board}</span>
+                      <span>{match.player1} <span className="text-gray-600">vs.</span> {match.player2}</span>
+                      <span className="text-right">{match.score1} – {match.score2}{match.status === "finished" && <span className="ml-2 text-green-400">✓</span>}</span>
+                    </Link>
+                  ))}
                 </div>
               </section>
             );
