@@ -36,18 +36,19 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<PlayerScore[][]>([]);
   const [message, setMessage] = useState("");
+  const [checkoutDarts, setCheckoutDarts] = useState("");
+  const [entryDarts, setEntryDarts] = useState("");
+  const [pendingCheckoutScore, setPendingCheckoutScore] = useState<number | null>(null);
 
   const current = players[currentPlayer];
   const neededLegs = Math.ceil(bestOfLegs / 2);
   const matchWinner = useMemo(() => players.find((player) => player.legs >= neededLegs), [players, neededLegs]);
 
   function addDigit(digit: number) {
-    if (matchWinner || input.length >= 3) return;
+    if (matchWinner || pendingCheckoutScore !== null || input.length >= 3) return;
 
     const nextInput = input + digit.toString();
     const nextScore = Number(nextInput);
-
-    // Enforce the real darts maximum: one visit can never exceed 180.
     if (nextScore > MAX_SCORE) return;
 
     setInput(nextInput);
@@ -55,18 +56,19 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   }
 
   function chooseScore(score: number) {
-    if (matchWinner || score > MAX_SCORE) return;
+    if (matchWinner || pendingCheckoutScore !== null || score > MAX_SCORE) return;
     setInput(score.toString());
     setMessage("");
   }
 
   function clearInput() {
+    if (pendingCheckoutScore !== null) return;
     setInput("");
     setMessage("");
   }
 
   function enterScore() {
-    if (!input || matchWinner) return;
+    if (!input || matchWinner || pendingCheckoutScore !== null) return;
 
     const score = Number(input);
     if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return;
@@ -89,20 +91,10 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
         return;
       }
 
-      setPlayers((items) => items.map((player, index) => index === currentPlayer
-        ? {
-            ...player,
-            remaining: 501,
-            legs: player.legs + 1,
-            totalScored: player.totalScored + score,
-            entries: player.entries + 1,
-            checkouts: player.checkouts + 1,
-            checkoutAttempts: player.checkoutAttempts + 1,
-          }
-        : { ...player, remaining: 501 }
-      ));
+      setPendingCheckoutScore(score);
+      setCheckoutDarts("");
+      setEntryDarts("");
       setInput("");
-      setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
       setMessage("");
       return;
     }
@@ -122,7 +114,37 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     setMessage("");
   }
 
+  function confirmCheckout() {
+    if (pendingCheckoutScore === null) return;
+
+    const doubleDarts = Number(checkoutDarts);
+    const visitDarts = Number(entryDarts);
+
+    if (!Number.isInteger(doubleDarts) || doubleDarts < 1 || doubleDarts > 3) return;
+    if (!Number.isInteger(visitDarts) || visitDarts < doubleDarts || visitDarts > 3) return;
+
+    setPlayers((items) => items.map((player, index) => index === currentPlayer
+      ? {
+          ...player,
+          remaining: 501,
+          legs: player.legs + 1,
+          totalScored: player.totalScored + pendingCheckoutScore,
+          entries: player.entries + 1,
+          checkouts: player.checkouts + 1,
+          checkoutAttempts: player.checkoutAttempts + 1,
+        }
+      : { ...player, remaining: 501 }
+    ));
+
+    setPendingCheckoutScore(null);
+    setCheckoutDarts("");
+    setEntryDarts("");
+    setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
+    setMessage("");
+  }
+
   function undo() {
+    if (pendingCheckoutScore !== null) return;
     const previous = history.at(-1);
     if (!previous) return;
     setPlayers(previous.map((player) => ({ ...player })));
@@ -228,6 +250,50 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
           <div className="text-sm uppercase tracking-wide text-green-400">Kamp færdig</div>
           <div className="mt-1 text-3xl font-bold">{matchWinner.name} vinder</div>
           <div className="mt-1 text-gray-400">{players[0].legs} – {players[1].legs}</div>
+        </div>
+      )}
+
+      {pendingCheckoutScore !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-700 bg-gray-900 p-6 shadow-2xl">
+            <div className="text-sm font-semibold uppercase tracking-wide text-green-400">Kamp lukket</div>
+            <div className="mt-1 text-2xl font-bold">{current.name} ramte 0</div>
+            <div className="mt-2 text-gray-400">Registrér pile brugt på doubler og i hele indgangen.</div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <label className="rounded-xl border border-gray-700 bg-gray-800 p-4">
+                <span className="text-sm text-gray-400">Pile på double</span>
+                <input
+                  autoFocus
+                  type="number"
+                  min="1"
+                  max="3"
+                  value={checkoutDarts}
+                  onChange={(event) => setCheckoutDarts(event.target.value)}
+                  className="mt-2 w-full bg-transparent text-3xl font-bold outline-none"
+                />
+              </label>
+
+              <label className="rounded-xl border border-gray-700 bg-gray-800 p-4">
+                <span className="text-sm text-gray-400">Pile i indgangen</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="3"
+                  value={entryDarts}
+                  onChange={(event) => setEntryDarts(event.target.value)}
+                  className="mt-2 w-full bg-transparent text-3xl font-bold outline-none"
+                />
+              </label>
+            </div>
+
+            <button
+              onClick={confirmCheckout}
+              className="mt-5 w-full rounded-xl bg-green-500 py-4 text-lg font-bold text-black"
+            >
+              GEM LUKNING
+            </button>
+          </div>
         </div>
       )}
     </div>
