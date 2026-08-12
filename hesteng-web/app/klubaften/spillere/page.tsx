@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import PlayerSearch from "@/components/PlayerSearch";
@@ -8,8 +9,13 @@ import { useKlubaften } from "@/context/KlubaftenContext";
 
 export default function SpillerePage() {
   const { selectedPlayers } = useKlubaften();
+  const [mounted, setMounted] = useState(false);
 
-  const enabled = selectedPlayers.length >= 10;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const enabled = mounted && selectedPlayers.length >= 10;
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
