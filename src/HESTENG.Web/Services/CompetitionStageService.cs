@@ -360,4 +360,89 @@ public class CompetitionStageService
             match.Player2Id = standing.ParticipantId;
         }
     }
+
+        public List<Guid> ApplyAdvancementRule(
+        CompetitionStage poolStage,
+        CompetitionStage knockoutStage,
+        AdvancementRule rule,
+        int roundNumber)
+    {
+        if (rule.SourceType != AdvancementSourceType.Pool)
+        {
+            throw new InvalidOperationException(
+                "Advancement-reglen understøtter ikke denne kilde.");
+        }
+
+        if (rule.DestinationType != AdvancementDestinationType.Knockout)
+        {
+            throw new InvalidOperationException(
+                "Advancement-reglen understøtter ikke denne destination.");
+        }
+
+        if (poolStage.Type != CompetitionStageType.Pools)
+        {
+            throw new InvalidOperationException(
+                "Kildekonkurrencedelen er ikke et puljespil.");
+        }
+
+        if (knockoutStage.Type != CompetitionStageType.Knockout)
+        {
+            throw new InvalidOperationException(
+                "Målkonkurrencedelen er ikke knockout.");
+        }
+
+        if (rule.Count <= 0)
+        {
+            throw new InvalidOperationException(
+                "Antallet af deltagere, der går videre, skal være større end 0.");
+        }
+
+        var bracket = knockoutStage.Data.Knockout
+            ?? throw new InvalidOperationException(
+                "Knockout-strukturen er ikke oprettet.");
+
+        var round = bracket.Rounds
+            .FirstOrDefault(x => x.Number == roundNumber)
+            ?? throw new InvalidOperationException(
+                "Knockout-runden blev ikke fundet.");
+
+        var advancingParticipants = new List<Guid>();
+
+        foreach (var pool in poolStage.Data.Pools)
+        {
+            var selected = pool.Standings
+                .Where(x => x.Position > 0)
+                .OrderBy(x => x.Position)
+                .Take(rule.Count)
+                .Select(x => x.ParticipantId)
+                .ToList();
+
+            advancingParticipants.AddRange(selected);
+        }
+
+        var requiredMatches =
+            (int)Math.Ceiling(advancingParticipants.Count / 2.0);
+
+        while (round.Matches.Count < requiredMatches)
+        {
+            round.Matches.Add(new CompetitionMatch());
+        }
+
+        for (var i = 0; i < advancingParticipants.Count; i++)
+        {
+            var matchIndex = i / 2;
+            var match = round.Matches[matchIndex];
+
+            if (i % 2 == 0)
+            {
+                match.Player1Id = advancingParticipants[i];
+            }
+            else
+            {
+                match.Player2Id = advancingParticipants[i];
+            }
+        }
+
+        return advancingParticipants;
+    }
 }
