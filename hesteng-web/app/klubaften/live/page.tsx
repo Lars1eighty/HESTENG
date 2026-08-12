@@ -4,10 +4,12 @@ import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useKlubaften } from "@/context/KlubaftenContext";
+import { getNextMatchesByBoard } from "@/lib/liveEngine";
 
 export default function LivePage() {
   const { matches, setMatches } = useKlubaften();
-  const openMatches = matches.filter((match) => match.status !== "finished");
+  const nextMatches = getNextMatchesByBoard(matches);
+  const finishedCount = matches.filter((match) => match.status === "finished").length;
 
   function updateScore(id: string, player: 1 | 2, delta: number) {
     setMatches(matches.map((match) => {
@@ -47,11 +49,12 @@ export default function LivePage() {
       <Header />
       <section className="mx-auto max-w-7xl p-10">
         <BackButton />
+
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold">🔴 Live scoring</h1>
             <p className="mt-2 text-gray-400">
-              {matches.filter((m) => m.status === "finished").length} færdige · {openMatches.length} åbne
+              {finishedCount} færdige · {nextMatches.length} aktive baner
             </p>
           </div>
           <Link href="/klubaften/kampe" className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">
@@ -59,8 +62,17 @@ export default function LivePage() {
           </Link>
         </div>
 
+        <div className="mb-8 rounded-2xl border border-orange-800 bg-orange-500/10 p-5">
+          <div className="text-sm font-semibold uppercase tracking-wide text-orange-400">
+            Næste kampe på banerne
+          </div>
+          <p className="mt-1 text-sm text-gray-400">
+            Når en kamp afsluttes, bliver den næste kamp på samme bane automatisk vist.
+          </p>
+        </div>
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {openMatches.map((match) => (
+          {nextMatches.map((match) => (
             <article key={match.id} className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
               <div className="mb-5 flex items-center justify-between text-sm text-gray-500">
                 <span>{match.pool} · Runde {match.round}</span>
@@ -86,15 +98,15 @@ export default function LivePage() {
               })}
 
               <button onClick={() => finishMatch(match.id)} className="w-full rounded-xl border border-green-700 px-4 py-3 font-semibold text-green-400 hover:bg-green-500/10">
-                Afslut kamp
+                Afslut kamp → næste kamp
               </button>
             </article>
           ))}
         </div>
 
-        {openMatches.length === 0 && (
+        {nextMatches.length === 0 && (
           <div className="rounded-2xl border border-green-800 bg-green-500/10 p-8 text-center text-green-400">
-            Alle kampe er afsluttet.
+            Alle kampe er afsluttet. Torsdag er færdig.
           </div>
         )}
       </section>
