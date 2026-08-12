@@ -7,12 +7,18 @@ export type ClubMatch = {
   player1: string;
   player2: string;
   board: number;
+  boardType: "normal" | "handicap";
   score1: number;
   score2: number;
   status: "pending" | "live" | "finished";
 };
 
-const DEFAULT_BOARD_COUNT = 6;
+export const THURSDAY_BOARD_COUNT = 13;
+export const THURSDAY_HANDICAP_BOARDS = [4, 13];
+
+function getBoardType(board: number): "normal" | "handicap" {
+  return THURSDAY_HANDICAP_BOARDS.includes(board) ? "handicap" : "normal";
+}
 
 function createRoundRobin(players: string[]): string[][] {
   const list = [...players];
@@ -36,9 +42,12 @@ function createRoundRobin(players: string[]): string[][] {
 
 export function createThursdayMatches(
   pools: Pool[],
-  boardCount = DEFAULT_BOARD_COUNT
+  boardCount = THURSDAY_BOARD_COUNT
 ): ClubMatch[] {
-  if (boardCount < 1) throw new Error("Der skal være mindst én bane");
+  if (boardCount !== THURSDAY_BOARD_COUNT) {
+    throw new Error("Torsdag bruger præcis 13 baner");
+  }
+
   const matches: ClubMatch[] = [];
   let matchNumber = 1;
 
@@ -46,13 +55,16 @@ export function createThursdayMatches(
     createRoundRobin(pool.players).forEach((roundMatches, roundIndex) => {
       roundMatches.forEach((pair, matchIndex) => {
         const [player1, player2] = pair.split("|||");
+        const board = (matchIndex % boardCount) + 1;
+
         matches.push({
           id: `thu-${matchNumber++}`,
           pool: pool.name,
           round: roundIndex + 1,
           player1,
           player2,
-          board: (matchIndex % boardCount) + 1,
+          board,
+          boardType: getBoardType(board),
           score1: 0,
           score2: 0,
           status: "pending",
@@ -60,5 +72,6 @@ export function createThursdayMatches(
       });
     });
   });
+
   return matches;
 }
