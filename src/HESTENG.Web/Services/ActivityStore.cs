@@ -20,6 +20,38 @@ public class ActivityStore
         return activity;
     }
 
+    public Activity StartThursday(string name)
+    {
+        var activity = new Activity
+        {
+            Name = string.IsNullOrWhiteSpace(name)
+                ? "Torsdag"
+                : name.Trim(),
+            Status = ActivityStatus.Active,
+            Format = TournamentFormat.Pools
+        };
+
+        var round = new Round
+        {
+            Name = "Puljespil",
+            Number = 1,
+            Type = RoundType.Pools,
+            Status = RoundStatus.Active
+        };
+
+        round.Stages.Add(new CompetitionStage
+        {
+            Name = "Puljer",
+            Type = CompetitionStageType.Pools,
+            Order = 1
+        });
+
+        activity.Rounds.Add(round);
+        _activities.Add(activity);
+
+        return activity;
+    }
+
     public Activity? Get(Guid id)
     {
         return _activities.FirstOrDefault(x => x.Id == id);
