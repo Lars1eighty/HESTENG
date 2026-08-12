@@ -13,8 +13,12 @@
 
 <h3>Dashboard</h3>
 
-<div class="mt-4">
-    <button class="btn btn-primary" @onclick="OpenCreateActivity">
+<div class="mt-4 d-flex gap-2">
+    <button class="btn btn-primary" @onclick="StartThursday">
+        Start torsdag
+    </button>
+
+    <button class="btn btn-outline-primary" @onclick="OpenCreateActivity">
         Ny aktivitet
     </button>
 </div>
@@ -114,6 +118,12 @@
 {
     private bool ShowCreateActivity;
     private string ActivityName = string.Empty;
+
+    private void StartThursday()
+    {
+        var activity = ActivityStore.StartThursday("Torsdag");
+        Navigation.NavigateTo($"/activity/{activity.Id}");
+    }
 
     private void OpenCreateActivity()
     {
