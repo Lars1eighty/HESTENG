@@ -21,6 +21,7 @@ type Props = {
 const NUMBER_ROWS = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
 const QUICK_LEFT = [26, 41, 45, 100];
 const QUICK_RIGHT = [60, 81, 85, 140];
+const MAX_SCORE = 180;
 
 function isValidCheckout(score: number) {
   return score >= 2 && score <= 170;
@@ -42,12 +43,19 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
 
   function addDigit(digit: number) {
     if (matchWinner || input.length >= 3) return;
-    setInput((value) => value + digit.toString());
+
+    const nextInput = input + digit.toString();
+    const nextScore = Number(nextInput);
+
+    // Enforce the real darts maximum: one visit can never exceed 180.
+    if (nextScore > MAX_SCORE) return;
+
+    setInput(nextInput);
     setMessage("");
   }
 
   function chooseScore(score: number) {
-    if (matchWinner) return;
+    if (matchWinner || score > MAX_SCORE) return;
     setInput(score.toString());
     setMessage("");
   }
@@ -61,7 +69,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     if (!input || matchWinner) return;
 
     const score = Number(input);
-    if (!Number.isInteger(score) || score < 0 || score > 180) return;
+    if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return;
 
     const nextRemaining = current.remaining - score;
     setHistory((items) => [...items, players.map((player) => ({ ...player }))]);
