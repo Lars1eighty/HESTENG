@@ -18,7 +18,7 @@ type Props = {
   bestOfLegs?: number;
 };
 
-const QUICK_SCORES = [26, 41, 45, 60, 81, 85];
+const QUICK_SCORES = [26, 41, 45, 60, 81, 85, 100, 140];
 const NUMBER_ROWS = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
 
 function isValidCheckout(score: number) {
@@ -146,22 +146,30 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
 
       <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-center">
         <div className="text-xs text-gray-500">INDTASTET TAL</div>
-        <div className="mt-1 min-h-[56px] text-5xl font-bold tabular-nums text-green-400">{input || "180"}</div>
+        <div className="mt-1 min-h-[56px] text-5xl font-bold tabular-nums text-green-400">{input}</div>
         <div className="mt-1 text-xs text-gray-500">{message}</div>
       </div>
 
       <div className="grid grid-cols-5 gap-2">
-        <div className="grid gap-2">{QUICK_SCORES.slice(0, 3).map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>)}</div>
+        <div className="grid gap-2">
+          {QUICK_SCORES.slice(0, 4).map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>)}
+        </div>
         <div className="col-span-3 grid gap-2">
           {NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => addDigit(score)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">{score}</button>)}</div>)}
-          <button onClick={() => addDigit(0)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">0</button>
         </div>
-        <div className="grid gap-2">{QUICK_SCORES.slice(3).map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>)}</div>
+        <div className="grid gap-2">
+          {QUICK_SCORES.slice(4).map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>)}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <button onClick={undo} className="rounded-xl border border-red-900 bg-red-500/10 py-5 text-xl font-bold text-red-400">↶ UNDO</button>
-        <button onClick={() => setInput("")} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-xl font-bold">CLR</button>
+        <button
+          onClick={() => input ? addDigit(0) : chooseScore(180)}
+          className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-2xl font-bold"
+        >
+          {input ? "0" : "180"}
+        </button>
         <button onClick={enterScore} className="rounded-xl bg-green-500 py-5 text-xl font-bold text-black">ENTER →</button>
       </div>
 
