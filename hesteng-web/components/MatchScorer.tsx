@@ -121,11 +121,12 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
 
   function saveCheckoutDarts() {
     const darts = Number(checkoutDarts);
-    if (!Number.isInteger(darts) || darts < 1 || darts > 3 || !pendingCheckout) return;
+    if (!Number.isInteger(darts) || darts < 0 || darts > 3 || !pendingCheckout) return;
 
     const { score, remaining } = pendingCheckout;
 
     if (remaining === 0) {
+      if (darts < 1) return;
       setPlayers((items) => items.map((player, index) => index === currentPlayer
         ? {
             ...player,
@@ -215,14 +216,14 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
           <div className="text-sm text-blue-400">LUKNING</div>
           <div className="mt-1 text-2xl font-bold">Hvor mange pile brugte du på lukningen?</div>
           <div className="mt-1 text-gray-400">Rest: {pendingCheckout.remaining}</div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {[1, 2, 3].map((darts) => (
+          <div className="mt-4 grid grid-cols-4 gap-2">
+            {[0, 1, 2, 3].map((darts) => (
               <button key={darts} onClick={() => setCheckoutDarts(darts.toString())} className={`rounded-xl border py-5 text-2xl font-bold ${checkoutDarts === darts.toString() ? "border-blue-500 bg-blue-500/20" : "border-gray-800 bg-gray-900"}`}>
                 {darts}
               </button>
             ))}
           </div>
-          <button onClick={saveCheckoutDarts} disabled={!checkoutDarts} className="mt-3 w-full rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">GEM LUKNING</button>
+          <button onClick={saveCheckoutDarts} disabled={!checkoutDarts || (pendingCheckout.remaining === 0 && checkoutDarts === "0")} className="mt-3 w-full rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">GEM LUKNING</button>
         </div>
       )}
 
