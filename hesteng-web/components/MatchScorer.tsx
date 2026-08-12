@@ -31,29 +31,37 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0 },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
-  const [input, setInput] = useState<number | null>(null);
+  const [input, setInput] = useState("");
   const [history, setHistory] = useState<PlayerScore[][]>([]);
-  const [message, setMessage] = useState("Indtast første score");
+  const [message, setMessage] = useState("Indtast score");
 
   const current = players[currentPlayer];
   const neededLegs = Math.ceil(bestOfLegs / 2);
   const matchWinner = useMemo(() => players.find((player) => player.legs >= neededLegs), [players, neededLegs]);
 
+  function addDigit(digit: number) {
+    if (matchWinner || input.length >= 3) return;
+    setInput((value) => value + digit.toString());
+    setMessage("Tryk ENTER for at registrere scoren");
+  }
+
   function chooseScore(score: number) {
     if (matchWinner) return;
-    setInput(score);
-    setMessage(`${score} point klar til indtastning`);
+    setInput(score.toString());
+    setMessage("Tryk ENTER for at registrere scoren");
   }
 
   function enterScore() {
-    if (input === null || matchWinner) return;
+    if (!input || matchWinner) return;
 
-    const score = input;
+    const score = Number(input);
+    if (!Number.isInteger(score) || score < 0 || score > 180) return;
+
     const nextRemaining = current.remaining - score;
     setHistory((items) => [...items, players.map((player) => ({ ...player }))]);
 
     if (nextRemaining < 0 || nextRemaining === 1) {
-      setInput(null);
+      setInput("");
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
       setMessage("Bust — ingen score. Næste spiller.");
       return;
@@ -61,7 +69,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
 
     if (nextRemaining === 0) {
       if (!isValidCheckout(score)) {
-        setInput(null);
+        setInput("");
         setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
         setMessage("Bust — checkout skal være double out. Næste spiller.");
         return;
@@ -71,7 +79,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
         ? { ...player, remaining: 501, legs: player.legs + 1, totalScored: player.totalScored + score, entries: player.entries + 1, checkouts: player.checkouts + 1, checkoutAttempts: player.checkoutAttempts + 1 }
         : { ...player, remaining: 501 }
       ));
-      setInput(null);
+      setInput("");
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
       setMessage(`${current.name} lukker leggen.`);
       return;
@@ -87,7 +95,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
         }
       : player
     ));
-    setInput(null);
+    setInput("");
     setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
     setMessage("Næste spiller.");
   }
@@ -97,7 +105,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     if (!previous) return;
     setPlayers(previous.map((player) => ({ ...player })));
     setHistory((items) => items.slice(0, -1));
-    setInput(null);
+    setInput("");
     setMessage("Sidste indgang fortrudt.");
   }
 
@@ -136,27 +144,24 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-3">
-        <div className="grid grid-cols-[1fr_3fr_1fr] items-center text-center">
-          <div className="text-left text-sm font-semibold text-green-400">DIN TUR</div>
-          <div><div className="text-xs text-gray-500">INDTASTET SCORE</div><div className="text-4xl font-bold text-green-400">{input ?? 180}</div></div>
-          <div><div className="text-xs text-gray-500">SUM</div><div className="text-2xl font-bold">{input ?? 0}</div></div>
-        </div>
-        <div className="mt-1 text-center text-xs text-gray-500">{message}</div>
+      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-center">
+        <div className="text-xs text-gray-500">INDTASTET TAL</div>
+        <div className="mt-1 min-h-[56px] text-5xl font-bold tabular-nums text-green-400">{input || "180"}</div>
+        <div className="mt-1 text-xs text-gray-500">{message}</div>
       </div>
 
       <div className="grid grid-cols-5 gap-2">
         <div className="grid gap-2">{QUICK_SCORES.slice(0, 3).map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>)}</div>
         <div className="col-span-3 grid gap-2">
-          {NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">{score}</button>)}</div>)}
+          {NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => addDigit(score)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">{score}</button>)}</div>)}
+          <button onClick={() => addDigit(0)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">0</button>
         </div>
         <div className="grid gap-2">{QUICK_SCORES.slice(3).map((score) => <button key={score} onClick={() => chooseScore(score)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{score}</button>)}</div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <button onClick={undo} className="rounded-xl border border-red-900 bg-red-500/10 py-5 text-xl font-bold text-red-400">↶ UNDO</button>
-        <button onClick={() => chooseScore(180)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-2xl font-bold">{input === null ? 180 : input}</button>
-        <button onClick={() => setInput(null)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-xl font-bold">CLR</button>
+        <button onClick={() => setInput("")} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-xl font-bold">CLR</button>
         <button onClick={enterScore} className="rounded-xl bg-green-500 py-5 text-xl font-bold text-black">ENTER →</button>
       </div>
 
