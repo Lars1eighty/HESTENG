@@ -193,6 +193,17 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
     setMessage("");
   }
 
+  function chooseCheckoutEntryDarts(darts: number) {
+    if (matchWinner || pendingCheckout || !checkoutEntryOptions.includes(darts)) return;
+    setHistory((items) => [...items, { players: players.map((player) => ({ ...player })), currentPlayer }]);
+    setCheckoutEntryDarts(darts);
+    setPendingCheckout({ score: current.remaining, remaining: 0, entryDarts: darts });
+    setCheckoutDarts("");
+    setInput("");
+    setDartThrows([]);
+    setMessage("");
+  }
+
   function finishVisit(score: number, nextRemaining: number, checkoutAttemptsToAdd = 0, dartsForVisit = 3) {
     setPlayers((items) => items.map((player, index) => index === currentPlayer ? {
       ...player,
@@ -262,13 +273,20 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
 
     if (remaining === 0) {
       if (darts < 1) return;
+      const matchIsFinished = current.legs + 1 >= neededLegs;
       setPlayers((items) => items.map((player, index) => {
-        if (index !== currentPlayer) return player;
+        if (index !== currentPlayer) {
+          return {
+            ...player,
+            remaining: matchIsFinished ? player.remaining : 501,
+            legDarts: matchIsFinished ? player.legDarts : 0,
+          };
+        }
         const completedLegDarts = player.legDarts + entryDarts + darts;
         const fastestLegDarts = player.fastestLegDarts === null ? completedLegDarts : Math.min(player.fastestLegDarts, completedLegDarts);
         return {
           ...player,
-          remaining: 501,
+          remaining: matchIsFinished ? 0 : 501,
           legs: player.legs + 1,
           totalScored: player.totalScored + score,
           entries: player.entries + 1,
@@ -290,7 +308,9 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
     setPendingCheckout(null);
     setCheckoutDarts("");
     setCheckoutEntryDarts(null);
-    setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
+    if (current.legs + 1 < neededLegs) {
+      setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
+    }
     setMessage("");
   }
 
@@ -374,7 +394,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
         <button onClick={clearInput} disabled={!!pendingCheckout} className="rounded-2xl border border-gray-800 bg-gray-900 text-xl font-bold disabled:opacity-40">CLR</button>
         <div className={`grid gap-2 ${checkoutEntryOptions.length === 1 ? "grid-cols-1" : checkoutEntryOptions.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
           {[...checkoutEntryOptions].sort((a, b) => b - a).map((darts) => (
-            <button key={darts} onClick={() => setCheckoutEntryDarts(checkoutEntryDarts === darts ? null : darts)} disabled={!canUseCheckoutEntry} title="Antal pile brugt på indgangen" className={`min-h-[76px] rounded-2xl border text-4xl font-bold disabled:opacity-40 ${checkoutEntryDarts === darts ? "border-white/70 ring-2 ring-white/30" : "border-transparent"} ${darts === 3 ? "bg-green-500 text-black" : darts === 2 ? "bg-yellow-400 text-black" : "bg-red-500 text-white"}`}>{darts}</button>
+            <button key={darts} onClick={() => chooseCheckoutEntryDarts(darts)} disabled={!canUseCheckoutEntry && checkoutEntryDarts !== darts} title="Antal pile brugt på indgangen" className={`min-h-[76px] rounded-2xl border text-4xl font-bold ${checkoutEntryDarts === darts ? "border-white/80 ring-4 ring-white/30" : "border-transparent disabled:opacity-40"} ${darts === 3 ? "bg-green-500 text-black" : darts === 2 ? "bg-yellow-400 text-black" : "bg-red-500 text-white"}`}>{darts}</button>
           ))}
         </div>
       </div>
