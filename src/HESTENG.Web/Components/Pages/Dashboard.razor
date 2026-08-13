@@ -14,7 +14,12 @@
 <h3>Dashboard</h3>
 
 <div class="mt-4">
-    <button class="btn btn-primary" @onclick="OpenCreateActivity">
+    <button class="btn btn-primary" @onclick="StartThursday">
+        Start torsdag
+    </button>
+
+    <button class="btn btn-outline-secondary ms-2"
+            @onclick="OpenCreateActivity">
         Ny aktivitet
     </button>
 </div>
@@ -115,6 +120,13 @@
     private bool ShowCreateActivity;
     private string ActivityName = string.Empty;
 
+    private void StartThursday()
+    {
+        var activity = ActivityStore.StartThursday("Torsdag");
+
+        Navigation.NavigateTo($"/activity/{activity.Id}");
+    }
+
     private void OpenCreateActivity()
     {
         ActivityName = string.Empty;
@@ -138,12 +150,12 @@
         ShowCreateActivity = false;
     }
 
-    private void OpenActivity(HESTENG.Web.Models.Activity activity)
+    private void OpenActivity(Activity activity)
     {
         Navigation.NavigateTo($"/activity/{activity.Id}");
     }
 
-    private void DeleteActivity(HESTENG.Web.Models.Activity activity)
+    private void DeleteActivity(Activity activity)
     {
         ActivityStore.Delete(activity.Id);
     }

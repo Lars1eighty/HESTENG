@@ -1,7 +1,15 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { saveCompletedMatch } from "@/lib/matchStore";
+
+type Multiplier = "S" | "D" | "T";
+
+type DartThrow = {
+  multiplier: Multiplier;
+  target: number;
+  score: number;
+};
 
 type PlayerScore = {
   name: string;
@@ -27,13 +35,39 @@ type Props = {
   round?: number | null;
 };
 
+type MatchSnapshot = {
+  players: PlayerScore[];
+  currentPlayer: 0 | 1;
+};
+
 const NUMBER_ROWS = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+const DART_TARGET_ROWS = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14, 15], [16, 17, 18, 19, 20], [25]];
 const QUICK_LEFT = [26, 41, 45, 100];
 const QUICK_RIGHT = [60, 81, 85, 140];
+const MULTIPLIERS: Multiplier[] = ["S", "D", "T"];
 const MAX_SCORE = 180;
 
 function isValidCheckout(score: number) {
   return score >= 2 && score <= 170;
+}
+
+function multiplierValue(multiplier: Multiplier) {
+  if (multiplier === "D") return 2;
+  if (multiplier === "T") return 3;
+  return 1;
+}
+
+function dartLabel(dart: DartThrow) {
+  if (dart.target === 0) return "0";
+  if (dart.target === 25 && dart.multiplier === "D") return "BULL";
+  return `${dart.multiplier}${dart.target}`;
+}
+
+function getCheckoutEntryOptions(remaining: number) {
+  if (remaining >= 111 && remaining <= 170) return [3];
+  if (remaining >= 51 && remaining <= 110) return [2, 3];
+  if (remaining >= 2 && remaining <= 50) return [1, 2, 3];
+  return [];
 }
 
 export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null }: Props) {
@@ -42,18 +76,25 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
     { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, fastestLegDarts: null },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
+  const [inputMode, setInputMode] = useState<"score" | "darts">("score");
   const [input, setInput] = useState("");
-  const [history, setHistory] = useState<PlayerScore[][]>([]);
+  const [dartMultiplier, setDartMultiplier] = useState<Multiplier>("S");
+  const [dartThrows, setDartThrows] = useState<DartThrow[]>([]);
+  const [checkoutEntryDarts, setCheckoutEntryDarts] = useState<number | null>(null);
+  const [history, setHistory] = useState<MatchSnapshot[]>([]);
   const [message, setMessage] = useState("");
-  const [pendingCheckout, setPendingCheckout] = useState<{ score: number; remaining: number } | null>(null);
+  const [pendingCheckout, setPendingCheckout] = useState<{ score: number; remaining: number; entryDarts: number } | null>(null);
   const [checkoutDarts, setCheckoutDarts] = useState("");
   const [saved, setSaved] = useState(false);
 
   const current = players[currentPlayer];
   const neededLegs = Math.ceil(bestOfLegs / 2);
   const matchWinner = useMemo(() => players.find((player) => player.legs >= neededLegs), [players, neededLegs]);
+  const dartScore = dartThrows.reduce((total, dart) => total + dart.score, 0);
+  const checkoutEntryOptions = getCheckoutEntryOptions(current.remaining);
+  const canUseCheckoutEntry = !matchWinner && !pendingCheckout && checkoutEntryOptions.length > 0;
 
-  function buildCompletedMatch() {
+  const buildCompletedMatch = useCallback(() => {
     if (!matchWinner) return null;
     const stats = players.map((player) => ({
       name: player.name,
@@ -83,34 +124,72 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
       finishedAt: new Date().toISOString(),
       players: stats,
     };
-  }
+  }, [bestOfLegs, board, matchId, matchWinner, players, pool, round]);
 
   useEffect(() => {
     if (!matchWinner || saved) return;
     const completedMatch = buildCompletedMatch();
     if (!completedMatch) return;
     saveCompletedMatch(completedMatch);
+    // Preserve the existing once-per-match save guard after syncing MatchStore.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaved(true);
-  }, [matchWinner, saved]);
+  }, [buildCompletedMatch, matchWinner, saved]);
+
+  function resetInputState() {
+    setInput("");
+    setDartThrows([]);
+    setCheckoutEntryDarts(null);
+  }
 
   function addDigit(digit: number) {
     if (matchWinner || pendingCheckout || input.length >= 3) return;
     const nextInput = input + digit.toString();
     const nextScore = Number(nextInput);
     if (nextScore > MAX_SCORE) return;
+    setInputMode("score");
     setInput(nextInput);
+    setDartThrows([]);
     setMessage("");
   }
 
   function chooseScore(score: number) {
     if (matchWinner || pendingCheckout || score > MAX_SCORE) return;
+    setInputMode("score");
     setInput(score.toString());
+    setDartThrows([]);
     setMessage("");
   }
 
   function clearInput() {
     if (pendingCheckout) return;
+    resetInputState();
+    setMessage("");
+  }
+
+  function chooseInputMode(mode: "score" | "darts") {
+    if (pendingCheckout || matchWinner) return;
+    setInputMode(mode);
     setInput("");
+    setDartThrows([]);
+    setMessage("");
+  }
+
+  function addDart(target: number) {
+    if (matchWinner || pendingCheckout || dartThrows.length >= 3) return;
+    if (target === 25 && dartMultiplier === "T") return;
+    const score = target * multiplierValue(dartMultiplier);
+    const nextScore = dartScore + score;
+    if (nextScore > MAX_SCORE) return;
+    setInputMode("darts");
+    setInput("");
+    setDartThrows((items) => [...items, { multiplier: dartMultiplier, target, score }]);
+    setMessage("");
+  }
+
+  function removeLastDart() {
+    if (pendingCheckout) return;
+    setDartThrows((items) => items.slice(0, -1));
     setMessage("");
   }
 
@@ -125,20 +204,27 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
       lastInput: score,
       legDarts: player.legDarts + dartsForVisit,
     } : player));
-    setInput("");
+    resetInputState();
     setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
     setMessage("");
   }
 
   function enterScore() {
-    if (!input || matchWinner || pendingCheckout) return;
-    const score = Number(input);
+    if (matchWinner || pendingCheckout) return;
+    if (inputMode === "score" && !input) return;
+    if (inputMode === "darts" && dartThrows.length !== 3) {
+      setMessage("Registrer tre pile før ENTER.");
+      return;
+    }
+
+    const score = inputMode === "darts" ? dartScore : Number(input);
     if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return;
     const nextRemaining = current.remaining - score;
-    setHistory((items) => [...items, players.map((player) => ({ ...player }))]);
+    const entryDarts = checkoutEntryDarts ?? (inputMode === "darts" ? dartThrows.length : 3);
+    setHistory((items) => [...items, { players: players.map((player) => ({ ...player })), currentPlayer }]);
 
     if (nextRemaining < 0 || nextRemaining === 1) {
-      setInput("");
+      resetInputState();
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
       setMessage("Bust — ingen score.");
       return;
@@ -146,37 +232,39 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
 
     if (nextRemaining === 0) {
       if (!isValidCheckout(score)) {
-        setInput("");
+        resetInputState();
         setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
         setMessage("Bust — double out.");
         return;
       }
-      setPendingCheckout({ score, remaining: 0 });
+      setPendingCheckout({ score, remaining: 0, entryDarts: checkoutEntryDarts ?? 0 });
       setCheckoutDarts("");
       setInput("");
+      setDartThrows([]);
       return;
     }
 
-    if (nextRemaining < 50) {
-      setPendingCheckout({ score, remaining: nextRemaining });
+    if (checkoutEntryDarts !== null || nextRemaining < 50) {
+      setPendingCheckout({ score, remaining: nextRemaining, entryDarts });
       setCheckoutDarts("");
       setInput("");
+      setDartThrows([]);
       return;
     }
 
-    finishVisit(score, nextRemaining, 0, 3);
+    finishVisit(score, nextRemaining, 0, entryDarts);
   }
 
   function saveCheckoutDarts() {
     const darts = Number(checkoutDarts);
     if (!Number.isInteger(darts) || darts < 0 || darts > 3 || !pendingCheckout) return;
-    const { score, remaining } = pendingCheckout;
+    const { score, remaining, entryDarts } = pendingCheckout;
 
     if (remaining === 0) {
       if (darts < 1) return;
       setPlayers((items) => items.map((player, index) => {
         if (index !== currentPlayer) return player;
-        const completedLegDarts = player.legDarts + darts;
+        const completedLegDarts = player.legDarts + entryDarts + darts;
         const fastestLegDarts = player.fastestLegDarts === null ? completedLegDarts : Math.min(player.fastestLegDarts, completedLegDarts);
         return {
           ...player,
@@ -193,7 +281,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
         };
       }));
     } else {
-      finishVisit(score, remaining, darts, 3);
+      finishVisit(score, remaining, darts, entryDarts + darts);
       setPendingCheckout(null);
       setCheckoutDarts("");
       return;
@@ -201,6 +289,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
 
     setPendingCheckout(null);
     setCheckoutDarts("");
+    setCheckoutEntryDarts(null);
     setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
     setMessage("");
   }
@@ -209,9 +298,10 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
     if (pendingCheckout) return;
     const previous = history.at(-1);
     if (!previous) return;
-    setPlayers(previous.map((player) => ({ ...player })));
+    setPlayers(previous.players.map((player) => ({ ...player })));
+    setCurrentPlayer(previous.currentPlayer);
     setHistory((items) => items.slice(0, -1));
-    setInput("");
+    resetInputState();
     setMessage("");
     setSaved(false);
   }
@@ -238,7 +328,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
         <div>SNIT / KAMP<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
         <div>LUKKET / FORSØGT<br /><b>{player.checkouts} / {player.checkoutAttempts}</b></div>
         <div>LUKKE %<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].closePercent}%</b></div>
-        <div>180'ERE<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{player.oneEighties}</b></div>
+        <div>180&apos;ERE<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{player.oneEighties}</b></div>
       </div>
     </div>
   );
@@ -261,14 +351,37 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
           <div className="text-sm text-blue-400">LUKNING</div>
           <div className="mt-1 text-2xl font-bold">Hvor mange pile brugte du på lukningen?</div>
           <div className="mt-1 text-gray-400">Rest: {pendingCheckout.remaining}</div>
+          <div className="mt-1 text-xs text-gray-500">Indgangspile: {pendingCheckout.entryDarts}</div>
           <div className="mt-4 grid grid-cols-4 gap-2">{[0, 1, 2, 3].map((darts) => <button key={darts} onClick={() => setCheckoutDarts(darts.toString())} className={`rounded-xl border py-5 text-2xl font-bold ${checkoutDarts === darts.toString() ? "border-blue-500 bg-blue-500/20" : "border-gray-800 bg-gray-900"}`}>{darts}</button>)}</div>
           <button onClick={saveCheckoutDarts} disabled={!checkoutDarts || (pendingCheckout.remaining === 0 && checkoutDarts === "0")} className="mt-3 w-full rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">GEM LUKNING</button>
         </div>
       )}
 
-      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
-        <div className="flex min-h-[76px] items-center rounded-2xl border border-gray-800 bg-gray-900 px-6"><div className="text-2xl font-bold tabular-nums text-white">{input}</div>{!input && <div className="text-gray-500">INDTASTET TAL</div>}</div>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_110px] gap-2">
+        <div className="grid min-w-[78px] grid-cols-3 gap-1">
+          {checkoutEntryOptions.map((darts) => (
+            <button key={darts} onClick={() => setCheckoutEntryDarts(checkoutEntryDarts === darts ? null : darts)} disabled={!canUseCheckoutEntry} title="Antal pile brugt på indgangen" className={`rounded-xl border text-xl font-bold disabled:opacity-40 ${checkoutEntryDarts === darts ? "border-blue-500 bg-blue-500/20 text-blue-300" : "border-gray-800 bg-gray-900 text-gray-300"}`}>{darts}</button>
+          ))}
+        </div>
+        <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 px-6">
+          {inputMode === "darts" ? (
+            <>
+              <div className="text-2xl font-bold tabular-nums text-white">{dartScore}</div>
+              <div className="text-sm text-gray-400">{dartThrows.length ? dartThrows.map(dartLabel).join(" + ") : "VÆLG PILE"}</div>
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold tabular-nums text-white">{input}</div>
+              {!input && <div className="text-gray-500">INDTASTET TAL</div>}
+            </>
+          )}
+        </div>
         <button onClick={clearInput} disabled={!!pendingCheckout} className="rounded-2xl border border-gray-800 bg-gray-900 text-xl font-bold disabled:opacity-40">CLR</button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={() => chooseInputMode("score")} disabled={!!pendingCheckout} className={`rounded-xl border py-3 text-sm font-bold disabled:opacity-40 ${inputMode === "score" ? "border-blue-500 bg-blue-500/20 text-blue-300" : "border-gray-800 bg-gray-900 text-gray-300"}`}>SCORE</button>
+        <button onClick={() => chooseInputMode("darts")} disabled={!!pendingCheckout} className={`rounded-xl border py-3 text-sm font-bold disabled:opacity-40 ${inputMode === "darts" ? "border-blue-500 bg-blue-500/20 text-blue-300" : "border-gray-800 bg-gray-900 text-gray-300"}`}>PIL FOR PIL</button>
       </div>
 
       <div className="grid grid-cols-5 gap-2">
@@ -276,6 +389,23 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
         <div className="col-span-3 grid gap-2">{NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => addDigit(score)} disabled={!!pendingCheckout} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold disabled:opacity-40">{score}</button>)}</div>)}</div>
         <div className="grid gap-2">{QUICK_RIGHT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={!!pendingCheckout} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
       </div>
+
+      {inputMode === "darts" && (
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-3">
+          <div className="grid grid-cols-3 gap-2">
+            {MULTIPLIERS.map((multiplier) => (
+              <button key={multiplier} onClick={() => setDartMultiplier(multiplier)} disabled={!!pendingCheckout || dartThrows.length >= 3} className={`rounded-xl border py-3 text-lg font-bold disabled:opacity-40 ${dartMultiplier === multiplier ? "border-blue-500 bg-blue-500/20 text-blue-300" : "border-gray-800 bg-gray-950 text-gray-300"}`}>{multiplier}</button>
+            ))}
+          </div>
+          <div className="mt-2 grid grid-cols-5 gap-2">
+            <button onClick={() => addDart(0)} disabled={!!pendingCheckout || dartThrows.length >= 3} className="rounded-xl border border-gray-800 bg-gray-950 py-4 text-xl font-bold disabled:opacity-40">0</button>
+            {DART_TARGET_ROWS.flat().map((target) => (
+              <button key={target} onClick={() => addDart(target)} disabled={!!pendingCheckout || dartThrows.length >= 3 || (target === 25 && dartMultiplier === "T")} className="rounded-xl border border-gray-800 bg-gray-950 py-4 text-xl font-bold disabled:opacity-40">{target}</button>
+            ))}
+          </div>
+          <button onClick={removeLastDart} disabled={!!pendingCheckout || dartThrows.length === 0} className="mt-2 w-full rounded-xl border border-red-900 bg-red-500/10 py-3 text-sm font-bold text-red-400 disabled:opacity-40">SLET SIDSTE PIL</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2">
         <button onClick={undo} disabled={!!pendingCheckout} className="rounded-xl border border-red-900 bg-red-500/10 py-5 text-xl font-bold text-red-400 disabled:opacity-40">↶ UNDO</button>
@@ -288,7 +418,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
       {matchWinner && (
         <div className="rounded-2xl border border-green-800 bg-green-500/10 p-5">
           <div className="text-center"><div className="text-sm uppercase tracking-wide text-green-400">Kamp færdig</div><div className="mt-1 text-3xl font-bold">{matchWinner.name} vinder</div><div className="mt-1 text-gray-400">{players[0].legs} – {players[1].legs}</div></div>
-          <div className="mt-5 grid gap-3 md:grid-cols-2">{players.map((player, index) => <div key={player.name} className="rounded-xl border border-gray-800 bg-gray-900 p-4"><div className={`font-bold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>{player.name}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-gray-400"><div>Snit / kamp<br /><b className="text-white">{stats[index].avg.toFixed(2)}</b></div><div>Lukket / forsøgt<br /><b className="text-white">{player.checkouts} / {player.checkoutAttempts}</b></div><div>Lukke %<br /><b className="text-white">{stats[index].closePercent}%</b></div><div>180'ere<br /><b className="text-white">{player.oneEighties}</b></div><div className="col-span-2">Hurtigste leg<br /><b className="text-white">{player.fastestLegDarts ?? "—"} pile</b></div></div></div>)}</div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">{players.map((player, index) => <div key={player.name} className="rounded-xl border border-gray-800 bg-gray-900 p-4"><div className={`font-bold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>{player.name}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-gray-400"><div>Snit / kamp<br /><b className="text-white">{stats[index].avg.toFixed(2)}</b></div><div>Lukket / forsøgt<br /><b className="text-white">{player.checkouts} / {player.checkoutAttempts}</b></div><div>Lukke %<br /><b className="text-white">{stats[index].closePercent}%</b></div><div>180&apos;ere<br /><b className="text-white">{player.oneEighties}</b></div><div className="col-span-2">Hurtigste leg<br /><b className="text-white">{player.fastestLegDarts ?? "—"} pile</b></div></div></div>)}</div>
           <div className="mt-4 text-center text-sm font-semibold text-green-400">{saved ? "Kampen er gemt." : "Gemmer kamp…"}</div>
         </div>
       )}

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HESTENG.Web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ae7cb1aa6afbab90d9c72371f089a26fa6bf755e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2a43019da73b0609d2f5dff35a25754471b47102")]
 [assembly: System.Reflection.AssemblyProductAttribute("HESTENG.Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HESTENG.Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

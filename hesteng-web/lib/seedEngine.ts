@@ -1,5 +1,10 @@
 
 
+type SeedZone = {
+  pools: string[];
+  players: string[];
+};
+
 export function createSeedZones(
   players: string[],
   poolSizes: number[]

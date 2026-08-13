@@ -1,7 +1,10 @@
 import { POOL_SIZES } from "./poolSizes";
 import { shuffle } from "./shuffle";
 
-
+type Pool = {
+  name: string;
+  players: string[];
+};
 
 export function createPools(players: string[]): Pool[] {
   const total = players.length;
@@ -19,7 +22,7 @@ export function createPools(players: string[]): Pool[] {
 
   const poolA = top12.slice(0, 3);
 
-  let restTop = shuffle([...top12.slice(3)]);
+  const restTop = shuffle([...top12.slice(3)]);
 
   while (poolA.length < sizes[0]) {
     const player = restTop.shift();
