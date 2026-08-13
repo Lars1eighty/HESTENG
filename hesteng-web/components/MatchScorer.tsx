@@ -155,7 +155,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
             remaining,
             totalScored: player.totalScored + score,
             entries: player.entries + 1,
-            checkoutAttempts: player.checkoutAttempts + 1,
+            checkoutAttempts: player.checkoutAttempts + (darts > 0 ? 1 : 0),
             legDarts: player.legDarts + 3,
           }
         : player
