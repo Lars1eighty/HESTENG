@@ -357,12 +357,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
         </div>
       )}
 
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_110px] gap-2">
-        <div className="grid min-w-[78px] grid-cols-3 gap-1">
-          {checkoutEntryOptions.map((darts) => (
-            <button key={darts} onClick={() => setCheckoutEntryDarts(checkoutEntryDarts === darts ? null : darts)} disabled={!canUseCheckoutEntry} title="Antal pile brugt på indgangen" className={`rounded-xl border text-xl font-bold disabled:opacity-40 ${checkoutEntryDarts === darts ? "border-blue-500 bg-blue-500/20 text-blue-300" : "border-gray-800 bg-gray-900 text-gray-300"}`}>{darts}</button>
-          ))}
-        </div>
+      <div className="grid grid-cols-[minmax(180px,0.34fr)_96px_minmax(0,1fr)] gap-2">
         <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 px-6">
           {inputMode === "darts" ? (
             <>
@@ -377,6 +372,11 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
           )}
         </div>
         <button onClick={clearInput} disabled={!!pendingCheckout} className="rounded-2xl border border-gray-800 bg-gray-900 text-xl font-bold disabled:opacity-40">CLR</button>
+        <div className={`grid gap-2 ${checkoutEntryOptions.length === 1 ? "grid-cols-1" : checkoutEntryOptions.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+          {[...checkoutEntryOptions].sort((a, b) => b - a).map((darts) => (
+            <button key={darts} onClick={() => setCheckoutEntryDarts(checkoutEntryDarts === darts ? null : darts)} disabled={!canUseCheckoutEntry} title="Antal pile brugt på indgangen" className={`min-h-[76px] rounded-2xl border text-4xl font-bold disabled:opacity-40 ${checkoutEntryDarts === darts ? "border-white/70 ring-2 ring-white/30" : "border-transparent"} ${darts === 3 ? "bg-green-500 text-black" : darts === 2 ? "bg-yellow-400 text-black" : "bg-red-500 text-white"}`}>{darts}</button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
