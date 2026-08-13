@@ -10,6 +10,8 @@ type PlayerScore = {
   entries: number;
   checkouts: number;
   checkoutAttempts: number;
+  legDarts: number;
+  fastestLegDarts: number | null;
 };
 
 type Props = {
@@ -29,8 +31,8 @@ function isValidCheckout(score: number) {
 
 export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
-    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0 },
-    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0 },
+    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, legDarts: 0, fastestLegDarts: null },
+    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, legDarts: 0, fastestLegDarts: null },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [input, setInput] = useState("");
@@ -72,6 +74,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
           totalScored: player.totalScored + score,
           entries: player.entries + 1,
           checkoutAttempts: player.checkoutAttempts + (current.remaining <= 170 ? 1 : 0),
+          legDarts: player.legDarts + 3,
         }
       : player
     ));
@@ -127,18 +130,24 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
 
     if (remaining === 0) {
       if (darts < 1) return;
-      setPlayers((items) => items.map((player, index) => index === currentPlayer
-        ? {
-            ...player,
-            remaining: 501,
-            legs: player.legs + 1,
-            totalScored: player.totalScored + score,
-            entries: player.entries + 1,
-            checkouts: player.checkouts + 1,
-            checkoutAttempts: player.checkoutAttempts + 1,
-          }
-        : { ...player, remaining: 501 }
-      ));
+      setPlayers((items) => items.map((player, index) => {
+        if (index !== currentPlayer) return { ...player, remaining: 501 };
+        const completedLegDarts = player.legDarts + darts;
+        const fastestLegDarts = player.fastestLegDarts === null
+          ? completedLegDarts
+          : Math.min(player.fastestLegDarts, completedLegDarts);
+        return {
+          ...player,
+          remaining: 501,
+          legs: player.legs + 1,
+          totalScored: player.totalScored + score,
+          entries: player.entries + 1,
+          checkouts: player.checkouts + 1,
+          checkoutAttempts: player.checkoutAttempts + 1,
+          legDarts: 0,
+          fastestLegDarts,
+        };
+      }));
     } else {
       setPlayers((items) => items.map((player, index) => index === currentPlayer
         ? {
@@ -147,6 +156,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
             totalScored: player.totalScored + score,
             entries: player.entries + 1,
             checkoutAttempts: player.checkoutAttempts + 1,
+            legDarts: player.legDarts + 3,
           }
         : player
       ));
@@ -264,6 +274,9 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
           <div className="text-sm uppercase tracking-wide text-green-400">Kamp færdig</div>
           <div className="mt-1 text-3xl font-bold">{matchWinner.name} vinder</div>
           <div className="mt-1 text-gray-400">{players[0].legs} – {players[1].legs}</div>
+          <div className="mt-3 text-sm text-gray-400">
+            Hurtigste leg: {players[0].fastestLegDarts ?? "—"} / {players[1].fastestLegDarts ?? "—"} pile
+          </div>
         </div>
       )}
     </div>
