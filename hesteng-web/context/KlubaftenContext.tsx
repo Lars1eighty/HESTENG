@@ -15,6 +15,10 @@ type KlubaftenContextType = {
   setPools: (pools: Pool[]) => void;
   matches: ClubMatch[];
   setMatches: (matches: ClubMatch[]) => void;
+  boardCount: number;
+  setBoardCount: (count: number) => void;
+  handicapBoards: number[];
+  setHandicapBoards: (boards: number[]) => void;
   isFinished: boolean;
   finishKlubaften: () => void;
 };
@@ -25,6 +29,8 @@ export function KlubaftenProvider({ children }: { children: ReactNode }) {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [pools, setPools] = useState<Pool[]>([]);
   const [matches, setMatches] = useState<ClubMatch[]>([]);
+  const [boardCount, setBoardCount] = useState(13);
+  const [handicapBoards, setHandicapBoards] = useState<number[]>([]);
   const [isFinished, setIsFinished] = useState(false);
 
   const finishKlubaften = () => setIsFinished(true);
@@ -38,6 +44,10 @@ export function KlubaftenProvider({ children }: { children: ReactNode }) {
         setPools,
         matches,
         setMatches,
+        boardCount,
+        setBoardCount,
+        handicapBoards,
+        setHandicapBoards,
         isFinished,
         finishKlubaften,
       }}
