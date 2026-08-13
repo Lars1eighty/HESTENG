@@ -10,6 +10,8 @@ type PlayerScore = {
   entries: number;
   checkouts: number;
   checkoutAttempts: number;
+  oneEighties: number;
+  lastInput: number | null;
   legDarts: number;
   fastestLegDarts: number | null;
 };
@@ -31,8 +33,8 @@ function isValidCheckout(score: number) {
 
 export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
-    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, legDarts: 0, fastestLegDarts: null },
-    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, legDarts: 0, fastestLegDarts: null },
+    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, fastestLegDarts: null },
+    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, fastestLegDarts: null },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [input, setInput] = useState("");
@@ -66,15 +68,17 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     setMessage("");
   }
 
-  function finishVisit(score: number, nextRemaining: number) {
+  function finishVisit(score: number, nextRemaining: number, checkoutAttemptsToAdd = 0, dartsForVisit = 3) {
     setPlayers((items) => items.map((player, index) => index === currentPlayer
       ? {
           ...player,
           remaining: nextRemaining,
           totalScored: player.totalScored + score,
           entries: player.entries + 1,
-          checkoutAttempts: player.checkoutAttempts + (current.remaining <= 170 ? 1 : 0),
-          legDarts: player.legDarts + 3,
+          checkoutAttempts: player.checkoutAttempts + checkoutAttemptsToAdd,
+          oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
+          lastInput: score,
+          legDarts: player.legDarts + dartsForVisit,
         }
       : player
     ));
@@ -111,7 +115,6 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
       return;
     }
 
-    // From 49 downwards, ask how many darts were used on the checkout attempt.
     if (nextRemaining < 50) {
       setPendingCheckout({ score, remaining: nextRemaining });
       setCheckoutDarts("");
@@ -119,7 +122,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
       return;
     }
 
-    finishVisit(score, nextRemaining);
+    finishVisit(score, nextRemaining, 0, 3);
   }
 
   function saveCheckoutDarts() {
@@ -143,23 +146,18 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
           totalScored: player.totalScored + score,
           entries: player.entries + 1,
           checkouts: player.checkouts + 1,
-          checkoutAttempts: player.checkoutAttempts + 1,
+          checkoutAttempts: player.checkoutAttempts + darts,
+          oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
+          lastInput: score,
           legDarts: 0,
           fastestLegDarts,
         };
       }));
     } else {
-      setPlayers((items) => items.map((player, index) => index === currentPlayer
-        ? {
-            ...player,
-            remaining,
-            totalScored: player.totalScored + score,
-            entries: player.entries + 1,
-            checkoutAttempts: player.checkoutAttempts + (darts > 0 ? 1 : 0),
-            legDarts: player.legDarts + 3,
-          }
-        : player
-      ));
+      finishVisit(score, remaining, darts, 3);
+      setPendingCheckout(null);
+      setCheckoutDarts("");
+      return;
     }
 
     setPendingCheckout(null);
@@ -188,6 +186,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     <div className={`rounded-2xl border-2 ${index === 0 ? "border-blue-600" : "border-red-600"} bg-gray-900 p-5`}>
       <div className={`text-sm font-semibold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>SPILLER {index + 1}</div>
       <div className="mt-1 text-2xl font-bold">{player.name}</div>
+      <div className="text-xs text-gray-500">Sidste indtastning: {player.lastInput ?? "—"}</div>
       <div className="mt-2 flex items-center justify-between gap-4">
         <div className="text-7xl font-bold tabular-nums">{player.remaining}</div>
         <div className={`rounded-xl px-5 py-3 text-center ${index === 0 ? "bg-blue-500/10 text-blue-400" : "bg-red-500/10 text-red-400"}`}>
@@ -195,11 +194,12 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
           <div className="text-3xl font-bold">{player.legs}</div>
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-4 border-t border-gray-800 pt-3 text-center text-xs text-gray-400">
+      <div className="mt-4 grid grid-cols-5 border-t border-gray-800 pt-3 text-center text-xs text-gray-400">
         <div>SNIT / LEG<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
         <div>SNIT / KAMP<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
         <div>LUKKET / FORSØGT<br /><b>{player.checkouts} / {player.checkoutAttempts}</b></div>
         <div>LUKKE %<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].closePercent}%</b></div>
+        <div>180'ERE<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{player.oneEighties}</b></div>
       </div>
     </div>
   );
@@ -270,13 +270,27 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
       <div className="text-center text-sm text-gray-500">Hver indgang registreres som én samlet score.</div>
       {message && <div className="text-center text-sm text-gray-400">{message}</div>}
       {matchWinner && (
-        <div className="rounded-2xl border border-green-800 bg-green-500/10 p-5 text-center">
-          <div className="text-sm uppercase tracking-wide text-green-400">Kamp færdig</div>
-          <div className="mt-1 text-3xl font-bold">{matchWinner.name} vinder</div>
-          <div className="mt-1 text-gray-400">{players[0].legs} – {players[1].legs}</div>
-          <div className="mt-3 text-sm text-gray-400">
-            Hurtigste leg: {players[0].fastestLegDarts ?? "—"} / {players[1].fastestLegDarts ?? "—"} pile
+        <div className="rounded-2xl border border-green-800 bg-green-500/10 p-5">
+          <div className="text-center">
+            <div className="text-sm uppercase tracking-wide text-green-400">Kamp færdig</div>
+            <div className="mt-1 text-3xl font-bold">{matchWinner.name} vinder</div>
+            <div className="mt-1 text-gray-400">{players[0].legs} – {players[1].legs}</div>
           </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {players.map((player, index) => (
+              <div key={player.name} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+                <div className={`font-bold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>{player.name}</div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-gray-400">
+                  <div>Snit / kamp<br /><b className="text-white">{stats[index].avg.toFixed(2)}</b></div>
+                  <div>Lukket / forsøgt<br /><b className="text-white">{player.checkouts} / {player.checkoutAttempts}</b></div>
+                  <div>Lukke %<br /><b className="text-white">{stats[index].closePercent}%</b></div>
+                  <div>180'ere<br /><b className="text-white">{player.oneEighties}</b></div>
+                  <div className="col-span-2">Hurtigste leg<br /><b className="text-white">{player.fastestLegDarts ?? "—"} pile</b></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 text-center text-xs text-gray-500">Kampresultatet er klar til næste trin: gemning og ELO.</div>
         </div>
       )}
     </div>
