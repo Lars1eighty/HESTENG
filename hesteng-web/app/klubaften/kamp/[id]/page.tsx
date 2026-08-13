@@ -42,7 +42,15 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
           </Link>
         </div>
 
-        <MatchScorer player1={match.player1} player2={match.player2} bestOfLegs={3} />
+        <MatchScorer
+          matchId={match.id}
+          player1={match.player1}
+          player2={match.player2}
+          bestOfLegs={3}
+          board={match.board}
+          pool={match.pool}
+          round={match.round}
+        />
       </section>
     </main>
   );
