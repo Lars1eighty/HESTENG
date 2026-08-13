@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { saveCompletedMatch } from "@/lib/matchStore";
 
 type PlayerScore = {
   name: string;
@@ -17,9 +18,13 @@ type PlayerScore = {
 };
 
 type Props = {
+  matchId: string;
   player1: string;
   player2: string;
   bestOfLegs?: number;
+  board?: number | null;
+  pool?: string | null;
+  round?: number | null;
 };
 
 const NUMBER_ROWS = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
@@ -31,7 +36,7 @@ function isValidCheckout(score: number) {
   return score >= 2 && score <= 170;
 }
 
-export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props) {
+export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
     { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, fastestLegDarts: null },
     { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, fastestLegDarts: null },
@@ -42,10 +47,51 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   const [message, setMessage] = useState("");
   const [pendingCheckout, setPendingCheckout] = useState<{ score: number; remaining: number } | null>(null);
   const [checkoutDarts, setCheckoutDarts] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const current = players[currentPlayer];
   const neededLegs = Math.ceil(bestOfLegs / 2);
   const matchWinner = useMemo(() => players.find((player) => player.legs >= neededLegs), [players, neededLegs]);
+
+  function buildCompletedMatch() {
+    if (!matchWinner) return null;
+    const stats = players.map((player) => ({
+      name: player.name,
+      legs: player.legs,
+      totalScored: player.totalScored,
+      entries: player.entries,
+      average: player.entries ? player.totalScored / player.entries : 0,
+      checkouts: player.checkouts,
+      checkoutAttempts: player.checkoutAttempts,
+      checkoutPercent: player.checkoutAttempts ? Math.round((player.checkouts / player.checkoutAttempts) * 100) : 0,
+      oneEighties: player.oneEighties,
+      fastestLegDarts: player.fastestLegDarts,
+    })) as [{ name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; oneEighties: number; fastestLegDarts: number | null }, { name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; oneEighties: number; fastestLegDarts: number | null }];
+
+    return {
+      id: matchId,
+      player1: players[0].name,
+      player2: players[1].name,
+      winner: matchWinner.name,
+      score1: players[0].legs,
+      score2: players[1].legs,
+      bestOfLegs,
+      board,
+      pool,
+      round,
+      status: "finished" as const,
+      finishedAt: new Date().toISOString(),
+      players: stats,
+    };
+  }
+
+  useEffect(() => {
+    if (!matchWinner || saved) return;
+    const completedMatch = buildCompletedMatch();
+    if (!completedMatch) return;
+    saveCompletedMatch(completedMatch);
+    setSaved(true);
+  }, [matchWinner, saved]);
 
   function addDigit(digit: number) {
     if (matchWinner || pendingCheckout || input.length >= 3) return;
@@ -69,19 +115,16 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   }
 
   function finishVisit(score: number, nextRemaining: number, checkoutAttemptsToAdd = 0, dartsForVisit = 3) {
-    setPlayers((items) => items.map((player, index) => index === currentPlayer
-      ? {
-          ...player,
-          remaining: nextRemaining,
-          totalScored: player.totalScored + score,
-          entries: player.entries + 1,
-          checkoutAttempts: player.checkoutAttempts + checkoutAttemptsToAdd,
-          oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
-          lastInput: score,
-          legDarts: player.legDarts + dartsForVisit,
-        }
-      : player
-    ));
+    setPlayers((items) => items.map((player, index) => index === currentPlayer ? {
+      ...player,
+      remaining: nextRemaining,
+      totalScored: player.totalScored + score,
+      entries: player.entries + 1,
+      checkoutAttempts: player.checkoutAttempts + checkoutAttemptsToAdd,
+      oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
+      lastInput: score,
+      legDarts: player.legDarts + dartsForVisit,
+    } : player));
     setInput("");
     setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
     setMessage("");
@@ -91,7 +134,6 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     if (!input || matchWinner || pendingCheckout) return;
     const score = Number(input);
     if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return;
-
     const nextRemaining = current.remaining - score;
     setHistory((items) => [...items, players.map((player) => ({ ...player }))]);
 
@@ -128,17 +170,14 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
   function saveCheckoutDarts() {
     const darts = Number(checkoutDarts);
     if (!Number.isInteger(darts) || darts < 0 || darts > 3 || !pendingCheckout) return;
-
     const { score, remaining } = pendingCheckout;
 
     if (remaining === 0) {
       if (darts < 1) return;
       setPlayers((items) => items.map((player, index) => {
-        if (index !== currentPlayer) return { ...player, remaining: 501 };
+        if (index !== currentPlayer) return player;
         const completedLegDarts = player.legDarts + darts;
-        const fastestLegDarts = player.fastestLegDarts === null
-          ? completedLegDarts
-          : Math.min(player.fastestLegDarts, completedLegDarts);
+        const fastestLegDarts = player.fastestLegDarts === null ? completedLegDarts : Math.min(player.fastestLegDarts, completedLegDarts);
         return {
           ...player,
           remaining: 501,
@@ -174,13 +213,13 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
     setHistory((items) => items.slice(0, -1));
     setInput("");
     setMessage("");
+    setSaved(false);
   }
 
-  const stats = players.map((player) => {
-    const avg = player.entries ? player.totalScored / player.entries : 0;
-    const closePercent = player.checkoutAttempts ? Math.round((player.checkouts / player.checkoutAttempts) * 100) : 0;
-    return { avg, closePercent };
-  });
+  const stats = players.map((player) => ({
+    avg: player.entries ? player.totalScored / player.entries : 0,
+    closePercent: player.checkoutAttempts ? Math.round((player.checkouts / player.checkoutAttempts) * 100) : 0,
+  }));
 
   const playerCard = (player: PlayerScore, index: 0 | 1) => (
     <div className={`rounded-2xl border-2 ${index === 0 ? "border-blue-600" : "border-red-600"} bg-gray-900 p-5`}>
@@ -210,11 +249,7 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
         {playerCard(players[0], 0)}
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-center">
           <div className="text-sm text-gray-400">LEGS · BEDST AF {bestOfLegs}</div>
-          <div className="mt-4 text-4xl font-bold tabular-nums">
-            <span className="text-blue-400">{players[0].legs}</span>
-            <span className="text-gray-600"> – </span>
-            <span className="text-red-400">{players[1].legs}</span>
-          </div>
+          <div className="mt-4 text-4xl font-bold tabular-nums"><span className="text-blue-400">{players[0].legs}</span><span className="text-gray-600"> – </span><span className="text-red-400">{players[1].legs}</span></div>
           <div className="mt-8 text-sm text-gray-500">NÆSTE SPILLER</div>
           <div className={`mt-1 text-xl font-bold ${currentPlayer === 0 ? "text-blue-400" : "text-red-400"}`}>{current.name}</div>
         </div>
@@ -226,39 +261,20 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
           <div className="text-sm text-blue-400">LUKNING</div>
           <div className="mt-1 text-2xl font-bold">Hvor mange pile brugte du på lukningen?</div>
           <div className="mt-1 text-gray-400">Rest: {pendingCheckout.remaining}</div>
-          <div className="mt-4 grid grid-cols-4 gap-2">
-            {[0, 1, 2, 3].map((darts) => (
-              <button key={darts} onClick={() => setCheckoutDarts(darts.toString())} className={`rounded-xl border py-5 text-2xl font-bold ${checkoutDarts === darts.toString() ? "border-blue-500 bg-blue-500/20" : "border-gray-800 bg-gray-900"}`}>
-                {darts}
-              </button>
-            ))}
-          </div>
+          <div className="mt-4 grid grid-cols-4 gap-2">{[0, 1, 2, 3].map((darts) => <button key={darts} onClick={() => setCheckoutDarts(darts.toString())} className={`rounded-xl border py-5 text-2xl font-bold ${checkoutDarts === darts.toString() ? "border-blue-500 bg-blue-500/20" : "border-gray-800 bg-gray-900"}`}>{darts}</button>)}</div>
           <button onClick={saveCheckoutDarts} disabled={!checkoutDarts || (pendingCheckout.remaining === 0 && checkoutDarts === "0")} className="mt-3 w-full rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">GEM LUKNING</button>
         </div>
       )}
 
       <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
-        <div className="flex min-h-[76px] items-center rounded-2xl border border-gray-800 bg-gray-900 px-6">
-          <div className="text-2xl font-bold tabular-nums text-white">{input}</div>
-          {!input && <div className="text-gray-500">INDTASTET TAL</div>}
-        </div>
+        <div className="flex min-h-[76px] items-center rounded-2xl border border-gray-800 bg-gray-900 px-6"><div className="text-2xl font-bold tabular-nums text-white">{input}</div>{!input && <div className="text-gray-500">INDTASTET TAL</div>}</div>
         <button onClick={clearInput} disabled={!!pendingCheckout} className="rounded-2xl border border-gray-800 bg-gray-900 text-xl font-bold disabled:opacity-40">CLR</button>
       </div>
 
       <div className="grid grid-cols-5 gap-2">
-        <div className="grid gap-2">
-          {QUICK_LEFT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={!!pendingCheckout} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}
-        </div>
-        <div className="col-span-3 grid gap-2">
-          {NUMBER_ROWS.map((row) => (
-            <div key={row[0]} className="grid grid-cols-3 gap-2">
-              {row.map((score) => <button key={score} onClick={() => addDigit(score)} disabled={!!pendingCheckout} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold disabled:opacity-40">{score}</button>)}
-            </div>
-          ))}
-        </div>
-        <div className="grid gap-2">
-          {QUICK_RIGHT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={!!pendingCheckout} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}
-        </div>
+        <div className="grid gap-2">{QUICK_LEFT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={!!pendingCheckout} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
+        <div className="col-span-3 grid gap-2">{NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => addDigit(score)} disabled={!!pendingCheckout} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold disabled:opacity-40">{score}</button>)}</div>)}</div>
+        <div className="grid gap-2">{QUICK_RIGHT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={!!pendingCheckout} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -271,26 +287,9 @@ export default function MatchScorer({ player1, player2, bestOfLegs = 3 }: Props)
       {message && <div className="text-center text-sm text-gray-400">{message}</div>}
       {matchWinner && (
         <div className="rounded-2xl border border-green-800 bg-green-500/10 p-5">
-          <div className="text-center">
-            <div className="text-sm uppercase tracking-wide text-green-400">Kamp færdig</div>
-            <div className="mt-1 text-3xl font-bold">{matchWinner.name} vinder</div>
-            <div className="mt-1 text-gray-400">{players[0].legs} – {players[1].legs}</div>
-          </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {players.map((player, index) => (
-              <div key={player.name} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
-                <div className={`font-bold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>{player.name}</div>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-gray-400">
-                  <div>Snit / kamp<br /><b className="text-white">{stats[index].avg.toFixed(2)}</b></div>
-                  <div>Lukket / forsøgt<br /><b className="text-white">{player.checkouts} / {player.checkoutAttempts}</b></div>
-                  <div>Lukke %<br /><b className="text-white">{stats[index].closePercent}%</b></div>
-                  <div>180'ere<br /><b className="text-white">{player.oneEighties}</b></div>
-                  <div className="col-span-2">Hurtigste leg<br /><b className="text-white">{player.fastestLegDarts ?? "—"} pile</b></div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 text-center text-xs text-gray-500">Kampresultatet er klar til næste trin: gemning og ELO.</div>
+          <div className="text-center"><div className="text-sm uppercase tracking-wide text-green-400">Kamp færdig</div><div className="mt-1 text-3xl font-bold">{matchWinner.name} vinder</div><div className="mt-1 text-gray-400">{players[0].legs} – {players[1].legs}</div></div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">{players.map((player, index) => <div key={player.name} className="rounded-xl border border-gray-800 bg-gray-900 p-4"><div className={`font-bold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>{player.name}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-gray-400"><div>Snit / kamp<br /><b className="text-white">{stats[index].avg.toFixed(2)}</b></div><div>Lukket / forsøgt<br /><b className="text-white">{player.checkouts} / {player.checkoutAttempts}</b></div><div>Lukke %<br /><b className="text-white">{stats[index].closePercent}%</b></div><div>180'ere<br /><b className="text-white">{player.oneEighties}</b></div><div className="col-span-2">Hurtigste leg<br /><b className="text-white">{player.fastestLegDarts ?? "—"} pile</b></div></div></div>)}</div>
+          <div className="mt-4 text-center text-sm font-semibold text-green-400">{saved ? "Kampen er gemt." : "Gemmer kamp…"}</div>
         </div>
       )}
     </div>
