@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, ReactNode } from "react";
 import type { ClubMatch } from "@/lib/matchEngine";
 
 export type Pool = {
@@ -25,6 +25,7 @@ type KlubaftenContextType = {
 
 const KlubaftenContext = createContext<KlubaftenContextType | undefined>(undefined);
 const STORAGE_KEY = "hesteng.klubaftenState";
+const STORAGE_CHANGE_EVENT = "hesteng.klubaftenStateChanged";
 
 type KlubaftenSnapshot = {
   selectedPlayers: string[];
@@ -35,72 +36,91 @@ type KlubaftenSnapshot = {
   isFinished: boolean;
 };
 
-function getStoredKlubaften(): Partial<KlubaftenSnapshot> {
-  if (typeof window === "undefined") return {};
+const DEFAULT_KLUBAFTEN: KlubaftenSnapshot = {
+  selectedPlayers: [],
+  pools: [],
+  matches: [],
+  boardCount: 13,
+  handicapBoards: [],
+  isFinished: false,
+};
+let cachedRawSnapshot: string | null = null;
+let cachedSnapshot: KlubaftenSnapshot = DEFAULT_KLUBAFTEN;
+
+function normalizeSnapshot(snapshot: Partial<KlubaftenSnapshot>): KlubaftenSnapshot {
+  return {
+    selectedPlayers: snapshot.selectedPlayers ?? DEFAULT_KLUBAFTEN.selectedPlayers,
+    pools: snapshot.pools ?? DEFAULT_KLUBAFTEN.pools,
+    matches: snapshot.matches ?? DEFAULT_KLUBAFTEN.matches,
+    boardCount: snapshot.boardCount ?? DEFAULT_KLUBAFTEN.boardCount,
+    handicapBoards: snapshot.handicapBoards ?? DEFAULT_KLUBAFTEN.handicapBoards,
+    isFinished: snapshot.isFinished ?? DEFAULT_KLUBAFTEN.isFinished,
+  };
+}
+
+function getStoredKlubaften(): KlubaftenSnapshot {
+  if (typeof window === "undefined") return DEFAULT_KLUBAFTEN;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
+    if (raw === cachedRawSnapshot) return cachedSnapshot;
+    if (!raw) return DEFAULT_KLUBAFTEN;
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
+    cachedRawSnapshot = raw;
+    cachedSnapshot = parsed && typeof parsed === "object" ? normalizeSnapshot(parsed) : DEFAULT_KLUBAFTEN;
+    return cachedSnapshot;
   } catch {
-    return {};
+    return DEFAULT_KLUBAFTEN;
   }
 }
 
 function saveStoredKlubaften(snapshot: KlubaftenSnapshot) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
+}
+
+function updateStoredKlubaften(update: (snapshot: KlubaftenSnapshot) => KlubaftenSnapshot) {
+  saveStoredKlubaften(update(getStoredKlubaften()));
+}
+
+function subscribeToKlubaften(callback: () => void) {
+  if (typeof window === "undefined") return () => undefined;
+
+  function handleStorage(event: StorageEvent) {
+    if (event.key === STORAGE_KEY) callback();
+  }
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(STORAGE_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(STORAGE_CHANGE_EVENT, callback);
+  };
 }
 
 export function KlubaftenProvider({ children }: { children: ReactNode }) {
-  const stored = getStoredKlubaften();
-  const [selectedPlayers, setSelectedPlayers] = useState<string[]>(stored.selectedPlayers ?? []);
-  const [pools, setPools] = useState<Pool[]>(stored.pools ?? []);
-  const [matches, setMatches] = useState<ClubMatch[]>(stored.matches ?? []);
-  const [boardCount, setBoardCount] = useState(stored.boardCount ?? 13);
-  const [handicapBoards, setHandicapBoards] = useState<number[]>(stored.handicapBoards ?? []);
-  const [isFinished, setIsFinished] = useState(stored.isFinished ?? false);
-
-  const finishKlubaften = () => setIsFinished(true);
-
-  useEffect(() => {
-    saveStoredKlubaften({ selectedPlayers, pools, matches, boardCount, handicapBoards, isFinished });
-  }, [selectedPlayers, pools, matches, boardCount, handicapBoards, isFinished]);
-
-  useEffect(() => {
-    function handleStorage(event: StorageEvent) {
-      if (event.key !== STORAGE_KEY || !event.newValue) return;
-      try {
-        const next = JSON.parse(event.newValue) as Partial<KlubaftenSnapshot>;
-        setSelectedPlayers(next.selectedPlayers ?? []);
-        setPools(next.pools ?? []);
-        setMatches(next.matches ?? []);
-        setBoardCount(next.boardCount ?? 13);
-        setHandicapBoards(next.handicapBoards ?? []);
-        setIsFinished(next.isFinished ?? false);
-      } catch {
-        // Ignore malformed external storage writes.
-      }
-    }
-
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+  const snapshot = useSyncExternalStore(subscribeToKlubaften, getStoredKlubaften, () => DEFAULT_KLUBAFTEN);
+  const setSelectedPlayers = (players: string[]) => updateStoredKlubaften((current) => ({ ...current, selectedPlayers: players }));
+  const setPools = (pools: Pool[]) => updateStoredKlubaften((current) => ({ ...current, pools }));
+  const setMatches = (matches: ClubMatch[]) => updateStoredKlubaften((current) => ({ ...current, matches }));
+  const setBoardCount = (boardCount: number) => updateStoredKlubaften((current) => ({ ...current, boardCount }));
+  const setHandicapBoards = (handicapBoards: number[]) => updateStoredKlubaften((current) => ({ ...current, handicapBoards }));
+  const finishKlubaften = () => updateStoredKlubaften((current) => ({ ...current, isFinished: true }));
 
   return (
     <KlubaftenContext.Provider
       value={{
-        selectedPlayers,
+        selectedPlayers: snapshot.selectedPlayers,
         setSelectedPlayers,
-        pools,
+        pools: snapshot.pools,
         setPools,
-        matches,
+        matches: snapshot.matches,
         setMatches,
-        boardCount,
+        boardCount: snapshot.boardCount,
         setBoardCount,
-        handicapBoards,
+        handicapBoards: snapshot.handicapBoards,
         setHandicapBoards,
-        isFinished,
+        isFinished: snapshot.isFinished,
         finishKlubaften,
       }}
     >
