@@ -8,6 +8,18 @@ import { useKlubaften } from "@/context/KlubaftenContext";
 import { createThursdayMatches } from "@/lib/matchEngine";
 import { getNextMatchesByBoard } from "@/lib/liveEngine";
 
+function getStatusLabel(status: "pending" | "live" | "finished") {
+  if (status === "finished") return "FÆRDIG";
+  if (status === "live") return "I GANG";
+  return "IKKE STARTET";
+}
+
+function getStatusClasses(status: "pending" | "live" | "finished") {
+  if (status === "finished") return "border-green-700 bg-green-500/10 text-green-400";
+  if (status === "live") return "border-orange-700 bg-orange-500/10 text-orange-400";
+  return "border-gray-700 bg-gray-800 text-gray-300";
+}
+
 export default function KampePage() {
   const { pools, matches, setMatches } = useKlubaften();
 
@@ -31,6 +43,8 @@ export default function KampePage() {
   const boards = Array.from({ length: Math.max(...matches.map((m) => m.board), 13) }, (_, index) => index + 1);
   const nextMatches = getNextMatchesByBoard(matches);
   const finished = matches.filter((m) => m.status === "finished").length;
+  const live = matches.filter((m) => m.status === "live").length;
+  const pending = matches.filter((m) => m.status === "pending").length;
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -40,7 +54,7 @@ export default function KampePage() {
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold">🎯 Kampe + baner</h1>
-            <p className="mt-2 text-gray-400">{matches.length} kampe · {finished} færdige</p>
+            <p className="mt-2 text-gray-400">Færdige {finished} · I gang {live} · Mangler {pending}</p>
           </div>
           <div className="flex gap-3">
             <Link href="/klubaften/puljer" className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">Se puljer</Link>
@@ -70,13 +84,34 @@ export default function KampePage() {
                   <h2 className="text-2xl font-bold">{pool.name}</h2>
                   <span className="text-sm text-gray-500">{poolMatches.length} kampe</span>
                 </div>
-                <div className="space-y-2">
+                <div className="grid gap-3 md:grid-cols-2">
                   {poolMatches.map((match) => (
-                    <Link key={match.id} href={`/klubaften/kamp/${match.id}`} className="grid grid-cols-[70px_70px_1fr_100px] items-center gap-3 rounded-xl border border-gray-800 bg-gray-950/40 p-4 transition hover:border-gray-600 hover:bg-gray-800">
-                      <span className="text-sm text-gray-400">Runde {match.round}</span>
-                      <span className="font-semibold">Bane {match.board}</span>
-                      <span>{match.player1} <span className="text-gray-600">vs.</span> {match.player2}</span>
-                      <span className="text-right">{match.score1} – {match.score2}{match.status === "finished" && <span className="ml-2 text-green-400">✓</span>}</span>
+                    <Link key={match.id} href={`/klubaften/kamp/${match.id}`} className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 transition hover:border-gray-600 hover:bg-gray-800">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm text-gray-400">{match.pool} · Runde {match.round} · Bane {match.board}</div>
+                        <span className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClasses(match.status)}`}>{getStatusLabel(match.status)}</span>
+                      </div>
+                      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+                        <div className="truncate font-semibold">{match.player1}</div>
+                        <div className="text-gray-600">vs.</div>
+                        <div className="truncate text-right font-semibold">{match.player2}</div>
+                      </div>
+                      {match.status === "finished" && (
+                        <div className="mt-4 rounded-xl border border-green-800 bg-green-500/10 px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-semibold text-green-400">{match.winner ?? "Vinder"} vinder</span>
+                            <span className="text-2xl font-bold tabular-nums text-white">{match.score1} – {match.score2}</span>
+                          </div>
+                        </div>
+                      )}
+                      {match.status === "live" && (
+                        <div className="mt-4 rounded-xl border border-orange-800 bg-orange-500/10 px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-semibold text-orange-400">Kampen er i gang</span>
+                            {(match.score1 > 0 || match.score2 > 0) && <span className="text-xl font-bold tabular-nums">{match.score1} – {match.score2}</span>}
+                          </div>
+                        </div>
+                      )}
                     </Link>
                   ))}
                 </div>
