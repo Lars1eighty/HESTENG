@@ -41,3 +41,26 @@
  GET /klubaften/kampe 200 in 213ms (next.js: 115ms, application-code: 99ms)
 ✓ Compiled in 963ms
 ✓ Compiled in 653ms
+ GET /klubaften/kampe 200 in 488ms (next.js: 185ms, application-code: 303ms)
+ GET /klubaften/puljer 200 in 252ms (next.js: 186ms, application-code: 66ms)
+ GET /klubaften/spillere 200 in 312ms (next.js: 243ms, application-code: 69ms)
+ GET /klubaften/puljer 200 in 36ms (next.js: 6ms, application-code: 29ms)
+ GET /klubaften/kampe 200 in 34ms (next.js: 5ms, application-code: 29ms)
+ GET /klubaften/live 200 in 266ms (next.js: 184ms, application-code: 82ms)
+ GET /klubaften/kamp/thu-1 200 in 279ms (next.js: 201ms, application-code: 78ms)
+ GET / 200 in 583ms (next.js: 351ms, application-code: 233ms)
+ GET /klubaften 200 in 118ms (next.js: 83ms, application-code: 35ms)
+✓ Compiled in 446ms
+✓ Compiled in 703ms
+ GET /klubaften/live 200 in 970ms (next.js: 353ms, application-code: 617ms)
+ GET /klubaften/kamp/thu-2 200 in 6.8s (next.js: 3.8s, application-code: 3.0s)
+ GET /klubaften/kamp/thu-2 200 in 1639ms (next.js: 80ms, application-code: 1559ms)
+ GET /klubaften/kamp/thu-2 200 in 815ms (next.js: 305ms, application-code: 510ms)
+✓ Compiled in 568ms
+✓ Compiled in 187ms
+ GET /klubaften 200 in 1342ms (next.js: 778ms, application-code: 565ms)
+✓ Compiled in 461ms
+ GET /klubaften 200 in 443ms (next.js: 256ms, application-code: 187ms)
+ GET /klubaften 200 in 66ms (next.js: 5ms, application-code: 60ms)
+✓ Compiled in 1232ms
+✓ Compiled in 199ms

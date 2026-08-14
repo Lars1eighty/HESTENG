@@ -1,0 +1,58 @@
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RenderFromTemplateContext>
+      <ScrollAndMaybeFocusHandler cacheNode={{rsc:{...}, ...}}>
+        <InnerScrollAndFocusHandlerOld focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>
+          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+            <LoadingBoundary name="klubaften/" loading={null}>
+              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+                <RedirectBoundary>
+                  <RedirectErrorBoundary router={{...}}>
+                    <InnerLayoutRouter url="/klubaften" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} ...>
+                      <SegmentViewNode type="page" pagePath="klubaften/...">
+                        <SegmentTrieNode>
+                        <ClientPageRoot Component={function KlubaftenPage} serverProvidedParams={{...}}>
+                          <KlubaftenPage params={Promise} searchParams={Promise}>
+                            <main className="min-h-scre...">
+                              <Header>
+                              <section
++                               className="mx-auto max-w-[1800px] p-6 xl:p-10"
+-                               className="mx-auto max-w-7xl p-10"
+                              >
+                                <BackButton>
+                                <div
++                                 className="mb-8 flex flex-wrap items-end justify-between gap-5"
+-                                 className="mx-auto max-w-3xl"
+                                >
++                                 <div>
+-                                 <h1 className="mb-8 text-4xl font-bold">
+                                  ...
+                                ...
+                      ...
+                    ...
+          ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at throwOnHydrationMismatch (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3318:56)
+    at beginWork (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6758:918)
+    at runWithFiberInDEV (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:965:74)
+    at performUnitOfWork (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9555:97)
+    at workLoopConcurrentByScheduler (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9551:58)
+    at renderRootConcurrent (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9534:71)
+    at performWorkOnRoot (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9061:150)
+    at performWorkOnRootViaSchedulerTask (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)
+    at div (<anonymous>)
+    at KlubaftenPage (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/_1b18t_x._.js:751:231)
+    at ClientPageRoot (file://C:/Users/heste/OneDrive/Dokumenter/Hesteng Firma/hesteng web/hesteng-web/.next/dev/static/chunks/node_modules_next_dist_1nyev3z._.js:4688:50)

@@ -7,6 +7,7 @@ import Link from "next/link";
 import MatchScorer from "@/components/MatchScorer";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { getCompletedMatch, type CompletedMatch } from "@/lib/matchStore";
+import { applyEloForCompletedMatch } from "@/lib/eloRatingEngine";
 
 const LEG_OPTIONS = [3, 5, 7, 9];
 
@@ -17,6 +18,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
   const [selectedBestOfLegs, setSelectedBestOfLegs] = useState(5);
 
   const saveMatchResult = useCallback((completedMatch: CompletedMatch) => {
+    applyEloForCompletedMatch(completedMatch);
     setMatches(matches.map((item) => {
       if (item.id !== completedMatch.id) return item;
       const loser = completedMatch.winner === item.player1 ? item.player2 : item.player1;

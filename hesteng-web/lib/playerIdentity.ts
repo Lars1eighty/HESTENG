@@ -27,7 +27,7 @@ export type PlayerIdentityState = {
   unknownPlayers: UnknownPlayer[];
 };
 
-function normalizeName(name: string): string {
+export function normalizeName(name: string): string {
   return name
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

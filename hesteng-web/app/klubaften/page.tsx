@@ -8,6 +8,7 @@ import { useKlubaften } from "@/context/KlubaftenContext";
 import { calculateEveningStats } from "@/lib/eveningStatsEngine";
 import { getCompletedMatches } from "@/lib/matchStore";
 import { calculatePoolStandings } from "@/lib/standingsEngine";
+import { calculateEveningEloDeltas, getPlayerElo } from "@/lib/eloRatingEngine";
 
 const REFRESH_INTERVAL_MS = 7000;
 
@@ -28,6 +29,7 @@ export default function KlubaftenPage() {
   const finishedMatchIds = new Set(matches.filter((match) => match.status === "finished").map((match) => match.id));
   const completedMatches = getCompletedMatches().filter((match) => finishedMatchIds.has(match.id));
   const eveningStats = calculateEveningStats(completedMatches);
+  const eveningEloDeltas = calculateEveningEloDeltas([...finishedMatchIds]);
   const liveMatches = matches.filter((match) => match.status === "live").sort((a, b) => a.board - b.board);
   const latestResults = matches
     .filter((match) => match.status === "finished")
@@ -79,7 +81,11 @@ export default function KlubaftenPage() {
       pool,
       poolFinished,
       poolTotal: poolMatches.length,
-      standings: calculatePoolStandings(pool.name, pool.players, matches).slice(0, 3),
+      standings: calculatePoolStandings(pool.name, pool.players, matches).slice(0, 4).map((standing) => ({
+        ...standing,
+        elo: getPlayerElo(standing.player).elo,
+        eveningEloDelta: eveningEloDeltas.get(standing.player) ?? 0,
+      })),
     };
   });
 
@@ -222,12 +228,29 @@ export default function KlubaftenPage() {
                   <div className="mt-4 h-3 overflow-hidden rounded-full bg-gray-800">
                     <div className="h-full rounded-full bg-orange-500" style={{ width: `${poolProgress}%` }} />
                   </div>
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-4 grid grid-cols-[32px_1fr_58px_54px_32px_32px_40px_38px] gap-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+                    <div />
+                    <div>Navn</div>
+                    <div className="text-right">ELO</div>
+                    <div className="text-right">Δ</div>
+                    <div className="text-right">K</div>
+                    <div className="text-right">V</div>
+                    <div className="text-right">+/-</div>
+                    <div className="text-right">P</div>
+                  </div>
+                  <div className="mt-2 space-y-2">
                     {standings.map((standing, index) => (
-                      <div key={standing.player} className="grid grid-cols-[32px_1fr_auto] items-center gap-3 text-lg">
+                      <div key={standing.player} className="grid grid-cols-[32px_1fr_58px_54px_32px_32px_40px_38px] items-center gap-2 text-base">
                         <div className="font-black text-gray-500">{index + 1}</div>
                         <div className="truncate font-bold">{standing.player}</div>
-                        <div className="font-black tabular-nums text-green-400">{standing.points}p</div>
+                        <div className="text-right font-black tabular-nums text-gray-200">{standing.elo}</div>
+                        <div className={`text-right font-black tabular-nums ${standing.eveningEloDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {standing.eveningEloDelta > 0 ? `+${standing.eveningEloDelta}` : standing.eveningEloDelta}
+                        </div>
+                        <div className="text-right font-bold tabular-nums text-gray-300">{standing.played}</div>
+                        <div className="text-right font-bold tabular-nums text-gray-300">{standing.wins}</div>
+                        <div className="text-right font-bold tabular-nums text-gray-300">{standing.legsFor - standing.legsAgainst}</div>
+                        <div className="text-right font-black tabular-nums text-green-400">{standing.points}</div>
                       </div>
                     ))}
                   </div>
