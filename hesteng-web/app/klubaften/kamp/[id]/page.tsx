@@ -1,11 +1,12 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useCallback, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import MatchScorer from "@/components/MatchScorer";
 import { useKlubaften } from "@/context/KlubaftenContext";
+import type { CompletedMatch } from "@/lib/matchStore";
 
 const LEG_OPTIONS = [3, 5, 7, 9];
 
@@ -14,6 +15,23 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
   const { matches, setMatches } = useKlubaften();
   const match = matches.find((item) => item.id === id);
   const [selectedBestOfLegs, setSelectedBestOfLegs] = useState(5);
+
+  const saveMatchResult = useCallback((completedMatch: CompletedMatch) => {
+    setMatches(matches.map((item) => {
+      if (item.id !== completedMatch.id) return item;
+      const loser = completedMatch.winner === item.player1 ? item.player2 : item.player1;
+      return {
+        ...item,
+        bestOfLegs: completedMatch.bestOfLegs,
+        score1: completedMatch.score1,
+        score2: completedMatch.score2,
+        winner: completedMatch.winner,
+        loser,
+        finishedAt: completedMatch.finishedAt,
+        status: "finished",
+      };
+    }));
+  }, [matches, setMatches]);
 
   if (!match) {
     return (
@@ -31,6 +49,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
 
   const bestOfLegs = match.bestOfLegs ?? 5;
   const isSetupRequired = match.status === "pending";
+  const isFinished = match.status === "finished";
   const matchId = match.id;
 
   function startMatch() {
@@ -57,7 +76,21 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
           </Link>
         </div>
 
-        {isSetupRequired ? (
+        {isFinished ? (
+          <div className="rounded-2xl border border-green-800 bg-green-500/10 p-6 text-center">
+            <div className="text-sm font-semibold text-green-400">KAMP FÆRDIG</div>
+            <div className="mt-2 text-3xl font-bold">{match.winner ?? "Vinderen"} vinder</div>
+            <div className="mt-2 text-xl text-gray-300">{match.score1} – {match.score2}</div>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <Link href="/klubaften/kampe" className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-black hover:bg-orange-400">
+                Tilbage til kampoversigt
+              </Link>
+              <Link href="/klubaften/stilling" className="rounded-xl border border-gray-700 px-5 py-3 text-sm font-semibold hover:bg-gray-800">
+                Se puljestilling
+              </Link>
+            </div>
+          </div>
+        ) : isSetupRequired ? (
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
             <div className="text-sm font-semibold text-orange-400">KAMPOPSÆTNING</div>
             <h2 className="mt-2 text-2xl font-bold">Vælg antal legs før kampstart</h2>
@@ -77,6 +110,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
             board={match.board}
             pool={match.pool}
             round={match.round}
+            onMatchComplete={saveMatchResult}
           />
         )}
       </section>

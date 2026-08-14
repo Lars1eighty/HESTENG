@@ -17,7 +17,12 @@ export function calculatePoolStandings(poolName: string, players: string[], matc
     standings.set(player, { player, played: 0, wins: 0, losses: 0, points: 0, legsFor: 0, legsAgainst: 0 });
   });
 
+  const countedMatchIds = new Set<string>();
+
   matches.filter((match) => match.pool === poolName && match.status === "finished").forEach((match) => {
+    if (countedMatchIds.has(match.id)) return;
+    countedMatchIds.add(match.id);
+
     const p1 = standings.get(match.player1);
     const p2 = standings.get(match.player2);
     if (!p1 || !p2) return;

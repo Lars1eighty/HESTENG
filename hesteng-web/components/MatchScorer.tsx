@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useEffect } from "react";
-import { saveCompletedMatch } from "@/lib/matchStore";
+import { saveCompletedMatch, type CompletedMatch } from "@/lib/matchStore";
 
 type Multiplier = "S" | "D" | "T";
 
@@ -35,6 +35,7 @@ type Props = {
   board?: number | null;
   pool?: string | null;
   round?: number | null;
+  onMatchComplete?: (match: CompletedMatch) => void;
 };
 
 type MatchSnapshot = {
@@ -136,7 +137,7 @@ function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
 
-export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null }: Props) {
+export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null, onMatchComplete }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
     { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
     { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
@@ -200,10 +201,11 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
     const completedMatch = buildCompletedMatch();
     if (!completedMatch) return;
     saveCompletedMatch(completedMatch);
+    onMatchComplete?.(completedMatch);
     // Preserve the existing once-per-match save guard after syncing MatchStore.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaved(true);
-  }, [buildCompletedMatch, matchWinner, saved]);
+  }, [buildCompletedMatch, matchWinner, onMatchComplete, saved]);
 
   function resetInputState() {
     setInput("");

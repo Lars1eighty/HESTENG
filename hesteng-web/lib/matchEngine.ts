@@ -11,6 +11,9 @@ export type ClubMatch = {
   bestOfLegs: number;
   score1: number;
   score2: number;
+  winner?: string;
+  loser?: string;
+  finishedAt?: string;
   status: "pending" | "live" | "finished";
 };
 

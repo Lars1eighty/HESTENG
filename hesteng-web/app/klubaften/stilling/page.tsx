@@ -47,7 +47,7 @@ export default function StillingPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead className="text-gray-500">
-                      <tr><th className="pb-3 pr-4">#</th><th className="pb-3 pr-4">Spiller</th><th className="pb-3 pr-4 text-center">K</th><th className="pb-3 pr-4 text-center">V</th><th className="pb-3 pr-4 text-center">T</th><th className="pb-3 pr-4 text-center">Point</th><th className="pb-3 text-center">+/-</th></tr>
+                      <tr><th className="pb-3 pr-4">#</th><th className="pb-3 pr-4">Spiller</th><th className="pb-3 pr-4 text-center">K</th><th className="pb-3 pr-4 text-center">V</th><th className="pb-3 pr-4 text-center">T</th><th className="pb-3 pr-4 text-center">LF</th><th className="pb-3 pr-4 text-center">LI</th><th className="pb-3 pr-4 text-center">+/-</th><th className="pb-3 text-center">Point</th></tr>
                     </thead>
                     <tbody>
                       {standings.map((standing, index) => (
@@ -57,8 +57,10 @@ export default function StillingPage() {
                           <td className="py-3 pr-4 text-center">{standing.played}</td>
                           <td className="py-3 pr-4 text-center text-green-400">{standing.wins}</td>
                           <td className="py-3 pr-4 text-center text-red-400">{standing.losses}</td>
-                          <td className="py-3 pr-4 text-center font-bold">{standing.points}</td>
-                          <td className="py-3 text-center">{standing.legsFor - standing.legsAgainst}</td>
+                          <td className="py-3 pr-4 text-center">{standing.legsFor}</td>
+                          <td className="py-3 pr-4 text-center">{standing.legsAgainst}</td>
+                          <td className="py-3 pr-4 text-center">{standing.legsFor - standing.legsAgainst}</td>
+                          <td className="py-3 text-center font-bold">{standing.points}</td>
                         </tr>
                       ))}
                     </tbody>
