@@ -23,3 +23,12 @@
 ✓ Compiled in 381ms
 ✓ Compiled in 335ms
 ✓ Compiled in 247ms
+ GET /klubaften/kamp/thu-3 200 in 477ms (next.js: 298ms, application-code: 179ms)
+ GET /klubaften/kampe 200 in 51ms (next.js: 21ms, application-code: 30ms)
+ GET /klubaften/puljer 200 in 55ms (next.js: 22ms, application-code: 33ms)
+ GET /klubaften/kampe 200 in 46ms (next.js: 6ms, application-code: 40ms)
+ GET /klubaften/kamp/thu-1 200 in 63ms (next.js: 20ms, application-code: 43ms)
+✓ Compiled in 256ms
+ GET /klubaften/kamp/thu-1 200 in 282ms (next.js: 175ms, application-code: 108ms)
+✓ Compiled in 250ms
+ GET /klubaften/kamp/thu-1 200 in 433ms (next.js: 230ms, application-code: 203ms)

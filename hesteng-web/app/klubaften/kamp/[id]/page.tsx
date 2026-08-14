@@ -6,7 +6,7 @@ import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import MatchScorer from "@/components/MatchScorer";
 import { useKlubaften } from "@/context/KlubaftenContext";
-import type { CompletedMatch } from "@/lib/matchStore";
+import { getCompletedMatch, type CompletedMatch } from "@/lib/matchStore";
 
 const LEG_OPTIONS = [3, 5, 7, 9];
 
@@ -51,6 +51,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
   const isSetupRequired = match.status === "pending";
   const isFinished = match.status === "finished";
   const matchId = match.id;
+  const completedMatch = isFinished ? getCompletedMatch(match.id) : null;
 
   function startMatch() {
     setMatches(matches.map((item) => item.id === matchId ? {
@@ -81,6 +82,24 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
             <div className="text-sm font-semibold text-green-400">KAMP FÆRDIG</div>
             <div className="mt-2 text-3xl font-bold">{match.winner ?? "Vinderen"} vinder</div>
             <div className="mt-2 text-xl text-gray-300">{match.score1} – {match.score2}</div>
+            {completedMatch && (
+              <div className="mx-auto mt-6 max-w-md rounded-xl border border-green-800/60 bg-gray-950/40 p-4 text-sm">
+                <div className="grid grid-cols-[90px_1fr_1fr] gap-3 text-center">
+                  <div />
+                  {completedMatch.players.map((player) => (
+                    <div key={player.name} className="font-bold text-white">{player.name}</div>
+                  ))}
+                  <div className="text-left font-semibold text-gray-400">SNIT</div>
+                  {completedMatch.players.map((player) => (
+                    <div key={`${player.name}-avg`} className="font-semibold tabular-nums">{player.average.toFixed(2)}</div>
+                  ))}
+                  <div className="text-left font-semibold text-gray-400">LUKKE %</div>
+                  {completedMatch.players.map((player) => (
+                    <div key={`${player.name}-checkout`} className="font-semibold tabular-nums">{player.checkoutPercent}%</div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <Link href="/klubaften/kampe" className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-black hover:bg-orange-400">
                 Tilbage til kampoversigt
