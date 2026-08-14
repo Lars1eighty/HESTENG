@@ -5,14 +5,14 @@ import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useKlubaften } from "@/context/KlubaftenContext";
-import { createThursdayPools } from "@/lib/thuPoolEngine";
+import { createClubNightPools } from "@/lib/thuPoolEngine";
 
 export default function PuljerPage() {
   const { selectedPlayers, pools, setPools } = useKlubaften();
 
   useEffect(() => {
     if (selectedPlayers.length >= 10) {
-      setPools(createThursdayPools(selectedPlayers));
+      setPools(createClubNightPools(selectedPlayers));
     }
   }, [selectedPlayers, setPools]);
 

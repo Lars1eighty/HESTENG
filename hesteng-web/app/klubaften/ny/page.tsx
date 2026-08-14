@@ -37,7 +37,7 @@ export default function NyKlubaftenPage() {
 
             <input
               type="text"
-              placeholder="F.eks. Torsdag d. 6. august"
+              placeholder="F.eks. Klubaften d. 6. august"
               className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 outline-none focus:border-orange-500"
             />
           </div>

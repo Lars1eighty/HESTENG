@@ -3,10 +3,10 @@ import { Pool } from "@/context/KlubaftenContext";
 const POOL_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /**
- * Creates balanced pools for a Thursday club evening.
+ * Creates balanced pools for a club night.
  * The MVP keeps pools at roughly 5-6 players where possible.
  */
-export function createThursdayPools(players: string[]): Pool[] {
+export function createClubNightPools(players: string[]): Pool[] {
   const uniquePlayers = [...new Set(players)];
 
   if (uniquePlayers.length < 10) {
@@ -25,3 +25,5 @@ export function createThursdayPools(players: string[]): Pool[] {
 
   return pools;
 }
+
+export const createThursdayPools = createClubNightPools;

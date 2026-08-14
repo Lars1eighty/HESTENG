@@ -18,7 +18,7 @@ export default function AfslutKlubaftenPage() {
           <BackButton />
           <div className="rounded-2xl border border-green-800 bg-green-950/30 p-10 text-center">
             <div className="text-5xl">🏁</div>
-            <h1 className="mt-4 text-4xl font-bold">Torsdag afsluttet</h1>
+            <h1 className="mt-4 text-4xl font-bold">Klubaften afsluttet</h1>
             <p className="mt-3 text-gray-400">Resultaterne er låst for denne klubaften.</p>
             <Link href="/klubaften/stilling" className="mt-8 inline-block rounded-xl bg-orange-500 px-6 py-3 font-semibold hover:bg-orange-600">
               Se endelig stilling
@@ -34,7 +34,7 @@ export default function AfslutKlubaftenPage() {
       <Header />
       <section className="mx-auto max-w-6xl p-10">
         <BackButton />
-        <h1 className="mb-2 text-4xl font-bold">🏁 Afslut torsdag</h1>
+        <h1 className="mb-2 text-4xl font-bold">🏁 Afslut klubaften</h1>
         <p className="mb-8 text-gray-400">Gennemgå resultaterne og afslut aftenen.</p>
 
         {unfinished > 0 && (
@@ -67,7 +67,7 @@ export default function AfslutKlubaftenPage() {
           onClick={finishKlubaften}
           className="w-full rounded-xl bg-red-600 py-4 text-lg font-bold hover:bg-red-700"
         >
-          🏁 Afslut torsdag
+          🏁 Afslut klubaften
         </button>
       </section>
     </main>

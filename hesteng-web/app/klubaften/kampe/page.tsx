@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useKlubaften } from "@/context/KlubaftenContext";
-import { createThursdayMatches } from "@/lib/matchEngine";
+import { createClubNightMatches } from "@/lib/matchEngine";
 import { getNextMatchesByBoard } from "@/lib/liveEngine";
 
 function getStatusLabel(status: "pending" | "live" | "finished") {
@@ -24,7 +24,7 @@ export default function KampePage() {
   const { pools, matches, setMatches } = useKlubaften();
 
   useEffect(() => {
-    if (pools.length > 0 && matches.length === 0) setMatches(createThursdayMatches(pools));
+    if (pools.length > 0 && matches.length === 0) setMatches(createClubNightMatches(pools));
   }, [pools, matches.length, setMatches]);
 
   if (pools.length === 0) {

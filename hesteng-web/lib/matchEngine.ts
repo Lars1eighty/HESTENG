@@ -17,11 +17,11 @@ export type ClubMatch = {
   status: "pending" | "live" | "finished";
 };
 
-export const THURSDAY_BOARD_COUNT = 13;
-export const THURSDAY_HANDICAP_BOARDS = [4, 13];
+export const CLUB_NIGHT_BOARD_COUNT = 13;
+export const CLUB_NIGHT_HANDICAP_BOARDS = [4, 13];
 
 function getBoardType(board: number): "normal" | "handicap" {
-  return THURSDAY_HANDICAP_BOARDS.includes(board) ? "handicap" : "normal";
+  return CLUB_NIGHT_HANDICAP_BOARDS.includes(board) ? "handicap" : "normal";
 }
 
 function createRoundRobin(players: string[]): string[][] {
@@ -44,12 +44,12 @@ function createRoundRobin(players: string[]): string[][] {
   return rounds;
 }
 
-export function createThursdayMatches(
+export function createClubNightMatches(
   pools: Pool[],
-  boardCount = THURSDAY_BOARD_COUNT
+  boardCount = CLUB_NIGHT_BOARD_COUNT
 ): ClubMatch[] {
-  if (boardCount !== THURSDAY_BOARD_COUNT) {
-    throw new Error("Torsdag bruger præcis 13 baner");
+  if (boardCount !== CLUB_NIGHT_BOARD_COUNT) {
+    throw new Error("Klubaften bruger præcis 13 baner");
   }
 
   const matches: ClubMatch[] = [];
@@ -80,3 +80,7 @@ export function createThursdayMatches(
 
   return matches;
 }
+
+export const THURSDAY_BOARD_COUNT = CLUB_NIGHT_BOARD_COUNT;
+export const THURSDAY_HANDICAP_BOARDS = CLUB_NIGHT_HANDICAP_BOARDS;
+export const createThursdayMatches = createClubNightMatches;

@@ -105,7 +105,7 @@ export default function KlubaftenPage() {
             <h1 className="mb-8 text-4xl font-bold">Klubaften</h1>
             <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8">
               <h2 className="text-2xl font-bold">Ny klubaften</h2>
-              <p className="mt-3 text-gray-400">Start en torsdag og gå direkte til spillerne.</p>
+              <p className="mt-3 text-gray-400">Start en klubaften og gå direkte til spillerne.</p>
               <Link href="/klubaften/ny" className="mt-8 block w-full rounded-xl bg-orange-500 py-3 text-center font-semibold text-black hover:bg-orange-400">
                 Opret klubaften
               </Link>
@@ -124,7 +124,7 @@ export default function KlubaftenPage() {
 
         <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
           <div>
-            <div className="text-lg font-semibold uppercase tracking-wider text-orange-400">Torsdag aktiv</div>
+            <div className="text-lg font-semibold uppercase tracking-wider text-orange-400">Klubaften aktiv</div>
             <h1 className="mt-1 text-6xl font-black tracking-normal xl:text-7xl">Klubaften live</h1>
             <p className="mt-3 text-2xl font-semibold capitalize text-gray-300">
               {dateLabel} · {selectedPlayers.length} spillere

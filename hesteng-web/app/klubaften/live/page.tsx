@@ -85,7 +85,7 @@ export default function LivePage() {
 
         {nextMatches.length === 0 && (
           <div className="rounded-2xl border border-green-800 bg-green-500/10 p-8 text-center text-green-400">
-            Alle kampe er afsluttet. Torsdag er færdig.
+            Alle kampe er afsluttet. Klubaften er færdig.
           </div>
         )}
       </section>

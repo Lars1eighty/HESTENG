@@ -1,7 +1,7 @@
 export const dashboardCards = [
   {
     label: "KLUBAFTEN",
-    title: "Torsdag",
+    title: "Klubaften",
     description: "Start eller fortsæt en klubaften.",
     icon: "🏆",
     buttonText: "Start klubaften →",
