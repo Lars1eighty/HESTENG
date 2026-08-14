@@ -8,6 +8,7 @@ export type ClubMatch = {
   player2: string;
   board: number;
   boardType: "normal" | "handicap";
+  bestOfLegs: number;
   score1: number;
   score2: number;
   status: "pending" | "live" | "finished";
@@ -65,6 +66,7 @@ export function createThursdayMatches(
           player2,
           board,
           boardType: getBoardType(board),
+          bestOfLegs: 5,
           score1: 0,
           score2: 0,
           status: "pending",
