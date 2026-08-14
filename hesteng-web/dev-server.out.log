@@ -3,7 +3,23 @@
 > next dev
 
 ▲ Next.js 16.2.12 (Turbopack)
-- Local:         http://localhost:3001
-- Network:       http://192.168.0.158:3001
-✓ Ready in 3.3s
-[?25h
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.158:3000
+✓ Ready in 5.9s
+
+ GET / 200 in 2.3s (next.js: 872ms, application-code: 1443ms)
+ GET /klubaften/kamp/thu-1? 200 in 3.0s (next.js: 2.2s, application-code: 862ms)
+ GET /klubaften/live 200 in 295ms (next.js: 141ms, application-code: 155ms)
+ GET /klubaften/kampe 200 in 292ms (next.js: 114ms, application-code: 178ms)
+ GET /klubaften/puljer 200 in 231ms (next.js: 117ms, application-code: 113ms)
+ GET /klubaften/spillere 200 in 188ms (next.js: 87ms, application-code: 102ms)
+ GET /klubaften/puljer 200 in 51ms (next.js: 8ms, application-code: 43ms)
+ GET /klubaften/kampe 200 in 50ms (next.js: 7ms, application-code: 43ms)
+ GET /klubaften/live 200 in 48ms (next.js: 7ms, application-code: 41ms)
+ GET /klubaften/kamp/thu-1 200 in 106ms (next.js: 35ms, application-code: 71ms)
+ GET /klubaften/kamp/thu-1 200 in 101ms (next.js: 30ms, application-code: 71ms)
+ GET /klubaften/stilling 200 in 2.6s (next.js: 2.5s, application-code: 68ms)
+ GET /klubaften/live 200 in 36ms (next.js: 7ms, application-code: 29ms)
+✓ Compiled in 381ms
+✓ Compiled in 335ms
+✓ Compiled in 247ms
