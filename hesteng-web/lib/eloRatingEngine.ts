@@ -74,6 +74,10 @@ function seedToRating(seed: PlayerEloSeedEntry): PlayerEloRating {
   };
 }
 
+function getInitialSeedRatings(): PlayerEloRating[] {
+  return playerEloSeed.map(seedToRating);
+}
+
 function seedInitialRatings(ratings: PlayerEloRating[], events: EloRatingEvent[]) {
   const seededRatings = playerEloSeed
     .filter((seed) => !playerHasRating(seed.name, ratings) && !playerHasRatingEvent(seed.name, events))
@@ -107,6 +111,23 @@ export function getPlayerElo(player: string): PlayerEloRating {
 
 function expectedScore(ratingA: number, ratingB: number) {
   return 1 / (1 + 10 ** ((ratingB - ratingA) / 400));
+}
+
+function calculateEloEvent(baseEvent: EloRatingEvent, player1Before: number, player2Before: number): EloRatingEvent {
+  const player1Score = samePlayer(baseEvent.winner, baseEvent.player1) ? 1 : 0;
+  const player1Expected = expectedScore(player1Before, player2Before);
+  const player1Delta = Math.round(ELO_K_FACTOR * (player1Score - player1Expected));
+  const player2Delta = -player1Delta;
+
+  return {
+    ...baseEvent,
+    player1Before,
+    player2Before,
+    player1After: player1Before + player1Delta,
+    player2After: player2Before + player2Delta,
+    player1Delta,
+    player2Delta,
+  };
 }
 
 function getMatchPlayers(match: CompletedMatch) {
@@ -182,4 +203,53 @@ export function calculateEveningEloDeltas(matchIds: string[]): Map<string, numbe
   });
 
   return deltas;
+}
+
+export function removeEloEventsAndRebuildRatings(matchIds: string[]): EloRatingEvent[] {
+  const ids = new Set(matchIds);
+  const remainingEvents = getEloEvents()
+    .filter((event) => !ids.has(event.matchId))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const ratingMap = new Map<string, PlayerEloRating>();
+
+  getInitialSeedRatings().forEach((rating) => {
+    ratingMap.set(normalizeName(rating.player), rating);
+  });
+
+  const rebuiltEvents = remainingEvents.map((event) => {
+    const player1Key = normalizeName(event.player1);
+    const player2Key = normalizeName(event.player2);
+    const player1Rating = ratingMap.get(player1Key);
+    const player2Rating = ratingMap.get(player2Key);
+    const rebuilt = calculateEloEvent(
+      event,
+      player1Rating?.elo ?? DEFAULT_ELO,
+      player2Rating?.elo ?? DEFAULT_ELO
+    );
+
+    ratingMap.set(player1Key, {
+      playerId: player1Rating?.playerId,
+      player: event.player1,
+      elo: rebuilt.player1After,
+      updatedAt: rebuilt.createdAt,
+      source: "match",
+    });
+    ratingMap.set(player2Key, {
+      playerId: player2Rating?.playerId,
+      player: event.player2,
+      elo: rebuilt.player2After,
+      updatedAt: rebuilt.createdAt,
+      source: "match",
+    });
+
+    return rebuilt;
+  });
+
+  writeStorageArray<PlayerEloRating>(
+    RATINGS_STORAGE_KEY,
+    [...ratingMap.values()].sort((a, b) => a.player.localeCompare(b.player))
+  );
+  writeStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY, [...rebuiltEvents].reverse());
+
+  return rebuiltEvents;
 }

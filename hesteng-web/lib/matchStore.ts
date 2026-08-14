@@ -57,3 +57,12 @@ export function saveCompletedMatch(match: CompletedMatch): CompletedMatch[] {
 export function getCompletedMatch(id: string): CompletedMatch | null {
   return getCompletedMatches().find((match) => match.id === id) ?? null;
 }
+
+export function deleteCompletedMatches(matchIds: string[]): CompletedMatch[] {
+  const ids = new Set(matchIds);
+  const next = getCompletedMatches().filter((match) => !ids.has(match.id));
+  if (canUseStorage()) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+  return next;
+}

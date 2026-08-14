@@ -132,3 +132,8 @@
 ✓ Compiled in 252ms
 ✓ Compiled in 188ms
 ✓ Compiled in 212ms
+ GET / 200 in 1265ms (next.js: 514ms, application-code: 751ms)
+ GET /klubaften 200 in 352ms (next.js: 191ms, application-code: 161ms)
+✓ Compiled in 372ms
+✓ Compiled in 229ms
+✓ Compiled in 393ms
