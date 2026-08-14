@@ -79,6 +79,36 @@ function getCheckoutEntryOptions(remaining: number) {
   return [1, 2, 3].filter((darts) => canCheckout(remaining, darts));
 }
 
+function isOneDartCheckout(remaining: number) {
+  return CHECKOUT_DARTS.includes(remaining);
+}
+
+function inferCheckoutAttempts(remaining: number, entryDarts: number) {
+  let hasLegalRoute = false;
+
+  function walk(remainingBeforeDart: number, dartsLeft: number, hasEarlierCheckoutAttempt: boolean): boolean {
+    if (dartsLeft === 1) {
+      if (!CHECKOUT_DARTS.includes(remainingBeforeDart)) return false;
+      hasLegalRoute = true;
+      return hasEarlierCheckoutAttempt;
+    }
+
+    for (const score of SCORING_DARTS) {
+      const nextRemaining = remainingBeforeDart - score;
+      if (nextRemaining < 2) continue;
+      if (walk(nextRemaining, dartsLeft - 1, hasEarlierCheckoutAttempt || isOneDartCheckout(remainingBeforeDart))) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  const hasAmbiguousRoute = walk(remaining, entryDarts, false);
+  if (!hasLegalRoute || hasAmbiguousRoute) return null;
+  return 1;
+}
+
 function canCheckout(remaining: number, maxDarts: number) {
   if (remaining < 2 || remaining > 170) return false;
 
@@ -228,6 +258,11 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
     if (matchWinner || hasPendingCheckoutPrompt || !checkoutEntryOptions.includes(darts)) return;
     setHistory((items) => [...items, { players: players.map((player) => ({ ...player })), currentPlayer }]);
     setCheckoutEntryDarts(darts);
+    const inferredAttempts = inferCheckoutAttempts(current.remaining, darts);
+    if (inferredAttempts !== null) {
+      completeSuccessfulCheckout(current.remaining, darts, inferredAttempts);
+      return;
+    }
     setPendingCheckout({ score: current.remaining, remaining: 0, entryDarts: darts });
     setCheckoutDarts("");
     setInput("");
@@ -237,7 +272,13 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
 
   function choosePendingEntryDarts(darts: number) {
     if (!pendingEntryCheckout || !getCheckoutEntryOptions(pendingEntryCheckout.score).includes(darts)) return;
+    const inferredAttempts = inferCheckoutAttempts(pendingEntryCheckout.score, darts);
     setCheckoutEntryDarts(darts);
+    if (inferredAttempts !== null) {
+      completeSuccessfulCheckout(pendingEntryCheckout.score, darts, inferredAttempts);
+      setPendingEntryCheckout(null);
+      return;
+    }
     setPendingCheckout({ score: pendingEntryCheckout.score, remaining: 0, entryDarts: darts });
     setPendingEntryCheckout(null);
     setCheckoutDarts("");
@@ -257,6 +298,44 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
     } : player));
     resetInputState();
     setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
+    setMessage("");
+  }
+
+  function completeSuccessfulCheckout(score: number, entryDarts: number, darts: number) {
+    const matchIsFinished = current.legs + 1 >= neededLegs;
+    setPlayers((items) => items.map((player, index) => {
+      if (index !== currentPlayer) {
+        return {
+          ...player,
+          remaining: matchIsFinished ? player.remaining : 501,
+          legDarts: matchIsFinished ? player.legDarts : 0,
+        };
+      }
+      const completedLegDarts = player.legDarts + entryDarts;
+      const fastestLegDarts = player.fastestLegDarts === null ? completedLegDarts : Math.min(player.fastestLegDarts, completedLegDarts);
+      return {
+        ...player,
+        remaining: matchIsFinished ? 0 : 501,
+        legs: player.legs + 1,
+        totalScored: player.totalScored + score,
+        entries: player.entries + 1,
+        checkouts: player.checkouts + 1,
+        checkoutAttempts: player.checkoutAttempts + darts,
+        oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
+        lastInput: score,
+        legDarts: 0,
+        fastestLegDarts,
+      };
+    }));
+
+    setPendingCheckout(null);
+    setCheckoutDarts("");
+    setCheckoutEntryDarts(null);
+    setInput("");
+    setDartThrows([]);
+    if (!matchIsFinished) {
+      setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
+    }
     setMessage("");
   }
 
@@ -320,45 +399,13 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
 
     if (remaining === 0) {
       if (darts < 1) return;
-      const matchIsFinished = current.legs + 1 >= neededLegs;
-      setPlayers((items) => items.map((player, index) => {
-        if (index !== currentPlayer) {
-          return {
-            ...player,
-            remaining: matchIsFinished ? player.remaining : 501,
-            legDarts: matchIsFinished ? player.legDarts : 0,
-          };
-        }
-        const completedLegDarts = player.legDarts + entryDarts + darts;
-        const fastestLegDarts = player.fastestLegDarts === null ? completedLegDarts : Math.min(player.fastestLegDarts, completedLegDarts);
-        return {
-          ...player,
-          remaining: matchIsFinished ? 0 : 501,
-          legs: player.legs + 1,
-          totalScored: player.totalScored + score,
-          entries: player.entries + 1,
-          checkouts: player.checkouts + 1,
-          checkoutAttempts: player.checkoutAttempts + darts,
-          oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
-          lastInput: score,
-          legDarts: 0,
-          fastestLegDarts,
-        };
-      }));
+      completeSuccessfulCheckout(score, entryDarts, darts);
     } else {
       finishVisit(score, remaining, darts, entryDarts + darts);
       setPendingCheckout(null);
       setCheckoutDarts("");
       return;
     }
-
-    setPendingCheckout(null);
-    setCheckoutDarts("");
-    setCheckoutEntryDarts(null);
-    if (current.legs + 1 < neededLegs) {
-      setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
-    }
-    setMessage("");
   }
 
   function undo() {
