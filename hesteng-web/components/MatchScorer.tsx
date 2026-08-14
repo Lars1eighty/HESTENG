@@ -46,6 +46,18 @@ const QUICK_LEFT = [26, 41, 45, 100];
 const QUICK_RIGHT = [60, 81, 85, 140];
 const MULTIPLIERS: Multiplier[] = ["S", "D", "T"];
 const MAX_SCORE = 180;
+const SCORING_DARTS = [
+  0,
+  ...Array.from({ length: 20 }, (_, index) => index + 1),
+  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 2),
+  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 3),
+  25,
+  50,
+];
+const CHECKOUT_DARTS = [
+  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 2),
+  50,
+];
 
 function isValidCheckout(score: number) {
   return score >= 2 && score <= 170;
@@ -64,10 +76,27 @@ function dartLabel(dart: DartThrow) {
 }
 
 function getCheckoutEntryOptions(remaining: number) {
-  if (remaining >= 111 && remaining <= 170) return [3];
-  if (remaining >= 51 && remaining <= 110) return [2, 3];
-  if (remaining >= 2 && remaining <= 50) return [1, 2, 3];
-  return [];
+  return [1, 2, 3].filter((darts) => canCheckout(remaining, darts));
+}
+
+function canCheckout(remaining: number, maxDarts: number) {
+  if (remaining < 2 || remaining > 170) return false;
+
+  for (const checkoutDart of CHECKOUT_DARTS) {
+    if (checkoutDart === remaining) return true;
+    if (maxDarts < 2) continue;
+
+    for (const firstDart of SCORING_DARTS) {
+      if (firstDart + checkoutDart === remaining) return true;
+      if (maxDarts < 3) continue;
+
+      for (const secondDart of SCORING_DARTS) {
+        if (firstDart + secondDart + checkoutDart === remaining) return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null }: Props) {
