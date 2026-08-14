@@ -22,6 +22,8 @@ type PlayerScore = {
   oneEighties: number;
   lastInput: number | null;
   legDarts: number;
+  legEntries: number;
+  recentScores: number[];
   fastestLegDarts: number | null;
 };
 
@@ -58,6 +60,7 @@ const CHECKOUT_DARTS = [
   ...Array.from({ length: 20 }, (_, index) => (index + 1) * 2),
   50,
 ];
+const MAX_LEG_ENTRIES = 14;
 
 function isValidCheckout(score: number) {
   return canCheckout(score, 3);
@@ -129,10 +132,14 @@ function canCheckout(remaining: number, maxDarts: number) {
   return false;
 }
 
+function appendRecentScore(scores: number[], score: number) {
+  return [...scores, score].slice(-5);
+}
+
 export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
-    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, fastestLegDarts: null },
-    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, fastestLegDarts: null },
+    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
+    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [inputMode, setInputMode] = useState<"score" | "darts">("score");
@@ -144,6 +151,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
   const [message, setMessage] = useState("");
   const [pendingEntryCheckout, setPendingEntryCheckout] = useState<{ score: number } | null>(null);
   const [pendingCheckout, setPendingCheckout] = useState<{ score: number; remaining: number; entryDarts: number } | null>(null);
+  const [pendingBull, setPendingBull] = useState(false);
   const [checkoutDarts, setCheckoutDarts] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -152,7 +160,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
   const matchWinner = useMemo(() => players.find((player) => player.legs >= neededLegs), [players, neededLegs]);
   const dartScore = dartThrows.reduce((total, dart) => total + dart.score, 0);
   const checkoutEntryOptions = getCheckoutEntryOptions(current.remaining);
-  const hasPendingCheckoutPrompt = !!pendingEntryCheckout || !!pendingCheckout;
+  const hasPendingCheckoutPrompt = !!pendingEntryCheckout || !!pendingCheckout || pendingBull;
   const canUseCheckoutEntry = !matchWinner && !hasPendingCheckoutPrompt && checkoutEntryOptions.length > 0;
 
   const buildCompletedMatch = useCallback(() => {
@@ -286,7 +294,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
   }
 
   function finishVisit(score: number, nextRemaining: number, checkoutAttemptsToAdd = 0, dartsForVisit = 3) {
-    setPlayers((items) => items.map((player, index) => index === currentPlayer ? {
+    const nextPlayers = players.map((player, index) => index === currentPlayer ? {
       ...player,
       remaining: nextRemaining,
       totalScored: player.totalScored + score,
@@ -295,9 +303,16 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
       oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
       lastInput: score,
       legDarts: player.legDarts + dartsForVisit,
-    } : player));
+      legEntries: player.legEntries + 1,
+      recentScores: appendRecentScore(player.recentScores, score),
+    } : player);
+    setPlayers(nextPlayers);
     resetInputState();
-    setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
+    if (nextPlayers.every((player) => player.legEntries >= MAX_LEG_ENTRIES)) {
+      setPendingBull(true);
+    } else {
+      setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
+    }
     setMessage("");
   }
 
@@ -309,6 +324,8 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
           ...player,
           remaining: matchIsFinished ? player.remaining : 501,
           legDarts: matchIsFinished ? player.legDarts : 0,
+          legEntries: matchIsFinished ? player.legEntries : 0,
+          recentScores: matchIsFinished ? player.recentScores : [],
         };
       }
       const completedLegDarts = player.legDarts + entryDarts;
@@ -324,17 +341,39 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
         oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
         lastInput: score,
         legDarts: 0,
+        legEntries: matchIsFinished ? player.legEntries + 1 : 0,
+        recentScores: matchIsFinished ? appendRecentScore(player.recentScores, score) : [],
         fastestLegDarts,
       };
     }));
 
     setPendingCheckout(null);
+    setPendingEntryCheckout(null);
+    setPendingBull(false);
     setCheckoutDarts("");
     setCheckoutEntryDarts(null);
     setInput("");
     setDartThrows([]);
     if (!matchIsFinished) {
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
+    }
+    setMessage("");
+  }
+
+  function awardBullLeg(winnerIndex: 0 | 1) {
+    const matchIsFinished = players[winnerIndex].legs + 1 >= neededLegs;
+    setPlayers((items) => items.map((player, index) => ({
+      ...player,
+      remaining: matchIsFinished ? player.remaining : 501,
+      legs: index === winnerIndex ? player.legs + 1 : player.legs,
+      legDarts: matchIsFinished ? player.legDarts : 0,
+      legEntries: matchIsFinished ? player.legEntries : 0,
+      recentScores: matchIsFinished ? player.recentScores : [],
+    })));
+    setPendingBull(false);
+    resetInputState();
+    if (!matchIsFinished) {
+      setCurrentPlayer(winnerIndex === 0 ? 1 : 0);
     }
     setMessage("");
   }
@@ -432,9 +471,16 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
       <div className="text-xs text-gray-500">Sidste indtastning: {player.lastInput ?? "—"}</div>
       <div className="mt-2 flex items-center justify-between gap-4">
         <div className="text-7xl font-bold tabular-nums">{player.remaining}</div>
-        <div className={`rounded-xl px-5 py-3 text-center ${index === 0 ? "bg-blue-500/10 text-blue-400" : "bg-red-500/10 text-red-400"}`}>
-          <div className="text-xs">LEGS</div>
-          <div className="text-3xl font-bold">{player.legs}</div>
+        <div className={`min-w-28 rounded-xl px-4 py-3 ${index === 0 ? "bg-blue-500/10 text-blue-400" : "bg-red-500/10 text-red-400"}`}>
+          <div className="text-center text-xs font-bold">SENESTE 5</div>
+          <div className="mt-2 space-y-1 text-center text-sm font-bold tabular-nums text-white">
+            {player.recentScores.length ? player.recentScores.map((score, scoreIndex) => (
+              <div key={`${player.name}-${scoreIndex}-${score}`}>{score}</div>
+            )) : (
+              <div className="text-gray-600">—</div>
+            )}
+          </div>
+          <div className="mt-3 border-t border-gray-700 pt-2 text-center text-xs text-gray-400">INDGANGE <b className="text-white">{player.legEntries}</b></div>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-5 border-t border-gray-800 pt-3 text-center text-xs text-gray-400">
@@ -459,6 +505,20 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
         </div>
         {playerCard(players[1], 1)}
       </div>
+
+      {pendingBull && !matchWinner && (
+        <div className="rounded-2xl border border-yellow-600 bg-gray-900 p-5 text-center">
+          <div className="text-sm font-semibold text-yellow-400">TÆTTEST PÅ BULL</div>
+          <div className="mt-1 text-2xl font-bold">Vælg hvem der vinder leget</div>
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {players.map((player, index) => (
+              <button key={player.name} onClick={() => awardBullLeg(index as 0 | 1)} className={`rounded-2xl border py-5 text-xl font-bold ${index === 0 ? "border-blue-600 bg-blue-500/10 text-blue-400" : "border-red-600 bg-red-500/10 text-red-400"}`}>
+                {player.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {pendingEntryCheckout && (
         <div className="rounded-2xl border border-blue-600 bg-gray-900 p-5 text-center">
