@@ -41,10 +41,12 @@ type Catch40Result = {
   points: number;
 };
 
-type Bobs27Double = {
-  doubleValue: number;
+type Bobs27Target = {
+  target: string;
+  value: number;
   hits: number;
   attempts: number;
+  scoreChange: number;
 };
 
 const JDC_STEPS: JdcStep[] = [
@@ -69,7 +71,16 @@ const JDC_STEPS: JdcStep[] = [
 ];
 const JDC_TOTAL_DARTS = JDC_STEPS.reduce((sum, step) => sum + step.darts, 0);
 const CATCH_40_TARGETS = Array.from({ length: 40 }, (_, index) => index + 61);
-const BOBS_27_DOUBLES = Array.from({ length: 20 }, (_, index) => index + 1);
+const BOBS_27_TARGETS = [
+  ...Array.from({ length: 20 }, (_, index) => ({
+    target: `D${index + 1}`,
+    value: index + 1,
+  })),
+  {
+    target: "BULL",
+    value: 25,
+  },
+];
 
 function currentMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -89,14 +100,6 @@ function personalBest(results: TrainingResult[], key: string, direction: Trainin
   return direction === "higherIsBetter" ? Math.max(...values) : Math.min(...values);
 }
 
-function createInitialBobs27Doubles(): Bobs27Double[] {
-  return BOBS_27_DOUBLES.map((doubleValue) => ({
-    doubleValue,
-    hits: 0,
-    attempts: 3,
-  }));
-}
-
 function percent(done: number, attempts: number) {
   return attempts > 0 ? Math.round((done / attempts) * 100) : 0;
 }
@@ -110,7 +113,7 @@ export default function TrainingPage() {
   const [lastSavedResult, setLastSavedResult] = useState<TrainingResult | null>(null);
   const [jdcThrows, setJdcThrows] = useState<JdcThrow[]>([]);
   const [catch40Results, setCatch40Results] = useState<Catch40Result[]>([]);
-  const [bobs27Doubles, setBobs27Doubles] = useState<Bobs27Double[]>(createInitialBobs27Doubles);
+  const [bobs27Results, setBobs27Results] = useState<Bobs27Target[]>([]);
   const [showDetails, setShowDetails] = useState(false);
 
   const selectedPlayerResults = results.filter(
@@ -133,14 +136,14 @@ export default function TrainingPage() {
   const hitPercentPersonalBest = personalBest(selectedPlayerResults, "hitPercent", "higherIsBetter");
   const jdcState = calculateJdcState(jdcThrows);
   const catch40State = calculateCatch40State(catch40Results);
-  const bobs27Summary = calculateBobs27Summary(bobs27Doubles);
+  const bobs27State = calculateBobs27State(bobs27Results);
 
   function refreshResults() {
     setResults(getTrainingResultsForPlayer(currentPlayerId));
   }
 
   function handleExerciseChange(exerciseId: ExerciseId) {
-    if ((jdcThrows.length > 0 || catch40Results.length > 0) && !lastSavedResult) {
+    if ((jdcThrows.length > 0 || catch40Results.length > 0 || bobs27Results.length > 0) && !lastSavedResult) {
       const confirmed = window.confirm("Afbryd den aktive træning?");
       if (!confirmed) return;
     }
@@ -150,6 +153,7 @@ export default function TrainingPage() {
     setShowDetails(false);
     setJdcThrows([]);
     setCatch40Results([]);
+    setBobs27Results([]);
   }
 
   function buildTrainingResult(exerciseId: ExerciseId, metrics: TrainingResult["metrics"], details?: TrainingResult["details"]) {
@@ -240,6 +244,10 @@ export default function TrainingPage() {
     if (activeExerciseId === CATCH_40_EXERCISE_ID) {
       setCatch40Results((items) => items.slice(0, -1));
     }
+
+    if (activeExerciseId === BOBS_27_EXERCISE_ID) {
+      setBobs27Results((items) => items.slice(0, -1));
+    }
   }
 
   function handleAbort() {
@@ -248,11 +256,12 @@ export default function TrainingPage() {
       return;
     }
 
-    if (!jdcThrows.length && !catch40Results.length) return;
+    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length) return;
     const confirmed = window.confirm("Afbryd træningen? Resultatet gemmes ikke.");
     if (!confirmed) return;
     setJdcThrows([]);
     setCatch40Results([]);
+    setBobs27Results([]);
     setShowDetails(false);
   }
 
@@ -261,25 +270,40 @@ export default function TrainingPage() {
     setShowDetails(false);
     setJdcThrows([]);
     setCatch40Results([]);
-    setBobs27Doubles(createInitialBobs27Doubles());
+    setBobs27Results([]);
     refreshResults();
   }
 
-  function handleSaveBobs27() {
-    if (!activeExercise) return;
-    const result = buildTrainingResult(
-      BOBS_27_EXERCISE_ID,
-      {
-        score: bobs27Summary.score,
-        hits: bobs27Summary.hits,
-        attempts: bobs27Summary.attempts,
-        hitPercent: bobs27Summary.hitPercent,
-      },
-      {
-        doubles: bobs27Doubles.map((double) => ({ ...double })),
-      }
-    );
-    saveFinishedResult(result);
+  function handleBobs27Input(hits: number) {
+    if (lastSavedResult || bobs27State.isComplete) return;
+    const target = BOBS_27_TARGETS[bobs27Results.length];
+    if (!target) return;
+
+    const nextResult = {
+      target: target.target,
+      value: target.value,
+      hits,
+      attempts: 3,
+      scoreChange: hits > 0 ? hits * target.value : -target.value,
+    };
+    const nextResults = [...bobs27Results, nextResult];
+    setBobs27Results(nextResults);
+
+    const nextState = calculateBobs27State(nextResults);
+    if (nextState.isComplete) {
+      saveFinishedResult(buildTrainingResult(
+        BOBS_27_EXERCISE_ID,
+        {
+          score: nextState.score,
+          hits: nextState.hits,
+          attempts: nextState.attempts,
+          hitPercent: nextState.hitPercent,
+        },
+        {
+          doubles: nextResults,
+        }
+      ));
+    }
   }
 
   return (
@@ -351,16 +375,13 @@ export default function TrainingPage() {
             onAbort={handleAbort}
           />
         ) : (
-          <Bobs27Manual
-            doubles={bobs27Doubles}
-            summary={bobs27Summary}
+          <Bobs27Gameplay
+            state={bobs27State}
             scorePersonalBest={scorePersonalBest}
             hitPercentPersonalBest={hitPercentPersonalBest}
-            monthlyStats={monthlyStats}
-            scoreStats={scoreStats}
-            hitPercentStats={hitPercentStats}
-            onDoublesChange={setBobs27Doubles}
-            onSave={handleSaveBobs27}
+            onInput={handleBobs27Input}
+            onUndo={handleUndo}
+            onAbort={handleAbort}
           />
         )}
       </section>
@@ -452,19 +473,20 @@ function calculateCatch40State(results: Catch40Result[]) {
   };
 }
 
-function calculateBobs27Summary(doubles: Bobs27Double[]) {
-  const hits = doubles.reduce((sum, double) => sum + double.hits, 0);
-  const attempts = doubles.reduce((sum, double) => sum + double.attempts, 0);
-  const score = doubles.reduce((sum, double) => {
-    const doubleScore = double.doubleValue * 2;
-    return sum + (double.hits > 0 ? double.hits * doubleScore : -doubleScore);
-  }, 27);
+function calculateBobs27State(results: Bobs27Target[]) {
+  const hits = results.reduce((sum, target) => sum + target.hits, 0);
+  const attempts = results.reduce((sum, target) => sum + target.attempts, 0);
 
   return {
-    score,
+    score: 27 + results.reduce((sum, target) => sum + target.scoreChange, 0),
     hits,
     attempts,
     hitPercent: percent(hits, attempts),
+    currentTarget: BOBS_27_TARGETS[results.length] ?? null,
+    completedTargets: results.length,
+    remainingTargets: BOBS_27_TARGETS.length - results.length,
+    isComplete: results.length >= BOBS_27_TARGETS.length,
+    details: results,
   };
 }
 
@@ -488,20 +510,24 @@ function getCatch40Details(result: TrainingResult): Catch40Result[] {
   });
 }
 
-function getBobs27Details(result: TrainingResult): Bobs27Double[] {
+function getBobs27Details(result: TrainingResult): Bobs27Target[] {
   const doubles = result.details?.doubles;
   if (!Array.isArray(doubles)) return [];
 
-  return doubles.filter((double): double is Bobs27Double => {
+  return doubles.filter((double): double is Bobs27Target => {
     return (
       typeof double === "object" &&
       double !== null &&
-      "doubleValue" in double &&
+      "target" in double &&
+      "value" in double &&
       "hits" in double &&
       "attempts" in double &&
-      typeof double.doubleValue === "number" &&
+      "scoreChange" in double &&
+      typeof double.target === "string" &&
+      typeof double.value === "number" &&
       typeof double.hits === "number" &&
-      typeof double.attempts === "number"
+      typeof double.attempts === "number" &&
+      typeof double.scoreChange === "number"
     );
   });
 }
@@ -706,87 +732,49 @@ function TouchButton({
   );
 }
 
-function Bobs27Manual({
-  doubles,
-  summary,
+function Bobs27Gameplay({
+  state,
   scorePersonalBest,
   hitPercentPersonalBest,
-  monthlyStats,
-  scoreStats,
-  hitPercentStats,
-  onDoublesChange,
-  onSave,
+  onInput,
+  onUndo,
+  onAbort,
 }: {
-  doubles: Bobs27Double[];
-  summary: ReturnType<typeof calculateBobs27Summary>;
+  state: ReturnType<typeof calculateBobs27State>;
   scorePersonalBest: number | null;
   hitPercentPersonalBest: number | null;
-  monthlyStats: ReturnType<typeof calculateTrainingMonthlyStats> | null;
-  scoreStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
-  hitPercentStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
-  onDoublesChange: (doubles: Bobs27Double[]) => void;
-  onSave: () => void;
+  onInput: (hits: number) => void;
+  onUndo: () => void;
+  onAbort: () => void;
 }) {
-  function updateDouble(doubleValue: number, hits: number) {
-    onDoublesChange(doubles.map((double) => double.doubleValue === doubleValue ? { ...double, hits } : double));
-  }
-
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-        <div className="grid gap-3 sm:grid-cols-4">
-          <StatTile label="Score" value={summary.score} />
-          <StatTile label="Hits" value={summary.hits} />
-          <StatTile label="Forsøg" value={summary.attempts} />
-          <StatTile label="Træf %" value={`${summary.hitPercent}%`} />
+    <GameplayShell
+      eyebrow="Bob's 27"
+      target={state.currentTarget?.target ?? "Færdig"}
+      meta={`${state.completedTargets}/${BOBS_27_TARGETS.length} targets · ${state.remainingTargets} tilbage`}
+      stats={[
+        { label: "Score", value: state.score },
+        { label: "Hits", value: state.hits },
+        { label: "Træf %", value: `${state.hitPercent}%` },
+        { label: "PR", value: scorePersonalBest ?? "-" },
+      ]}
+      onUndo={onUndo}
+      onAbort={onAbort}
+      canUndo={state.completedTargets > 0}
+    >
+      <div className="mb-3 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+        <div className="text-xs font-black uppercase tracking-wide text-gray-500">Personlig rekord træf %</div>
+        <div className="mt-1 text-xl font-black text-orange-400">
+          {hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"}
         </div>
-        <div className="mt-4 max-h-[34rem] overflow-y-auto rounded-xl border border-gray-800 bg-gray-950">
-          {doubles.map((double) => (
-            <div
-              key={double.doubleValue}
-              className="grid min-h-13 grid-cols-[4rem_minmax(0,1fr)] items-center gap-2 border-b border-gray-800 px-3 py-2 last:border-b-0"
-            >
-              <div className="text-xl font-black tabular-nums">D{double.doubleValue}</div>
-              <div className="grid grid-cols-4 gap-2">
-                {[0, 1, 2, 3].map((hits) => (
-                  <button
-                    key={hits}
-                    type="button"
-                    onClick={() => updateDouble(double.doubleValue, hits)}
-                    className={`rounded-lg px-3 py-2 text-sm font-black ${
-                      double.hits === hits ? "bg-orange-500 text-gray-950" : "bg-gray-900 text-gray-400 hover:bg-gray-800"
-                    }`}
-                  >
-                    {hits}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={onSave}
-          className="mt-4 h-14 w-full rounded-xl bg-orange-500 px-5 text-base font-black text-gray-950 transition hover:bg-orange-400"
-        >
-          Gem træning
-        </button>
-      </section>
-      <aside className="grid gap-5">
-        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-          <h2 className="text-lg font-black">Personlige rekorder</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <StatTile label="Score" value={scorePersonalBest ?? "-"} />
-            <StatTile label="Træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
-          </div>
-        </section>
-        <MonthlyStatsPanel
-          monthlyStats={monthlyStats}
-          scoreStats={scoreStats}
-          extraStats={[{ label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" }]}
-        />
-      </aside>
-    </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <TouchButton label="0 HITS" tone="red" onClick={() => onInput(0)} />
+        <TouchButton label="1 HIT" tone="amber" onClick={() => onInput(1)} />
+        <TouchButton label="2 HITS" tone="orange" onClick={() => onInput(2)} />
+        <TouchButton label="3 HITS" tone="green" onClick={() => onInput(3)} />
+      </div>
+    </GameplayShell>
   );
 }
 
@@ -861,6 +849,13 @@ function ResultScreen({
             className="rounded-xl bg-orange-500 px-5 py-4 text-base font-black text-gray-950 transition hover:bg-orange-400"
           >
             Spil igen
+          </button>
+          <button
+            type="button"
+            onClick={onPlayAgain}
+            className="rounded-xl border border-gray-700 px-5 py-4 text-base font-black text-gray-300 transition hover:border-orange-500 hover:text-white"
+          >
+            Tilbage til træning
           </button>
           {(isCatch40 || isBobs27) ? (
             <button
@@ -944,16 +939,16 @@ function Catch40DetailsTable({ details }: { details: Catch40Result[] }) {
   );
 }
 
-function Bobs27DetailsTable({ details }: { details: Bobs27Double[] }) {
+function Bobs27DetailsTable({ details }: { details: Bobs27Target[] }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
-      <TableHeader columns={["Double", "Hits", "Forsøg", "Træf %"]} />
-      {details.map((double) => (
-        <div key={double.doubleValue} className="grid grid-cols-4 border-t border-gray-800 px-4 py-3 text-sm font-bold">
-          <div>D{double.doubleValue}</div>
-          <div>{double.hits}</div>
-          <div>{double.attempts}</div>
-          <div>{percent(double.hits, double.attempts)}%</div>
+      <TableHeader columns={["Target", "Hits", "Forsøg", "+/-"]} />
+      {details.map((target) => (
+        <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-4 py-3 text-sm font-bold">
+          <div>{target.target}</div>
+          <div>{target.hits}</div>
+          <div>{target.attempts}</div>
+          <div className={target.scoreChange >= 0 ? "text-emerald-300" : "text-red-300"}>{target.scoreChange}</div>
         </div>
       ))}
     </section>

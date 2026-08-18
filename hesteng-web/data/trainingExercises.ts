@@ -67,7 +67,7 @@ export const trainingExercises: TrainingExercise[] = [
     id: BOBS_27_EXERCISE_ID,
     name: "Bob's 27",
     type: "double-training",
-    description: "Registrer hits på doubles fra D1 til D20 med tre forsøg pr. double.",
+    description: "Live double-træning fra D1 til D20 og Bull med automatisk score.",
     isActive: true,
     metrics: [
       {
