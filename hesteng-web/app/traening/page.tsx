@@ -17,11 +17,28 @@ import { getTrainingResultsForPlayer, saveTrainingResult } from "@/lib/trainingR
 import type { TrainingExercise, TrainingMetricDirection, TrainingResult } from "@/lib/trainingTypes";
 
 type ExerciseId = typeof JDC_CHALLENGE_EXERCISE_ID | typeof CATCH_40_EXERCISE_ID | typeof BOBS_27_EXERCISE_ID;
+type JdcThrow = "single" | "double" | "triple" | "miss";
 
-type Catch40Target = {
+type JdcStep = {
+  phase: "shanghai" | "double";
+  label: string;
+  target: number | "bull";
+  darts: number;
+};
+
+type JdcDetail = {
+  phase: "shanghai" | "double";
+  target: number | "bull";
+  darts: JdcThrow[];
+  points: number;
+  shanghai?: boolean;
+};
+
+type Catch40Result = {
   checkoutValue: number;
   hit: boolean;
-  attempts: number;
+  dartsUsed: number;
+  points: number;
 };
 
 type Bobs27Double = {
@@ -30,6 +47,27 @@ type Bobs27Double = {
   attempts: number;
 };
 
+const JDC_STEPS: JdcStep[] = [
+  ...[10, 11, 12, 13, 14, 15].map((target) => ({
+    phase: "shanghai" as const,
+    label: String(target),
+    target,
+    darts: 3,
+  })),
+  ...[...Array.from({ length: 20 }, (_, index) => index + 1), "bull" as const].map((target) => ({
+    phase: "double" as const,
+    label: target === "bull" ? "BULL" : `D${target}`,
+    target,
+    darts: 1,
+  })),
+  ...[15, 16, 17, 18, 19, 20].map((target) => ({
+    phase: "shanghai" as const,
+    label: String(target),
+    target,
+    darts: 3,
+  })),
+];
+const JDC_TOTAL_DARTS = JDC_STEPS.reduce((sum, step) => sum + step.darts, 0);
 const CATCH_40_TARGETS = Array.from({ length: 40 }, (_, index) => index + 61);
 const BOBS_27_DOUBLES = Array.from({ length: 20 }, (_, index) => index + 1);
 
@@ -51,14 +89,6 @@ function personalBest(results: TrainingResult[], key: string, direction: Trainin
   return direction === "higherIsBetter" ? Math.max(...values) : Math.min(...values);
 }
 
-function createInitialCatch40Targets(): Catch40Target[] {
-  return CATCH_40_TARGETS.map((checkoutValue) => ({
-    checkoutValue,
-    hit: false,
-    attempts: 1,
-  }));
-}
-
 function createInitialBobs27Doubles(): Bobs27Double[] {
   return BOBS_27_DOUBLES.map((doubleValue) => ({
     doubleValue,
@@ -67,12 +97,8 @@ function createInitialBobs27Doubles(): Bobs27Double[] {
   }));
 }
 
-function calculateCheckoutPercent(checkouts: number, checkoutAttempts: number) {
-  return checkoutAttempts > 0 ? Math.round((checkouts / checkoutAttempts) * 100) : 0;
-}
-
-function calculateHitPercent(hits: number, attempts: number) {
-  return attempts > 0 ? Math.round((hits / attempts) * 100) : 0;
+function percent(done: number, attempts: number) {
+  return attempts > 0 ? Math.round((done / attempts) * 100) : 0;
 }
 
 export default function TrainingPage() {
@@ -80,26 +106,22 @@ export default function TrainingPage() {
   const { currentPlayer, currentPlayerId } = useCurrentUser();
   const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId>(JDC_CHALLENGE_EXERCISE_ID);
   const activeExercise = getTrainingExercise(activeExerciseId);
-  const [scoreInput, setScoreInput] = useState("");
-  const [shanghaiInput, setShanghaiInput] = useState("");
-  const [catch40Targets, setCatch40Targets] = useState<Catch40Target[]>(createInitialCatch40Targets);
-  const [bobs27Doubles, setBobs27Doubles] = useState<Bobs27Double[]>(createInitialBobs27Doubles);
-  const [showCatch40Details, setShowCatch40Details] = useState(false);
-  const [showBobs27Details, setShowBobs27Details] = useState(false);
   const [results, setResults] = useState<TrainingResult[]>(() => getTrainingResultsForPlayer(currentPlayerId));
   const [lastSavedResult, setLastSavedResult] = useState<TrainingResult | null>(null);
+  const [jdcThrows, setJdcThrows] = useState<JdcThrow[]>([]);
+  const [catch40Results, setCatch40Results] = useState<Catch40Result[]>([]);
+  const [bobs27Doubles, setBobs27Doubles] = useState<Bobs27Double[]>(createInitialBobs27Doubles);
+  const [showDetails, setShowDetails] = useState(false);
 
   const selectedPlayerResults = results.filter(
     (result) => result.playerId === currentPlayerId && result.exerciseId === activeExerciseId
   );
-
   const monthlyStats = activeExercise
     ? calculateTrainingMonthlyStats(results, activeExercise, {
         playerId: currentPlayerId,
         month: currentMonthKey(),
       })
     : null;
-
   const scoreStats = monthlyStats?.metrics.find((metric) => metric.key === "score") ?? null;
   const shanghaiStats = monthlyStats?.metrics.find((metric) => metric.key === "shanghaiCount") ?? null;
   const checkoutPercentStats = monthlyStats?.metrics.find((metric) => metric.key === "checkoutPercent") ?? null;
@@ -109,106 +131,155 @@ export default function TrainingPage() {
   const checkoutPercentPersonalBest = personalBest(selectedPlayerResults, "checkoutPercent", "higherIsBetter");
   const highestCheckoutPersonalBest = personalBest(selectedPlayerResults, "highestCheckout", "higherIsBetter");
   const hitPercentPersonalBest = personalBest(selectedPlayerResults, "hitPercent", "higherIsBetter");
-  const jdcScore = Number(scoreInput);
-  const shanghaiCount = Number(shanghaiInput);
-  const canSaveJdc =
-    activeExerciseId === JDC_CHALLENGE_EXERCISE_ID &&
-    !!activeExercise &&
-    Number.isInteger(jdcScore) &&
-    jdcScore >= 0 &&
-    Number.isInteger(shanghaiCount) &&
-    shanghaiCount >= 0;
-  const catch40Summary = calculateCatch40Summary(catch40Targets);
-  const canSaveCatch40 = activeExerciseId === CATCH_40_EXERCISE_ID && !!activeExercise;
+  const jdcState = calculateJdcState(jdcThrows);
+  const catch40State = calculateCatch40State(catch40Results);
   const bobs27Summary = calculateBobs27Summary(bobs27Doubles);
-  const canSaveBobs27 = activeExerciseId === BOBS_27_EXERCISE_ID && !!activeExercise;
 
   function refreshResults() {
     setResults(getTrainingResultsForPlayer(currentPlayerId));
   }
 
   function handleExerciseChange(exerciseId: ExerciseId) {
+    if ((jdcThrows.length > 0 || catch40Results.length > 0) && !lastSavedResult) {
+      const confirmed = window.confirm("Afbryd den aktive træning?");
+      if (!confirmed) return;
+    }
+
     setActiveExerciseId(exerciseId);
     setLastSavedResult(null);
-    setShowCatch40Details(false);
-    setShowBobs27Details(false);
+    setShowDetails(false);
+    setJdcThrows([]);
+    setCatch40Results([]);
   }
 
-  function handleSaveJdc() {
-    if (!activeExercise || !canSaveJdc) return;
-
-    const result: TrainingResult = {
-      id: `training-${JDC_CHALLENGE_EXERCISE_ID}-${currentPlayerId}-${Date.now()}`,
+  function buildTrainingResult(exerciseId: ExerciseId, metrics: TrainingResult["metrics"], details?: TrainingResult["details"]) {
+    return {
+      id: `training-${exerciseId}-${currentPlayerId}-${Date.now()}`,
       clubId: currentClubId,
       playerId: currentPlayerId,
-      exerciseId: activeExercise.id,
+      exerciseId,
       completedAt: new Date().toISOString(),
-      metrics: {
-        score: jdcScore,
-        shanghaiCount,
-      },
+      metrics,
+      details,
     };
+  }
 
+  function saveFinishedResult(result: TrainingResult) {
     saveTrainingResult(result);
     refreshResults();
     setLastSavedResult(result);
-    setScoreInput("");
-    setShanghaiInput("");
+    setShowDetails(false);
   }
 
-  function handleSaveCatch40() {
-    if (!activeExercise || !canSaveCatch40) return;
+  function handleJdcInput(value: JdcThrow) {
+    if (lastSavedResult || jdcState.isComplete) return;
+    const nextThrows = [...jdcThrows, value];
+    setJdcThrows(nextThrows);
 
-    const result: TrainingResult = {
-      id: `training-${CATCH_40_EXERCISE_ID}-${currentPlayerId}-${Date.now()}`,
-      clubId: currentClubId,
-      playerId: currentPlayerId,
-      exerciseId: activeExercise.id,
-      completedAt: new Date().toISOString(),
-      metrics: {
-        score: catch40Summary.score,
-        checkouts: catch40Summary.checkouts,
-        checkoutAttempts: catch40Summary.checkoutAttempts,
-        checkoutPercent: catch40Summary.checkoutPercent,
-        highestCheckout: catch40Summary.highestCheckout,
-      },
-      details: {
-        checkouts: catch40Targets.map((target) => ({ ...target })),
-      },
-    };
+    const nextState = calculateJdcState(nextThrows);
+    if (nextState.isComplete) {
+      saveFinishedResult(buildTrainingResult(
+        JDC_CHALLENGE_EXERCISE_ID,
+        {
+          score: nextState.score,
+          shanghaiCount: nextState.shanghaiCount,
+        },
+        {
+          rounds: nextState.details,
+          throws: nextThrows,
+          totalDarts: JDC_TOTAL_DARTS,
+        }
+      ));
+    }
+  }
 
-    saveTrainingResult(result);
+  function handleCatch40Input(dartsUsed: number | "no") {
+    if (lastSavedResult || catch40State.isComplete) return;
+    const checkoutValue = CATCH_40_TARGETS[catch40Results.length];
+    if (!checkoutValue) return;
+
+    const hit = dartsUsed !== "no";
+    const resolvedDartsUsed = dartsUsed === "no" ? 6 : dartsUsed;
+    const points = calculateCatch40Points(checkoutValue, dartsUsed);
+    const nextResults = [
+      ...catch40Results,
+      {
+        checkoutValue,
+        hit,
+        dartsUsed: resolvedDartsUsed,
+        points,
+      },
+    ];
+    setCatch40Results(nextResults);
+
+    const nextState = calculateCatch40State(nextResults);
+    if (nextState.isComplete) {
+      saveFinishedResult(buildTrainingResult(
+        CATCH_40_EXERCISE_ID,
+        {
+          score: nextState.score,
+          checkouts: nextState.checkouts,
+          checkoutAttempts: nextState.checkoutAttempts,
+          checkoutPercent: nextState.checkoutPercent,
+          highestCheckout: nextState.highestCheckout,
+        },
+        {
+          checkouts: nextResults,
+        }
+      ));
+    }
+  }
+
+  function handleUndo() {
+    if (lastSavedResult) return;
+
+    if (activeExerciseId === JDC_CHALLENGE_EXERCISE_ID) {
+      setJdcThrows((throws) => throws.slice(0, -1));
+    }
+
+    if (activeExerciseId === CATCH_40_EXERCISE_ID) {
+      setCatch40Results((items) => items.slice(0, -1));
+    }
+  }
+
+  function handleAbort() {
+    if (lastSavedResult) {
+      handlePlayAgain();
+      return;
+    }
+
+    if (!jdcThrows.length && !catch40Results.length) return;
+    const confirmed = window.confirm("Afbryd træningen? Resultatet gemmes ikke.");
+    if (!confirmed) return;
+    setJdcThrows([]);
+    setCatch40Results([]);
+    setShowDetails(false);
+  }
+
+  function handlePlayAgain() {
+    setLastSavedResult(null);
+    setShowDetails(false);
+    setJdcThrows([]);
+    setCatch40Results([]);
+    setBobs27Doubles(createInitialBobs27Doubles());
     refreshResults();
-    setLastSavedResult(result);
-    setCatch40Targets(createInitialCatch40Targets());
-    setShowCatch40Details(false);
   }
 
   function handleSaveBobs27() {
-    if (!activeExercise || !canSaveBobs27) return;
-
-    const result: TrainingResult = {
-      id: `training-${BOBS_27_EXERCISE_ID}-${currentPlayerId}-${Date.now()}`,
-      clubId: currentClubId,
-      playerId: currentPlayerId,
-      exerciseId: activeExercise.id,
-      completedAt: new Date().toISOString(),
-      metrics: {
+    if (!activeExercise) return;
+    const result = buildTrainingResult(
+      BOBS_27_EXERCISE_ID,
+      {
         score: bobs27Summary.score,
         hits: bobs27Summary.hits,
         attempts: bobs27Summary.attempts,
         hitPercent: bobs27Summary.hitPercent,
       },
-      details: {
+      {
         doubles: bobs27Doubles.map((double) => ({ ...double })),
-      },
-    };
-
-    saveTrainingResult(result);
-    refreshResults();
-    setLastSavedResult(result);
-    setBobs27Doubles(createInitialBobs27Doubles());
-    setShowBobs27Details(false);
+      }
+    );
+    saveFinishedResult(result);
   }
 
   return (
@@ -221,121 +292,163 @@ export default function TrainingPage() {
         <div className="mb-5">
           <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-400">Træning</p>
           <h1 className="mt-2 text-3xl font-black sm:text-4xl">{activeExercise?.name ?? "Træning"}</h1>
-          <p className="mt-2 text-base text-gray-400">{currentClub.name} · individuel træning</p>
+          <p className="mt-2 text-base text-gray-400">{currentClub.name} · træner som {currentPlayer.name}</p>
         </div>
 
         <div className="mb-5 grid gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2 sm:grid-cols-3">
           <ExerciseTab
             active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
             title="JDC Challenge"
-            description="Score og Shanghai"
+            description="57 pile"
             onClick={() => handleExerciseChange(JDC_CHALLENGE_EXERCISE_ID)}
           />
           <ExerciseTab
             active={activeExerciseId === CATCH_40_EXERCISE_ID}
             title="Catch 40"
-            description="Checkout 61-100"
+            description="61-100"
             onClick={() => handleExerciseChange(CATCH_40_EXERCISE_ID)}
           />
           <ExerciseTab
             active={activeExerciseId === BOBS_27_EXERCISE_ID}
             title="Bob's 27"
-            description="Doubles D1-D20"
+            description="D1-D20"
             onClick={() => handleExerciseChange(BOBS_27_EXERCISE_ID)}
           />
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
-            <div className="grid gap-4">
-              <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-                <div className="text-xs font-black uppercase tracking-wide text-gray-500">Træner som</div>
-                <div className="mt-1 text-lg font-black text-white">{currentPlayer.name}</div>
-              </div>
-
-              {activeExerciseId === JDC_CHALLENGE_EXERCISE_ID ? (
-                <JdcForm
-                  scoreInput={scoreInput}
-                  shanghaiInput={shanghaiInput}
-                  canSave={canSaveJdc}
-                  onScoreChange={setScoreInput}
-                  onShanghaiChange={setShanghaiInput}
-                  onSave={handleSaveJdc}
-                />
-              ) : activeExerciseId === CATCH_40_EXERCISE_ID ? (
-                <Catch40Form
-                  targets={catch40Targets}
-                  summary={catch40Summary}
-                  onTargetsChange={setCatch40Targets}
-                  onSave={handleSaveCatch40}
-                />
-              ) : (
-                <Bobs27Form
-                  doubles={bobs27Doubles}
-                  summary={bobs27Summary}
-                  onDoublesChange={setBobs27Doubles}
-                  onSave={handleSaveBobs27}
-                />
-              )}
-            </div>
-          </section>
-
-          <aside className="grid gap-5">
-            {activeExerciseId === JDC_CHALLENGE_EXERCISE_ID ? (
-              <JdcStats
-                scorePersonalBest={scorePersonalBest}
-                shanghaiPersonalBest={shanghaiPersonalBest}
-                monthlyStats={monthlyStats}
-                scoreStats={scoreStats}
-                shanghaiStats={shanghaiStats}
-              />
-            ) : activeExerciseId === CATCH_40_EXERCISE_ID ? (
-              <Catch40Stats
-                scorePersonalBest={scorePersonalBest}
-                checkoutPercentPersonalBest={checkoutPercentPersonalBest}
-                highestCheckoutPersonalBest={highestCheckoutPersonalBest}
-                monthlyStats={monthlyStats}
-                scoreStats={scoreStats}
-                checkoutPercentStats={checkoutPercentStats}
-              />
-            ) : (
-              <Bobs27Stats
-                scorePersonalBest={scorePersonalBest}
-                hitPercentPersonalBest={hitPercentPersonalBest}
-                monthlyStats={monthlyStats}
-                scoreStats={scoreStats}
-                hitPercentStats={hitPercentStats}
-              />
-            )}
-          </aside>
-        </div>
-
         {lastSavedResult ? (
-          <SavedResult
+          <ResultScreen
             result={lastSavedResult}
             exercise={activeExercise}
-            showCatch40Details={showCatch40Details}
-            showBobs27Details={showBobs27Details}
-            onToggleCatch40Details={() => setShowCatch40Details((value) => !value)}
-            onToggleBobs27Details={() => setShowBobs27Details((value) => !value)}
+            scorePersonalBest={scorePersonalBest}
+            shanghaiPersonalBest={shanghaiPersonalBest}
+            checkoutPercentPersonalBest={checkoutPercentPersonalBest}
+            highestCheckoutPersonalBest={highestCheckoutPersonalBest}
+            hitPercentPersonalBest={hitPercentPersonalBest}
+            monthlyStats={monthlyStats}
+            scoreStats={scoreStats}
+            shanghaiStats={shanghaiStats}
+            checkoutPercentStats={checkoutPercentStats}
+            hitPercentStats={hitPercentStats}
+            showDetails={showDetails}
+            onToggleDetails={() => setShowDetails((value) => !value)}
+            onPlayAgain={handlePlayAgain}
           />
-        ) : null}
+        ) : activeExerciseId === JDC_CHALLENGE_EXERCISE_ID ? (
+          <JdcGameplay
+            state={jdcState}
+            scorePersonalBest={scorePersonalBest}
+            onInput={handleJdcInput}
+            onUndo={handleUndo}
+            onAbort={handleAbort}
+          />
+        ) : activeExerciseId === CATCH_40_EXERCISE_ID ? (
+          <Catch40Gameplay
+            state={catch40State}
+            scorePersonalBest={scorePersonalBest}
+            onInput={handleCatch40Input}
+            onUndo={handleUndo}
+            onAbort={handleAbort}
+          />
+        ) : (
+          <Bobs27Manual
+            doubles={bobs27Doubles}
+            summary={bobs27Summary}
+            scorePersonalBest={scorePersonalBest}
+            hitPercentPersonalBest={hitPercentPersonalBest}
+            monthlyStats={monthlyStats}
+            scoreStats={scoreStats}
+            hitPercentStats={hitPercentStats}
+            onDoublesChange={setBobs27Doubles}
+            onSave={handleSaveBobs27}
+          />
+        )}
       </section>
     </main>
   );
 }
 
-function calculateCatch40Summary(targets: Catch40Target[]) {
-  const hitTargets = targets.filter((target) => target.hit);
-  const checkouts = hitTargets.length;
-  const checkoutAttempts = targets.reduce((sum, target) => sum + target.attempts, 0);
+function calculateJdcState(throws: JdcThrow[]) {
+  let cursor = 0;
+  let score = 0;
+  let shanghaiCount = 0;
+  const details: JdcDetail[] = [];
+  let currentStep: JdcStep | null = null;
+  let currentDart = 1;
+
+  for (const step of JDC_STEPS) {
+    const stepThrows = throws.slice(cursor, cursor + step.darts);
+    const complete = stepThrows.length === step.darts;
+
+    if (step.phase === "shanghai") {
+      const target = step.target as number;
+      const basePoints = stepThrows.reduce((sum, value) => sum + jdcThrowPoints(target, value), 0);
+      const shanghai = complete && ["single", "double", "triple"].every((value) => stepThrows.includes(value as JdcThrow));
+      const points = basePoints + (shanghai ? 100 : 0);
+      score += points;
+      shanghaiCount += shanghai ? 1 : 0;
+      details.push({ phase: step.phase, target, darts: stepThrows, points, shanghai });
+    } else {
+      const hit = stepThrows[0] && stepThrows[0] !== "miss";
+      const points = hit ? (step.target === "bull" ? 100 : 50) : 0;
+      score += points;
+      details.push({ phase: step.phase, target: step.target, darts: stepThrows, points });
+    }
+
+    if (!complete) {
+      currentStep = step;
+      currentDart = stepThrows.length + 1;
+      break;
+    }
+
+    cursor += step.darts;
+  }
 
   return {
-    score: hitTargets.reduce((sum, target) => sum + target.checkoutValue, 0),
+    score,
+    shanghaiCount,
+    details,
+    throwsUsed: throws.length,
+    dartsRemaining: JDC_TOTAL_DARTS - throws.length,
+    currentStep,
+    currentDart,
+    isComplete: throws.length >= JDC_TOTAL_DARTS,
+  };
+}
+
+function jdcThrowPoints(target: number, value: JdcThrow) {
+  if (value === "single") return target;
+  if (value === "double") return target * 2;
+  if (value === "triple") return target * 3;
+  return 0;
+}
+
+function calculateCatch40Points(checkoutValue: number, dartsUsed: number | "no") {
+  if (dartsUsed === "no") return 0;
+  if (checkoutValue === 99 && dartsUsed === 3) return 3;
+  if (dartsUsed === 2) return 3;
+  if (dartsUsed === 3) return 2;
+  return 1;
+}
+
+function calculateCatch40State(results: Catch40Result[]) {
+  const checkouts = results.filter((result) => result.hit).length;
+  const highestCheckout = results.reduce(
+    (highest, result) => result.hit ? Math.max(highest, result.checkoutValue) : highest,
+    0
+  );
+
+  return {
+    score: results.reduce((sum, result) => sum + result.points, 0),
     checkouts,
-    checkoutAttempts,
-    checkoutPercent: calculateCheckoutPercent(checkouts, checkoutAttempts),
-    highestCheckout: hitTargets.reduce((highest, target) => Math.max(highest, target.checkoutValue), 0),
+    checkoutAttempts: results.length,
+    checkoutPercent: percent(checkouts, results.length),
+    highestCheckout,
+    currentTarget: CATCH_40_TARGETS[results.length] ?? null,
+    completedTargets: results.length,
+    remainingTargets: CATCH_40_TARGETS.length - results.length,
+    isComplete: results.length >= CATCH_40_TARGETS.length,
+    details: results,
   };
 }
 
@@ -351,24 +464,26 @@ function calculateBobs27Summary(doubles: Bobs27Double[]) {
     score,
     hits,
     attempts,
-    hitPercent: calculateHitPercent(hits, attempts),
+    hitPercent: percent(hits, attempts),
   };
 }
 
-function getCatch40Details(result: TrainingResult): Catch40Target[] {
+function getCatch40Details(result: TrainingResult): Catch40Result[] {
   const checkouts = result.details?.checkouts;
   if (!Array.isArray(checkouts)) return [];
 
-  return checkouts.filter((target): target is Catch40Target => {
+  return checkouts.filter((target): target is Catch40Result => {
     return (
       typeof target === "object" &&
       target !== null &&
       "checkoutValue" in target &&
       "hit" in target &&
-      "attempts" in target &&
+      "dartsUsed" in target &&
+      "points" in target &&
       typeof target.checkoutValue === "number" &&
       typeof target.hit === "boolean" &&
-      typeof target.attempts === "number"
+      typeof target.dartsUsed === "number" &&
+      typeof target.points === "number"
     );
   });
 }
@@ -416,149 +531,222 @@ function ExerciseTab({
   );
 }
 
-function JdcForm({
-  scoreInput,
-  shanghaiInput,
-  canSave,
-  onScoreChange,
-  onShanghaiChange,
-  onSave,
+function JdcGameplay({
+  state,
+  scorePersonalBest,
+  onInput,
+  onUndo,
+  onAbort,
 }: {
-  scoreInput: string;
-  shanghaiInput: string;
-  canSave: boolean;
-  onScoreChange: (value: string) => void;
-  onShanghaiChange: (value: string) => void;
-  onSave: () => void;
+  state: ReturnType<typeof calculateJdcState>;
+  scorePersonalBest: number | null;
+  onInput: (value: JdcThrow) => void;
+  onUndo: () => void;
+  onAbort: () => void;
 }) {
-  return (
-    <>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <NumberField label="Score" value={scoreInput} onChange={onScoreChange} />
-        <NumberField label="Shanghai" value={shanghaiInput} onChange={onShanghaiChange} />
-      </div>
+  const isDoublePhase = state.currentStep?.phase === "double";
 
-      <SaveButton disabled={!canSave} onClick={onSave} />
-    </>
+  return (
+    <GameplayShell
+      eyebrow={isDoublePhase ? "Doubles around the world" : "Shanghai"}
+      target={state.currentStep?.label ?? "Færdig"}
+      meta={`${state.throwsUsed}/${JDC_TOTAL_DARTS} pile · ${state.dartsRemaining} tilbage`}
+      stats={[
+        { label: "Score", value: state.score },
+        { label: "Shanghai", value: state.shanghaiCount },
+        { label: "Pil", value: state.currentStep ? `${state.currentDart}/${state.currentStep.darts}` : "-" },
+        { label: "PR", value: scorePersonalBest ?? "-" },
+      ]}
+      onUndo={onUndo}
+      onAbort={onAbort}
+      canUndo={state.throwsUsed > 0}
+    >
+      {isDoublePhase ? (
+        <div className="grid grid-cols-2 gap-3">
+          <TouchButton label="HIT" tone="green" onClick={() => onInput("single")} />
+          <TouchButton label="NO HIT" tone="red" onClick={() => onInput("miss")} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <TouchButton label="SINGLE" tone="green" onClick={() => onInput("single")} />
+          <TouchButton label="DOUBLE" tone="amber" onClick={() => onInput("double")} />
+          <TouchButton label="TRIPLE" tone="orange" onClick={() => onInput("triple")} />
+          <TouchButton label="NO HIT" tone="red" onClick={() => onInput("miss")} />
+        </div>
+      )}
+    </GameplayShell>
   );
 }
 
-function Catch40Form({
-  targets,
-  summary,
-  onTargetsChange,
-  onSave,
+function Catch40Gameplay({
+  state,
+  scorePersonalBest,
+  onInput,
+  onUndo,
+  onAbort,
 }: {
-  targets: Catch40Target[];
-  summary: ReturnType<typeof calculateCatch40Summary>;
-  onTargetsChange: (targets: Catch40Target[]) => void;
-  onSave: () => void;
+  state: ReturnType<typeof calculateCatch40State>;
+  scorePersonalBest: number | null;
+  onInput: (dartsUsed: number | "no") => void;
+  onUndo: () => void;
+  onAbort: () => void;
 }) {
-  function updateTarget(checkoutValue: number, changes: Partial<Catch40Target>) {
-    onTargetsChange(
-      targets.map((target) => target.checkoutValue === checkoutValue ? { ...target, ...changes } : target)
-    );
-  }
-
   return (
-    <>
-      <div className="grid gap-3 sm:grid-cols-4">
-        <StatTile label="Score" value={summary.score} />
-        <StatTile label="Ramt" value={summary.checkouts} />
-        <StatTile label="Lukke %" value={`${summary.checkoutPercent}%`} />
-        <StatTile label="Højeste" value={summary.highestCheckout || "-"} />
+    <GameplayShell
+      eyebrow="Catch 40"
+      target={state.currentTarget ? String(state.currentTarget) : "Færdig"}
+      meta={`${state.completedTargets}/${CATCH_40_TARGETS.length} targets · ${state.remainingTargets} tilbage`}
+      stats={[
+        { label: "Score", value: state.score },
+        { label: "Finishes", value: state.checkouts },
+        { label: "Lukke %", value: `${state.checkoutPercent}%` },
+        { label: "PR", value: scorePersonalBest ?? "-" },
+      ]}
+      onUndo={onUndo}
+      onAbort={onAbort}
+      canUndo={state.completedTargets > 0}
+    >
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <TouchButton label="2 DARTS" tone="green" onClick={() => onInput(2)} />
+        <TouchButton label="3 DARTS" tone="green" onClick={() => onInput(3)} />
+        <TouchButton label="4 DARTS" tone="amber" onClick={() => onInput(4)} />
+        <TouchButton label="5 DARTS" tone="amber" onClick={() => onInput(5)} />
+        <TouchButton label="6 DARTS" tone="orange" onClick={() => onInput(6)} />
+        <TouchButton label="NO" tone="red" onClick={() => onInput("no")} />
       </div>
+    </GameplayShell>
+  );
+}
 
-      <div className="max-h-[34rem] overflow-y-auto rounded-xl border border-gray-800 bg-gray-950">
-        <div className="sticky top-0 grid grid-cols-[4rem_minmax(0,1fr)_6rem] gap-2 border-b border-gray-800 bg-gray-950 px-3 py-2 text-[0.68rem] font-black uppercase tracking-wide text-gray-500">
-          <div>CO</div>
-          <div>Resultat</div>
-          <div className="text-right">Forsøg</div>
-        </div>
-        <div className="divide-y divide-gray-800">
-          {targets.map((target) => (
-            <div
-              key={target.checkoutValue}
-              className="grid min-h-13 grid-cols-[4rem_minmax(0,1fr)_6rem] items-center gap-2 px-3 py-2"
+function GameplayShell({
+  eyebrow,
+  target,
+  meta,
+  stats,
+  children,
+  canUndo,
+  onUndo,
+  onAbort,
+}: {
+  eyebrow: string;
+  target: string;
+  meta: string;
+  stats: { label: string; value: string | number }[];
+  children: React.ReactNode;
+  canUndo: boolean;
+  onUndo: () => void;
+  onAbort: () => void;
+}) {
+  return (
+    <div className="grid gap-4">
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">{eyebrow}</div>
+            <div className="mt-2 text-7xl font-black leading-none text-white sm:text-8xl">{target}</div>
+            <div className="mt-2 text-sm font-bold text-gray-500">{meta}</div>
+          </div>
+          <div className="grid gap-2">
+            <button
+              type="button"
+              disabled={!canUndo}
+              onClick={onUndo}
+              className="rounded-xl border border-gray-700 px-4 py-3 text-sm font-black text-gray-300 transition hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-30"
             >
-              <div className="text-xl font-black tabular-nums text-white">{target.checkoutValue}</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => updateTarget(target.checkoutValue, { hit: true })}
-                  className={`rounded-lg px-3 py-2 text-sm font-black ${
-                    target.hit ? "bg-emerald-500 text-gray-950" : "bg-gray-900 text-gray-400 hover:bg-gray-800"
-                  }`}
-                >
-                  HIT
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateTarget(target.checkoutValue, { hit: false })}
-                  className={`rounded-lg px-3 py-2 text-sm font-black ${
-                    !target.hit ? "bg-red-500 text-white" : "bg-gray-900 text-gray-400 hover:bg-gray-800"
-                  }`}
-                >
-                  MISS
-                </button>
-              </div>
-              <select
-                value={target.attempts}
-                onChange={(event) => updateTarget(target.checkoutValue, { attempts: Number(event.target.value) })}
-                className="h-10 rounded-lg border border-gray-700 bg-gray-900 px-2 text-right font-black text-white outline-none focus:border-orange-500"
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-              </select>
-            </div>
+              UNDO
+            </button>
+            <button
+              type="button"
+              onClick={onAbort}
+              className="rounded-xl border border-red-900 px-4 py-3 text-sm font-black text-red-300 transition hover:bg-red-950"
+            >
+              AFBRYD
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {stats.map((stat) => (
+            <StatTile key={stat.label} label={stat.label} value={stat.value} />
           ))}
         </div>
-      </div>
+      </section>
 
-      <SaveButton disabled={false} onClick={onSave} />
-    </>
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+        {children}
+      </section>
+    </div>
   );
 }
 
-function Bobs27Form({
+function TouchButton({
+  label,
+  tone,
+  onClick,
+}: {
+  label: string;
+  tone: "green" | "amber" | "orange" | "red";
+  onClick: () => void;
+}) {
+  const classes = {
+    green: "bg-emerald-500 text-gray-950 hover:bg-emerald-400",
+    amber: "bg-yellow-400 text-gray-950 hover:bg-yellow-300",
+    orange: "bg-orange-500 text-gray-950 hover:bg-orange-400",
+    red: "bg-red-600 text-white hover:bg-red-500",
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-24 rounded-2xl px-4 py-5 text-2xl font-black transition active:scale-[0.98] ${classes[tone]}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function Bobs27Manual({
   doubles,
   summary,
+  scorePersonalBest,
+  hitPercentPersonalBest,
+  monthlyStats,
+  scoreStats,
+  hitPercentStats,
   onDoublesChange,
   onSave,
 }: {
   doubles: Bobs27Double[];
   summary: ReturnType<typeof calculateBobs27Summary>;
+  scorePersonalBest: number | null;
+  hitPercentPersonalBest: number | null;
+  monthlyStats: ReturnType<typeof calculateTrainingMonthlyStats> | null;
+  scoreStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
+  hitPercentStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
   onDoublesChange: (doubles: Bobs27Double[]) => void;
   onSave: () => void;
 }) {
   function updateDouble(doubleValue: number, hits: number) {
-    onDoublesChange(
-      doubles.map((double) => double.doubleValue === doubleValue ? { ...double, hits } : double)
-    );
+    onDoublesChange(doubles.map((double) => double.doubleValue === doubleValue ? { ...double, hits } : double));
   }
 
   return (
-    <>
-      <div className="grid gap-3 sm:grid-cols-4">
-        <StatTile label="Score" value={summary.score} />
-        <StatTile label="Hits" value={summary.hits} />
-        <StatTile label="Forsøg" value={summary.attempts} />
-        <StatTile label="Træf %" value={`${summary.hitPercent}%`} />
-      </div>
-
-      <div className="max-h-[34rem] overflow-y-auto rounded-xl border border-gray-800 bg-gray-950">
-        <div className="sticky top-0 grid grid-cols-[4rem_minmax(0,1fr)] gap-2 border-b border-gray-800 bg-gray-950 px-3 py-2 text-[0.68rem] font-black uppercase tracking-wide text-gray-500">
-          <div>Double</div>
-          <div>Hits ud af 3</div>
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <StatTile label="Score" value={summary.score} />
+          <StatTile label="Hits" value={summary.hits} />
+          <StatTile label="Forsøg" value={summary.attempts} />
+          <StatTile label="Træf %" value={`${summary.hitPercent}%`} />
         </div>
-        <div className="divide-y divide-gray-800">
+        <div className="mt-4 max-h-[34rem] overflow-y-auto rounded-xl border border-gray-800 bg-gray-950">
           {doubles.map((double) => (
             <div
               key={double.doubleValue}
-              className="grid min-h-13 grid-cols-[4rem_minmax(0,1fr)] items-center gap-2 px-3 py-2"
+              className="grid min-h-13 grid-cols-[4rem_minmax(0,1fr)] items-center gap-2 border-b border-gray-800 px-3 py-2 last:border-b-0"
             >
-              <div className="text-xl font-black tabular-nums text-white">D{double.doubleValue}</div>
+              <div className="text-xl font-black tabular-nums">D{double.doubleValue}</div>
               <div className="grid grid-cols-4 gap-2">
                 {[0, 1, 2, 3].map((hits) => (
                   <button
@@ -566,9 +754,7 @@ function Bobs27Form({
                     type="button"
                     onClick={() => updateDouble(double.doubleValue, hits)}
                     className={`rounded-lg px-3 py-2 text-sm font-black ${
-                      double.hits === hits
-                        ? "bg-orange-500 text-gray-950"
-                        : "bg-gray-900 text-gray-400 hover:bg-gray-800"
+                      double.hits === hits ? "bg-orange-500 text-gray-950" : "bg-gray-900 text-gray-400 hover:bg-gray-800"
                     }`}
                   >
                     {hits}
@@ -578,154 +764,141 @@ function Bobs27Form({
             </div>
           ))}
         </div>
-      </div>
-
-      <SaveButton disabled={false} onClick={onSave} />
-    </>
+        <button
+          type="button"
+          onClick={onSave}
+          className="mt-4 h-14 w-full rounded-xl bg-orange-500 px-5 text-base font-black text-gray-950 transition hover:bg-orange-400"
+        >
+          Gem træning
+        </button>
+      </section>
+      <aside className="grid gap-5">
+        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+          <h2 className="text-lg font-black">Personlige rekorder</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <StatTile label="Score" value={scorePersonalBest ?? "-"} />
+            <StatTile label="Træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
+          </div>
+        </section>
+        <MonthlyStatsPanel
+          monthlyStats={monthlyStats}
+          scoreStats={scoreStats}
+          extraStats={[{ label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" }]}
+        />
+      </aside>
+    </div>
   );
 }
 
-function NumberField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="grid gap-2">
-      <span className="text-xs font-black uppercase tracking-wide text-gray-500">{label}</span>
-      <input
-        type="number"
-        min="0"
-        inputMode="numeric"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-16 rounded-xl border border-gray-700 bg-gray-950 px-4 text-3xl font-black tabular-nums text-white outline-none transition focus:border-orange-500"
-        placeholder="0"
-      />
-    </label>
-  );
-}
-
-function SaveButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="h-14 rounded-xl bg-orange-500 px-5 text-base font-black text-gray-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      Gem træning
-    </button>
-  );
-}
-
-function JdcStats({
+function ResultScreen({
+  result,
+  exercise,
   scorePersonalBest,
   shanghaiPersonalBest,
-  monthlyStats,
-  scoreStats,
-  shanghaiStats,
-}: {
-  scorePersonalBest: number | null;
-  shanghaiPersonalBest: number | null;
-  monthlyStats: ReturnType<typeof calculateTrainingMonthlyStats> | null;
-  scoreStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
-  shanghaiStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
-}) {
-  return (
-    <>
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-        <h2 className="text-lg font-black">Personlige rekorder</h2>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <StatTile label="Score" value={scorePersonalBest ?? "-"} />
-          <StatTile label="Shanghai" value={shanghaiPersonalBest ?? "-"} />
-        </div>
-      </section>
-
-      <MonthlyStatsPanel
-        monthlyStats={monthlyStats}
-        scoreStats={scoreStats}
-        extraStats={[
-          { label: "Shanghai total", value: shanghaiStats?.currentTotal ?? "-" },
-          { label: "Shanghai snit", value: shanghaiStats?.currentAverage ?? "-" },
-        ]}
-      />
-    </>
-  );
-}
-
-function Catch40Stats({
-  scorePersonalBest,
   checkoutPercentPersonalBest,
   highestCheckoutPersonalBest,
-  monthlyStats,
-  scoreStats,
-  checkoutPercentStats,
-}: {
-  scorePersonalBest: number | null;
-  checkoutPercentPersonalBest: number | null;
-  highestCheckoutPersonalBest: number | null;
-  monthlyStats: ReturnType<typeof calculateTrainingMonthlyStats> | null;
-  scoreStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
-  checkoutPercentStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
-}) {
-  return (
-    <>
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-        <h2 className="text-lg font-black">Personlige rekorder</h2>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <StatTile label="Score" value={scorePersonalBest ?? "-"} />
-          <StatTile label="Lukke %" value={checkoutPercentPersonalBest !== null ? `${checkoutPercentPersonalBest}%` : "-"} />
-          <StatTile label="Højeste luk" value={highestCheckoutPersonalBest ?? "-"} />
-        </div>
-      </section>
-
-      <MonthlyStatsPanel
-        monthlyStats={monthlyStats}
-        scoreStats={scoreStats}
-        extraStats={[
-          { label: "Snit lukke %", value: checkoutPercentStats?.currentAverage ?? "-" },
-        ]}
-      />
-    </>
-  );
-}
-
-function Bobs27Stats({
-  scorePersonalBest,
   hitPercentPersonalBest,
   monthlyStats,
   scoreStats,
+  shanghaiStats,
+  checkoutPercentStats,
   hitPercentStats,
+  showDetails,
+  onToggleDetails,
+  onPlayAgain,
 }: {
+  result: TrainingResult;
+  exercise: TrainingExercise | null;
   scorePersonalBest: number | null;
+  shanghaiPersonalBest: number | null;
+  checkoutPercentPersonalBest: number | null;
+  highestCheckoutPersonalBest: number | null;
   hitPercentPersonalBest: number | null;
   monthlyStats: ReturnType<typeof calculateTrainingMonthlyStats> | null;
   scoreStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
+  shanghaiStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
+  checkoutPercentStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
   hitPercentStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
+  showDetails: boolean;
+  onToggleDetails: () => void;
+  onPlayAgain: () => void;
 }) {
+  const isJdc = result.exerciseId === JDC_CHALLENGE_EXERCISE_ID;
+  const isCatch40 = result.exerciseId === CATCH_40_EXERCISE_ID;
+  const isBobs27 = result.exerciseId === BOBS_27_EXERCISE_ID;
+
   return (
-    <>
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-        <h2 className="text-lg font-black">Personlige rekorder</h2>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <StatTile label="Score" value={scorePersonalBest ?? "-"} />
-          <StatTile label="Træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
+    <div className="grid gap-5">
+      <section className="rounded-2xl border border-emerald-700/60 bg-emerald-950/40 p-5">
+        <p className="text-sm font-black uppercase tracking-wide text-emerald-300">Gennemført</p>
+        <h2 className="mt-1 text-3xl font-black">{exercise?.name ?? "Træning"}</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <StatTile label="Score" value={numericMetric(result, "score") ?? "-"} />
+          {isJdc ? (
+            <>
+              <StatTile label="Shanghai" value={numericMetric(result, "shanghaiCount") ?? 0} />
+              <StatTile label="PR score" value={scorePersonalBest ?? "-"} />
+              <StatTile label="PR Shanghai" value={shanghaiPersonalBest ?? "-"} />
+            </>
+          ) : isCatch40 ? (
+            <>
+              <StatTile label="Finishes" value={numericMetric(result, "checkouts") ?? 0} />
+              <StatTile label="Lukke %" value={`${numericMetric(result, "checkoutPercent") ?? 0}%`} />
+              <StatTile label="Højeste" value={numericMetric(result, "highestCheckout") || "-"} />
+            </>
+          ) : isBobs27 ? (
+            <>
+              <StatTile label="Hits" value={numericMetric(result, "hits") ?? 0} />
+              <StatTile label="Forsøg" value={numericMetric(result, "attempts") ?? 0} />
+              <StatTile label="Træf %" value={`${numericMetric(result, "hitPercent") ?? 0}%`} />
+            </>
+          ) : null}
+        </div>
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onPlayAgain}
+            className="rounded-xl bg-orange-500 px-5 py-4 text-base font-black text-gray-950 transition hover:bg-orange-400"
+          >
+            Spil igen
+          </button>
+          {(isCatch40 || isBobs27) ? (
+            <button
+              type="button"
+              onClick={onToggleDetails}
+              className="rounded-xl border border-emerald-600 px-5 py-4 text-base font-black text-emerald-200 transition hover:bg-emerald-900"
+            >
+              {showDetails ? "Skjul detaljer" : "Se detaljer"}
+            </button>
+          ) : null}
         </div>
       </section>
 
       <MonthlyStatsPanel
         monthlyStats={monthlyStats}
         scoreStats={scoreStats}
-        extraStats={[
-          { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
-        ]}
+        extraStats={
+          isJdc
+            ? [
+                { label: "Shanghai total", value: shanghaiStats?.currentTotal ?? "-" },
+                { label: "Shanghai snit", value: shanghaiStats?.currentAverage ?? "-" },
+              ]
+            : isCatch40
+              ? [
+                  { label: "Snit lukke %", value: checkoutPercentStats?.currentAverage ?? "-" },
+                  { label: "PR lukke %", value: checkoutPercentPersonalBest !== null ? `${checkoutPercentPersonalBest}%` : "-" },
+                  { label: "PR højeste luk", value: highestCheckoutPersonalBest ?? "-" },
+                ]
+              : [
+                  { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+                  { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
+                ]
+        }
       />
-    </>
+
+      {showDetails && isCatch40 ? <Catch40DetailsTable details={getCatch40Details(result)} /> : null}
+      {showDetails && isBobs27 ? <Bobs27DetailsTable details={getBobs27Details(result)} /> : null}
+    </div>
   );
 }
 
@@ -741,7 +914,7 @@ function MonthlyStatsPanel({
   return (
     <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
       <h2 className="text-lg font-black">Denne måned</h2>
-      <div className="mt-4 grid gap-2">
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <CompactStat label="Gennemført" value={monthlyStats?.completedCount ?? 0} />
         <CompactStat label="Snit score" value={scoreStats?.currentAverage ?? "-"} />
         <CompactStat label="Bedste score" value={scoreStats?.currentBest ?? "-"} />
@@ -755,115 +928,45 @@ function MonthlyStatsPanel({
   );
 }
 
-function SavedResult({
-  result,
-  exercise,
-  showCatch40Details,
-  showBobs27Details,
-  onToggleCatch40Details,
-  onToggleBobs27Details,
-}: {
-  result: TrainingResult;
-  exercise: TrainingExercise | null;
-  showCatch40Details: boolean;
-  showBobs27Details: boolean;
-  onToggleCatch40Details: () => void;
-  onToggleBobs27Details: () => void;
-}) {
-  const isCatch40 = result.exerciseId === CATCH_40_EXERCISE_ID;
-  const isBobs27 = result.exerciseId === BOBS_27_EXERCISE_ID;
-  const catch40Details = isCatch40 ? getCatch40Details(result) : [];
-  const bobs27Details = isBobs27 ? getBobs27Details(result) : [];
-
+function Catch40DetailsTable({ details }: { details: Catch40Result[] }) {
   return (
-    <section className="mt-5 rounded-2xl border border-emerald-700/60 bg-emerald-950/40 p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-black uppercase tracking-wide text-emerald-300">Gemt</p>
-          <h2 className="mt-1 text-xl font-black">{exercise?.name ?? "Træning"}</h2>
+    <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+      <TableHeader columns={["CO", "Resultat", "Pile", "Point"]} />
+      {details.map((target) => (
+        <div key={target.checkoutValue} className="grid grid-cols-4 border-t border-gray-800 px-4 py-3 text-sm font-bold">
+          <div>{target.checkoutValue}</div>
+          <div className={target.hit ? "text-emerald-300" : "text-red-300"}>{target.hit ? "Hit" : "No"}</div>
+          <div>{target.dartsUsed}</div>
+          <div>{target.points}</div>
         </div>
-        {isCatch40 ? (
-          <button
-            type="button"
-            onClick={onToggleCatch40Details}
-            className="w-fit rounded-xl border border-emerald-600 px-4 py-2 text-sm font-black text-emerald-200 transition hover:bg-emerald-900"
-          >
-            {showCatch40Details ? "Skjul detaljer" : "Se detaljer"}
-          </button>
-        ) : isBobs27 ? (
-          <button
-            type="button"
-            onClick={onToggleBobs27Details}
-            className="w-fit rounded-xl border border-emerald-600 px-4 py-2 text-sm font-black text-emerald-200 transition hover:bg-emerald-900"
-          >
-            {showBobs27Details ? "Skjul detaljer" : "Se detaljer"}
-          </button>
-        ) : null}
-      </div>
-
-      <div className="mt-4 grid gap-2 text-lg font-bold text-white sm:grid-cols-2 lg:grid-cols-4">
-        <div>Score: {numericMetric(result, "score")}</div>
-        {isCatch40 ? (
-          <>
-            <div>Ramt: {numericMetric(result, "checkouts")}</div>
-            <div>Lukke %: {numericMetric(result, "checkoutPercent")}%</div>
-            <div>Højeste luk: {numericMetric(result, "highestCheckout") || "-"}</div>
-          </>
-        ) : isBobs27 ? (
-          <>
-            <div>Hits: {numericMetric(result, "hits")}</div>
-            <div>Forsøg: {numericMetric(result, "attempts")}</div>
-            <div>Træf %: {numericMetric(result, "hitPercent")}%</div>
-          </>
-        ) : (
-          <div>Shanghai: {numericMetric(result, "shanghaiCount")}</div>
-        )}
-      </div>
-
-      {showCatch40Details ? (
-        <div className="mt-4 overflow-hidden rounded-xl border border-emerald-800/70">
-          <div className="grid grid-cols-[4rem_minmax(0,1fr)_5rem] bg-emerald-950 px-3 py-2 text-xs font-black uppercase tracking-wide text-emerald-300">
-            <div>CO</div>
-            <div>Resultat</div>
-            <div className="text-right">Forsøg</div>
-          </div>
-          <div className="grid max-h-80 gap-px overflow-y-auto bg-emerald-900/40">
-            {catch40Details.map((target) => (
-              <div
-                key={target.checkoutValue}
-                className="grid grid-cols-[4rem_minmax(0,1fr)_5rem] bg-gray-950/80 px-3 py-2 text-sm font-bold"
-              >
-                <div>{target.checkoutValue}</div>
-                <div className={target.hit ? "text-emerald-300" : "text-red-300"}>{target.hit ? "Hit" : "Miss"}</div>
-                <div className="text-right tabular-nums">{target.attempts}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {showBobs27Details ? (
-        <div className="mt-4 overflow-hidden rounded-xl border border-emerald-800/70">
-          <div className="grid grid-cols-[4rem_minmax(0,1fr)_5rem] bg-emerald-950 px-3 py-2 text-xs font-black uppercase tracking-wide text-emerald-300">
-            <div>Double</div>
-            <div>Hits</div>
-            <div className="text-right">Forsøg</div>
-          </div>
-          <div className="grid max-h-80 gap-px overflow-y-auto bg-emerald-900/40">
-            {bobs27Details.map((double) => (
-              <div
-                key={double.doubleValue}
-                className="grid grid-cols-[4rem_minmax(0,1fr)_5rem] bg-gray-950/80 px-3 py-2 text-sm font-bold"
-              >
-                <div>D{double.doubleValue}</div>
-                <div>{double.hits}</div>
-                <div className="text-right tabular-nums">{double.attempts}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      ))}
     </section>
+  );
+}
+
+function Bobs27DetailsTable({ details }: { details: Bobs27Double[] }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+      <TableHeader columns={["Double", "Hits", "Forsøg", "Træf %"]} />
+      {details.map((double) => (
+        <div key={double.doubleValue} className="grid grid-cols-4 border-t border-gray-800 px-4 py-3 text-sm font-bold">
+          <div>D{double.doubleValue}</div>
+          <div>{double.hits}</div>
+          <div>{double.attempts}</div>
+          <div>{percent(double.hits, double.attempts)}%</div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function TableHeader({ columns }: { columns: string[] }) {
+  return (
+    <div className="grid grid-cols-4 bg-gray-950 px-4 py-2 text-xs font-black uppercase tracking-wide text-gray-500">
+      {columns.map((column) => (
+        <div key={column}>{column}</div>
+      ))}
+    </div>
   );
 }
 

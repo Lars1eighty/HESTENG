@@ -9,7 +9,7 @@ export const trainingExercises: TrainingExercise[] = [
     id: JDC_CHALLENGE_EXERCISE_ID,
     name: "JDC Challenge",
     type: "training-challenge",
-    description: "Registrer samlet JDC Challenge-score og antal Shanghai.",
+    description: "Live gameplay med Shanghai, doubles around the world og automatisk score.",
     isActive: true,
     metrics: [
       {
@@ -30,7 +30,7 @@ export const trainingExercises: TrainingExercise[] = [
     id: CATCH_40_EXERCISE_ID,
     name: "Catch 40",
     type: "checkout-training",
-    description: "Registrer checkout-targets fra 61 til 100 med hit/miss og antal forsøg.",
+    description: "Live checkout-træning fra 61 til 100 med automatisk score.",
     isActive: true,
     metrics: [
       {
