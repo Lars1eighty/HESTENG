@@ -3,6 +3,7 @@ import type { TrainingExercise } from "@/lib/trainingTypes";
 export const JDC_CHALLENGE_EXERCISE_ID = "jdc-challenge";
 export const CATCH_40_EXERCISE_ID = "catch-40";
 export const BOBS_27_EXERCISE_ID = "bobs-27";
+export const GAME_420_EXERCISE_ID = "game-420";
 
 export const trainingExercises: TrainingExercise[] = [
   {
@@ -75,6 +76,43 @@ export const trainingExercises: TrainingExercise[] = [
         label: "Score",
         valueType: "number",
         personalBest: "higherIsBetter",
+      },
+      {
+        key: "hits",
+        label: "Hits",
+        valueType: "count",
+      },
+      {
+        key: "attempts",
+        label: "Forsøg",
+        valueType: "count",
+      },
+      {
+        key: "hitPercent",
+        label: "Træf %",
+        valueType: "percent",
+        personalBest: "higherIsBetter",
+      },
+    ],
+  },
+  {
+    id: GAME_420_EXERCISE_ID,
+    name: "Game 420",
+    type: "target-training",
+    description: "Live træning fra D1 til D20 og Bull med remaining fra 420.",
+    isActive: true,
+    metrics: [
+      {
+        key: "score",
+        label: "Score",
+        valueType: "number",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "remaining420",
+        label: "Remaining",
+        valueType: "number",
+        personalBest: "lowerIsBetter",
       },
       {
         key: "hits",

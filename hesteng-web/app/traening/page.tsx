@@ -9,6 +9,7 @@ import { useCurrentUser } from "@/context/CurrentUserContext";
 import {
   BOBS_27_EXERCISE_ID,
   CATCH_40_EXERCISE_ID,
+  GAME_420_EXERCISE_ID,
   JDC_CHALLENGE_EXERCISE_ID,
   getTrainingExercise,
 } from "@/data/trainingExercises";
@@ -16,7 +17,11 @@ import { calculateTrainingMonthlyStats } from "@/lib/trainingMonthlyStatsEngine"
 import { getTrainingResultsForPlayer, saveTrainingResult } from "@/lib/trainingResultStore";
 import type { TrainingExercise, TrainingMetricDirection, TrainingResult } from "@/lib/trainingTypes";
 
-type ExerciseId = typeof JDC_CHALLENGE_EXERCISE_ID | typeof CATCH_40_EXERCISE_ID | typeof BOBS_27_EXERCISE_ID;
+type ExerciseId =
+  | typeof JDC_CHALLENGE_EXERCISE_ID
+  | typeof CATCH_40_EXERCISE_ID
+  | typeof BOBS_27_EXERCISE_ID
+  | typeof GAME_420_EXERCISE_ID;
 type JdcThrow = "single" | "double" | "triple" | "miss";
 
 type JdcStep = {
@@ -42,6 +47,14 @@ type Catch40Result = {
 };
 
 type Bobs27Target = {
+  target: string;
+  value: number;
+  hits: number;
+  attempts: number;
+  scoreChange: number;
+};
+
+type Game420Target = {
   target: string;
   value: number;
   hits: number;
@@ -81,6 +94,16 @@ const BOBS_27_TARGETS = [
     value: 25,
   },
 ];
+const GAME_420_TARGETS = [
+  ...Array.from({ length: 20 }, (_, index) => ({
+    target: `D${index + 1}`,
+    value: (index + 1) * 2,
+  })),
+  {
+    target: "BULL",
+    value: 50,
+  },
+];
 
 function currentMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -114,6 +137,7 @@ export default function TrainingPage() {
   const [jdcThrows, setJdcThrows] = useState<JdcThrow[]>([]);
   const [catch40Results, setCatch40Results] = useState<Catch40Result[]>([]);
   const [bobs27Results, setBobs27Results] = useState<Bobs27Target[]>([]);
+  const [game420Results, setGame420Results] = useState<Game420Target[]>([]);
   const [showDetails, setShowDetails] = useState(false);
 
   const selectedPlayerResults = results.filter(
@@ -134,16 +158,18 @@ export default function TrainingPage() {
   const checkoutPercentPersonalBest = personalBest(selectedPlayerResults, "checkoutPercent", "higherIsBetter");
   const highestCheckoutPersonalBest = personalBest(selectedPlayerResults, "highestCheckout", "higherIsBetter");
   const hitPercentPersonalBest = personalBest(selectedPlayerResults, "hitPercent", "higherIsBetter");
+  const remaining420PersonalBest = personalBest(selectedPlayerResults, "remaining420", "lowerIsBetter");
   const jdcState = calculateJdcState(jdcThrows);
   const catch40State = calculateCatch40State(catch40Results);
   const bobs27State = calculateBobs27State(bobs27Results);
+  const game420State = calculateGame420State(game420Results);
 
   function refreshResults() {
     setResults(getTrainingResultsForPlayer(currentPlayerId));
   }
 
   function handleExerciseChange(exerciseId: ExerciseId) {
-    if ((jdcThrows.length > 0 || catch40Results.length > 0 || bobs27Results.length > 0) && !lastSavedResult) {
+    if ((jdcThrows.length > 0 || catch40Results.length > 0 || bobs27Results.length > 0 || game420Results.length > 0) && !lastSavedResult) {
       const confirmed = window.confirm("Afbryd den aktive træning?");
       if (!confirmed) return;
     }
@@ -154,6 +180,7 @@ export default function TrainingPage() {
     setJdcThrows([]);
     setCatch40Results([]);
     setBobs27Results([]);
+    setGame420Results([]);
   }
 
   function buildTrainingResult(exerciseId: ExerciseId, metrics: TrainingResult["metrics"], details?: TrainingResult["details"]) {
@@ -248,6 +275,10 @@ export default function TrainingPage() {
     if (activeExerciseId === BOBS_27_EXERCISE_ID) {
       setBobs27Results((items) => items.slice(0, -1));
     }
+
+    if (activeExerciseId === GAME_420_EXERCISE_ID) {
+      setGame420Results((items) => items.slice(0, -1));
+    }
   }
 
   function handleAbort() {
@@ -256,12 +287,13 @@ export default function TrainingPage() {
       return;
     }
 
-    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length) return;
+    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length && !game420Results.length) return;
     const confirmed = window.confirm("Afbryd træningen? Resultatet gemmes ikke.");
     if (!confirmed) return;
     setJdcThrows([]);
     setCatch40Results([]);
     setBobs27Results([]);
+    setGame420Results([]);
     setShowDetails(false);
   }
 
@@ -271,6 +303,7 @@ export default function TrainingPage() {
     setJdcThrows([]);
     setCatch40Results([]);
     setBobs27Results([]);
+    setGame420Results([]);
     refreshResults();
   }
 
@@ -306,6 +339,39 @@ export default function TrainingPage() {
     }
   }
 
+  function handleGame420Input(hits: number) {
+    if (lastSavedResult || game420State.isComplete) return;
+    const target = GAME_420_TARGETS[game420Results.length];
+    if (!target) return;
+
+    const nextResult = {
+      target: target.target,
+      value: target.value,
+      hits,
+      attempts: 3,
+      scoreChange: hits * target.value,
+    };
+    const nextResults = [...game420Results, nextResult];
+    setGame420Results(nextResults);
+
+    const nextState = calculateGame420State(nextResults);
+    if (nextState.isComplete) {
+      saveFinishedResult(buildTrainingResult(
+        GAME_420_EXERCISE_ID,
+        {
+          score: nextState.score,
+          remaining420: nextState.remaining420,
+          hits: nextState.hits,
+          attempts: nextState.attempts,
+          hitPercent: nextState.hitPercent,
+        },
+        {
+          targets: nextResults,
+        }
+      ));
+    }
+  }
+
   return (
     <main className="min-h-screen bg-gray-950 text-white">
       <Header />
@@ -319,7 +385,7 @@ export default function TrainingPage() {
           <p className="mt-2 text-base text-gray-400">{currentClub.name} · træner som {currentPlayer.name}</p>
         </div>
 
-        <div className="mb-5 grid gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2 sm:grid-cols-3">
+        <div className="mb-5 grid gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2 sm:grid-cols-4">
           <ExerciseTab
             active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
             title="JDC Challenge"
@@ -338,6 +404,12 @@ export default function TrainingPage() {
             description="D1-D20"
             onClick={() => handleExerciseChange(BOBS_27_EXERCISE_ID)}
           />
+          <ExerciseTab
+            active={activeExerciseId === GAME_420_EXERCISE_ID}
+            title="Game 420"
+            description="420 remaining"
+            onClick={() => handleExerciseChange(GAME_420_EXERCISE_ID)}
+          />
         </div>
 
         {lastSavedResult ? (
@@ -349,6 +421,7 @@ export default function TrainingPage() {
             checkoutPercentPersonalBest={checkoutPercentPersonalBest}
             highestCheckoutPersonalBest={highestCheckoutPersonalBest}
             hitPercentPersonalBest={hitPercentPersonalBest}
+            remaining420PersonalBest={remaining420PersonalBest}
             monthlyStats={monthlyStats}
             scoreStats={scoreStats}
             shanghaiStats={shanghaiStats}
@@ -371,6 +444,16 @@ export default function TrainingPage() {
             state={catch40State}
             scorePersonalBest={scorePersonalBest}
             onInput={handleCatch40Input}
+            onUndo={handleUndo}
+            onAbort={handleAbort}
+          />
+        ) : activeExerciseId === GAME_420_EXERCISE_ID ? (
+          <Game420Gameplay
+            state={game420State}
+            scorePersonalBest={scorePersonalBest}
+            remaining420PersonalBest={remaining420PersonalBest}
+            hitPercentPersonalBest={hitPercentPersonalBest}
+            onInput={handleGame420Input}
             onUndo={handleUndo}
             onAbort={handleAbort}
           />
@@ -490,6 +573,25 @@ function calculateBobs27State(results: Bobs27Target[]) {
   };
 }
 
+function calculateGame420State(results: Game420Target[]) {
+  const hits = results.reduce((sum, target) => sum + target.hits, 0);
+  const attempts = results.reduce((sum, target) => sum + target.attempts, 0);
+  const score = results.reduce((sum, target) => sum + target.scoreChange, 0);
+
+  return {
+    score,
+    remaining420: 420 - score,
+    hits,
+    attempts,
+    hitPercent: percent(hits, attempts),
+    currentTarget: GAME_420_TARGETS[results.length] ?? null,
+    completedTargets: results.length,
+    remainingTargets: GAME_420_TARGETS.length - results.length,
+    isComplete: results.length >= GAME_420_TARGETS.length,
+    details: results,
+  };
+}
+
 function getCatch40Details(result: TrainingResult): Catch40Result[] {
   const checkouts = result.details?.checkouts;
   if (!Array.isArray(checkouts)) return [];
@@ -528,6 +630,28 @@ function getBobs27Details(result: TrainingResult): Bobs27Target[] {
       typeof double.hits === "number" &&
       typeof double.attempts === "number" &&
       typeof double.scoreChange === "number"
+    );
+  });
+}
+
+function getGame420Details(result: TrainingResult): Game420Target[] {
+  const targets = result.details?.targets;
+  if (!Array.isArray(targets)) return [];
+
+  return targets.filter((target): target is Game420Target => {
+    return (
+      typeof target === "object" &&
+      target !== null &&
+      "target" in target &&
+      "value" in target &&
+      "hits" in target &&
+      "attempts" in target &&
+      "scoreChange" in target &&
+      typeof target.target === "string" &&
+      typeof target.value === "number" &&
+      typeof target.hits === "number" &&
+      typeof target.attempts === "number" &&
+      typeof target.scoreChange === "number"
     );
   });
 }
@@ -778,6 +902,53 @@ function Bobs27Gameplay({
   );
 }
 
+function Game420Gameplay({
+  state,
+  scorePersonalBest,
+  remaining420PersonalBest,
+  hitPercentPersonalBest,
+  onInput,
+  onUndo,
+  onAbort,
+}: {
+  state: ReturnType<typeof calculateGame420State>;
+  scorePersonalBest: number | null;
+  remaining420PersonalBest: number | null;
+  hitPercentPersonalBest: number | null;
+  onInput: (hits: number) => void;
+  onUndo: () => void;
+  onAbort: () => void;
+}) {
+  return (
+    <GameplayShell
+      eyebrow="Game 420"
+      target={state.currentTarget?.target ?? "Færdig"}
+      meta={`${state.completedTargets}/${GAME_420_TARGETS.length} targets · ${state.remainingTargets} tilbage`}
+      stats={[
+        { label: "Remaining", value: state.remaining420 },
+        { label: "Score", value: state.score },
+        { label: "Hits", value: `${state.hits}/${state.attempts}` },
+        { label: "Træf %", value: `${state.hitPercent}%` },
+      ]}
+      onUndo={onUndo}
+      onAbort={onAbort}
+      canUndo={state.completedTargets > 0}
+    >
+      <div className="mb-3 grid gap-2 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 sm:grid-cols-3">
+        <CompactStat label="PR score" value={scorePersonalBest ?? "-"} />
+        <CompactStat label="PR remaining" value={remaining420PersonalBest ?? "-"} />
+        <CompactStat label="PR træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <TouchButton label="0 HITS" tone="red" onClick={() => onInput(0)} />
+        <TouchButton label="1 HIT" tone="amber" onClick={() => onInput(1)} />
+        <TouchButton label="2 HITS" tone="orange" onClick={() => onInput(2)} />
+        <TouchButton label="3 HITS" tone="green" onClick={() => onInput(3)} />
+      </div>
+    </GameplayShell>
+  );
+}
+
 function ResultScreen({
   result,
   exercise,
@@ -786,6 +957,7 @@ function ResultScreen({
   checkoutPercentPersonalBest,
   highestCheckoutPersonalBest,
   hitPercentPersonalBest,
+  remaining420PersonalBest,
   monthlyStats,
   scoreStats,
   shanghaiStats,
@@ -802,6 +974,7 @@ function ResultScreen({
   checkoutPercentPersonalBest: number | null;
   highestCheckoutPersonalBest: number | null;
   hitPercentPersonalBest: number | null;
+  remaining420PersonalBest: number | null;
   monthlyStats: ReturnType<typeof calculateTrainingMonthlyStats> | null;
   scoreStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
   shanghaiStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
@@ -814,6 +987,7 @@ function ResultScreen({
   const isJdc = result.exerciseId === JDC_CHALLENGE_EXERCISE_ID;
   const isCatch40 = result.exerciseId === CATCH_40_EXERCISE_ID;
   const isBobs27 = result.exerciseId === BOBS_27_EXERCISE_ID;
+  const isGame420 = result.exerciseId === GAME_420_EXERCISE_ID;
 
   return (
     <div className="grid gap-5">
@@ -834,11 +1008,11 @@ function ResultScreen({
               <StatTile label="Lukke %" value={`${numericMetric(result, "checkoutPercent") ?? 0}%`} />
               <StatTile label="Højeste" value={numericMetric(result, "highestCheckout") || "-"} />
             </>
-          ) : isBobs27 ? (
+          ) : isBobs27 || isGame420 ? (
             <>
               <StatTile label="Hits" value={numericMetric(result, "hits") ?? 0} />
               <StatTile label="Forsøg" value={numericMetric(result, "attempts") ?? 0} />
-              <StatTile label="Træf %" value={`${numericMetric(result, "hitPercent") ?? 0}%`} />
+              <StatTile label={isGame420 ? "Remaining" : "Træf %"} value={isGame420 ? numericMetric(result, "remaining420") ?? "-" : `${numericMetric(result, "hitPercent") ?? 0}%`} />
             </>
           ) : null}
         </div>
@@ -857,7 +1031,7 @@ function ResultScreen({
           >
             Tilbage til træning
           </button>
-          {(isCatch40 || isBobs27) ? (
+          {(isCatch40 || isBobs27 || isGame420) ? (
             <button
               type="button"
               onClick={onToggleDetails}
@@ -884,15 +1058,22 @@ function ResultScreen({
                   { label: "PR lukke %", value: checkoutPercentPersonalBest !== null ? `${checkoutPercentPersonalBest}%` : "-" },
                   { label: "PR højeste luk", value: highestCheckoutPersonalBest ?? "-" },
                 ]
-              : [
-                  { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
-                  { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
-                ]
+              : isGame420
+                ? [
+                    { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+                    { label: "PR remaining", value: remaining420PersonalBest ?? "-" },
+                    { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
+                  ]
+                : [
+                    { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+                    { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
+                  ]
         }
       />
 
       {showDetails && isCatch40 ? <Catch40DetailsTable details={getCatch40Details(result)} /> : null}
       {showDetails && isBobs27 ? <Bobs27DetailsTable details={getBobs27Details(result)} /> : null}
+      {showDetails && isGame420 ? <Game420DetailsTable details={getGame420Details(result)} /> : null}
     </div>
   );
 }
@@ -949,6 +1130,22 @@ function Bobs27DetailsTable({ details }: { details: Bobs27Target[] }) {
           <div>{target.hits}</div>
           <div>{target.attempts}</div>
           <div className={target.scoreChange >= 0 ? "text-emerald-300" : "text-red-300"}>{target.scoreChange}</div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function Game420DetailsTable({ details }: { details: Game420Target[] }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+      <TableHeader columns={["Target", "Hits", "Forsøg", "Score"]} />
+      {details.map((target) => (
+        <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-4 py-3 text-sm font-bold">
+          <div>{target.target}</div>
+          <div>{target.hits}</div>
+          <div>{target.attempts}</div>
+          <div className="text-emerald-300">{target.scoreChange}</div>
         </div>
       ))}
     </section>

@@ -10,6 +10,7 @@ export type TrainingMetricKey =
   | "average"
   | "first9Average"
   | "shanghaiCount"
+  | "remaining420"
   | (string & {});
 
 export type TrainingMetricDirection = "higherIsBetter" | "lowerIsBetter";
