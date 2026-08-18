@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
@@ -1522,11 +1522,82 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+function getCompactStatTooltip(label: string | number) {
+  const normalizedLabel = String(label).trim().toLowerCase();
+  const tooltips: Record<string, string> = {
+    s: "Seneste resultat",
+    seneste: "Seneste resultat",
+    m: "Måned",
+    måned: "Måned",
+    pr: "Personlig rekord",
+    "pr score": "Personlig rekord i score",
+    "pr remaining": "Personlig rekord i remaining",
+    "pr træf %": "Personlig rekord i træfprocent",
+    "pr lukke %": "Personlig rekord i lukkeprocent",
+    "pr højeste luk": "Personlig rekord i højeste lukning",
+    gen: "Gennemsnit",
+    gennemsnit: "Gennemsnit",
+    månedssnit: "Månedens gennemsnit",
+    ændring: "Ændring fra foregående måned",
+    gennemført: "Gennemførte træninger denne måned",
+    "hits / forsøg": "Hits ud af forsøg",
+    "hit %": "Træfprocent",
+    "snit score": "Gennemsnitlig score denne måned",
+    "bedste score": "Bedste score denne måned",
+    "forrige måned": "Foregående måneds gennemsnit",
+    "shanghai total": "Samlet antal Shanghai denne måned",
+    "shanghai snit": "Gennemsnitligt antal Shanghai denne måned",
+    "snit træf %": "Gennemsnitlig træfprocent denne måned",
+    "snit lukke %": "Gennemsnitlig lukkeprocent denne måned",
+  };
+
+  return tooltips[normalizedLabel] ?? String(label);
+}
+
 function CompactStat({ label, value }: { label: string | number; value: string | number }) {
+  const [touchTooltipVisible, setTouchTooltipVisible] = useState(false);
+  const hideTooltipTimer = useRef<number | null>(null);
+  const tooltip = getCompactStatTooltip(label);
+
+  function showTouchTooltip(event: React.MouseEvent<HTMLDivElement>) {
+    event.stopPropagation();
+    setTouchTooltipVisible(true);
+
+    if (hideTooltipTimer.current !== null) {
+      window.clearTimeout(hideTooltipTimer.current);
+    }
+
+    hideTooltipTimer.current = window.setTimeout(() => {
+      setTouchTooltipVisible(false);
+      hideTooltipTimer.current = null;
+    }, 1600);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    event.stopPropagation();
+    setTouchTooltipVisible(true);
+  }
+
   return (
-    <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-gray-950 px-3 py-2">
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${label}: ${tooltip}`}
+      onClick={showTouchTooltip}
+      onKeyDown={handleKeyDown}
+      className="group relative flex min-w-0 items-center justify-between gap-2 rounded-lg bg-gray-950 px-3 py-2 outline-none ring-orange-500 transition focus:ring-2"
+    >
       <span className="min-w-0 truncate text-sm font-semibold text-gray-400">{label}</span>
       <span className="shrink-0 text-base font-black tabular-nums text-white">{value}</span>
+      <span
+        className={`pointer-events-none absolute left-3 top-0 z-30 max-w-[calc(100vw-2rem)] -translate-y-[calc(100%+0.4rem)] rounded-lg border border-gray-700 bg-gray-950 px-2.5 py-1.5 text-xs font-bold text-white shadow-2xl shadow-black/40 transition-opacity ${
+          touchTooltipVisible ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus:opacity-100"
+        }`}
+      >
+        {tooltip}
+      </span>
     </div>
   );
 }
