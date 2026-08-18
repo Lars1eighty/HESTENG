@@ -397,13 +397,19 @@ export default function TrainingPage() {
     <main className="min-h-screen bg-gray-950 text-white">
       <Header />
 
-      <section className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
-        <BackButton />
+      <section className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className={activeExerciseId === null ? "" : "[&>button]:mb-2 [&>button]:px-3 [&>button]:py-2"}>
+          <BackButton />
+        </div>
 
-        <div className="mb-5">
+        <div className={activeExerciseId === null ? "mb-4 sm:mb-5" : "mb-2 sm:mb-4"}>
           <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-400">Træning</p>
-          <h1 className="mt-2 text-3xl font-black sm:text-4xl">{activeExercise?.name ?? "Træning"}</h1>
-          <p className="mt-2 text-base text-gray-400">{currentClub.name} · træner som {currentPlayer.name}</p>
+          <h1 className={`${activeExerciseId === null ? "mt-2 text-3xl sm:text-4xl" : "mt-1 text-2xl sm:mt-2 sm:text-4xl"} font-black leading-tight`}>
+            {activeExercise?.name ?? "Træning"}
+          </h1>
+          <p className={`${activeExerciseId === null ? "mt-2" : "mt-1 hidden sm:block"} text-base text-gray-400`}>
+            {currentClub.name} · træner som {currentPlayer.name}
+          </p>
         </div>
 
         {activeExerciseId === null ? (
@@ -413,7 +419,7 @@ export default function TrainingPage() {
             onStartExercise={handleExerciseChange}
           />
         ) : (
-          <div className="mb-5 grid gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2 sm:grid-cols-4">
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-gray-800 bg-gray-900 p-1 sm:mb-5 sm:grid-cols-4 sm:gap-2 sm:p-2">
             <ExerciseTab
               active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
               title="JDC Challenge"
@@ -522,14 +528,14 @@ function TrainingDashboard({
     .sort((a, b) => (b.primaryStats?.changeFromPreviousAverage ?? -Infinity) - (a.primaryStats?.changeFromPreviousAverage ?? -Infinity))[0];
 
   return (
-    <div className="grid gap-5">
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+    <div className="grid gap-4 sm:gap-5">
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-2xl font-black">Min træning</h2>
             <p className="mt-1 text-sm font-semibold text-gray-500">Overblik, udvikling og næste mål</p>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:min-w-96">
+          <div className="grid grid-cols-3 gap-2 sm:w-full sm:max-w-md">
             <StatTile label="Denne måned" value={totalThisMonth} />
             <StatTile label="Fremgang" value={improving} />
             <StatTile label="Tilbage" value={declining} />
@@ -545,7 +551,7 @@ function TrainingDashboard({
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-2">
+      <section className="grid gap-3 sm:gap-4 xl:grid-cols-2">
         {exerciseSummaries.map((summary) => (
           <TrainingExerciseCard
             key={summary.exercise.id}
@@ -644,17 +650,17 @@ function TrainingExerciseCard({
   const hasResults = summary.results.length > 0;
 
   return (
-    <article className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+    <article className="min-w-0 rounded-2xl border border-gray-800 bg-gray-900 p-3 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Træningsspil</div>
-          <h3 className="mt-1 text-2xl font-black">{summary.exercise.name}</h3>
+          <h3 className="mt-1 text-2xl font-black leading-tight">{summary.exercise.name}</h3>
           <p className="mt-1 text-sm font-semibold text-gray-500">{summary.exercise.description}</p>
         </div>
         <button
           type="button"
           onClick={onStart}
-          className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-gray-950 transition hover:bg-orange-400"
+          className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-gray-950 transition hover:bg-orange-400 sm:shrink-0"
         >
           Start
         </button>
@@ -662,7 +668,7 @@ function TrainingExerciseCard({
 
       {hasResults ? (
         <>
-          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             <CompactStat label="Seneste" value={latestValue ?? "-"} />
             <CompactStat label="PR" value={summary.personalRecord ?? "-"} />
             <CompactStat label="Månedssnit" value={summary.primaryStats?.currentAverage ?? "-"} />
@@ -672,12 +678,12 @@ function TrainingExerciseCard({
 
           <LevelGrid stats={summary.primaryStats} />
 
-          <div className="mt-3 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm font-bold text-gray-300">
+          <div className="mt-3 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 text-sm font-bold text-gray-300 sm:px-4">
             Fokus: <span className="text-orange-300">{summary.focus}</span>
           </div>
         </>
       ) : (
-        <div className="mt-4 rounded-xl border border-gray-800 bg-gray-950 px-4 py-5 text-sm font-bold text-gray-500">
+        <div className="mt-4 rounded-xl border border-gray-800 bg-gray-950 px-3 py-4 text-sm font-bold text-gray-500 sm:px-4 sm:py-5">
           Ingen resultater endnu
         </div>
       )}
@@ -707,9 +713,9 @@ function LevelGrid({ stats }: { stats: ReturnType<typeof calculateTrainingMonthl
 
 function LevelTile({ label, value, change }: { label: string; value: string | number; change: number | null }) {
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
-      <div className="text-xs font-black uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-black tabular-nums text-white">{value}</div>
+    <div className="min-w-0 rounded-xl border border-gray-800 bg-gray-950 p-2 sm:p-3">
+      <div className="text-[0.65rem] font-black uppercase tracking-wide text-gray-500 sm:text-xs">{label}</div>
+      <div className="mt-1 text-xl font-black tabular-nums text-white sm:text-2xl">{value}</div>
       <div className={`mt-1 text-xs font-black ${change === null ? "text-gray-600" : change >= 0 ? "text-emerald-400" : "text-red-400"}`}>
         {formatChange(change)}
       </div>
@@ -720,7 +726,7 @@ function LevelTile({ label, value, change }: { label: string; value: string | nu
 function TrainingExerciseDetails({ summary }: { summary: ReturnType<typeof buildExerciseSummary> }) {
   return (
     <section className="mt-4 grid gap-4">
-      <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+      <div className="rounded-xl border border-gray-800 bg-gray-950 p-3 sm:p-4">
         <h4 className="text-sm font-black uppercase tracking-wide text-gray-500">Historik</h4>
         <div className="mt-3 grid gap-2">
           {summary.results.slice(0, 12).map((result) => (
@@ -740,7 +746,7 @@ function TrainingHistoryRow({ result, primaryKey }: { result: TrainingResult; pr
   const secondary = getSecondaryMetrics(result);
 
   return (
-    <div className="grid gap-2 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm font-bold sm:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1.4fr)]">
+    <div className="grid gap-1 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm font-bold sm:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1.4fr)] sm:gap-2">
       <div className="text-gray-500">{formatDate(result.completedAt)}</div>
       <div className="text-white">{numericMetric(result, primaryKey) ?? "-"}</div>
       <div className="truncate text-gray-400">{secondary}</div>
@@ -980,12 +986,12 @@ function ExerciseTab({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl px-4 py-3 text-left transition ${
+      className={`rounded-xl px-2 py-2 text-left transition sm:px-4 sm:py-3 ${
         active ? "bg-orange-500 text-gray-950" : "bg-gray-950 text-gray-300 hover:bg-gray-800"
       }`}
     >
-      <div className="text-base font-black">{title}</div>
-      <div className={`text-sm font-semibold ${active ? "text-gray-900" : "text-gray-500"}`}>{description}</div>
+      <div className="text-sm font-black leading-tight sm:text-base">{title}</div>
+      <div className={`hidden text-xs font-semibold sm:block sm:text-sm ${active ? "text-gray-900" : "text-gray-500"}`}>{description}</div>
     </button>
   );
 }
@@ -1021,12 +1027,12 @@ function JdcGameplay({
       canUndo={state.throwsUsed > 0}
     >
       {isDoublePhase ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <TouchButton label="HIT" tone="green" onClick={() => onInput("single")} />
           <TouchButton label="NO HIT" tone="red" onClick={() => onInput("miss")} />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <TouchButton label="SINGLE" tone="green" onClick={() => onInput("single")} />
           <TouchButton label="DOUBLE" tone="amber" onClick={() => onInput("double")} />
           <TouchButton label="TRIPLE" tone="orange" onClick={() => onInput("triple")} />
@@ -1065,7 +1071,7 @@ function Catch40Gameplay({
       onAbort={onAbort}
       canUndo={state.completedTargets > 0}
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <TouchButton label="2 DARTS" tone="green" onClick={() => onInput(2)} />
         <TouchButton label="3 DARTS" tone="green" onClick={() => onInput(3)} />
         <TouchButton label="4 DARTS" tone="amber" onClick={() => onInput(4)} />
@@ -1097,41 +1103,41 @@ function GameplayShell({
   onAbort: () => void;
 }) {
   return (
-    <div className="grid gap-4">
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+    <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start">
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-3 sm:p-4 xl:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">{eyebrow}</div>
-            <div className="mt-2 text-7xl font-black leading-none text-white sm:text-8xl">{target}</div>
+            <div className="mt-1 break-words text-5xl font-black leading-none text-white sm:mt-2 sm:text-6xl xl:text-8xl">{target}</div>
             <div className="mt-2 text-sm font-bold text-gray-500">{meta}</div>
           </div>
-          <div className="grid gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:w-28 sm:grid-cols-1 sm:shrink-0">
             <button
               type="button"
               disabled={!canUndo}
               onClick={onUndo}
-              className="rounded-xl border border-gray-700 px-4 py-3 text-sm font-black text-gray-300 transition hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-30"
+              className="rounded-xl border border-gray-700 px-3 py-3 text-sm font-black text-gray-300 transition hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-30 sm:px-4"
             >
               UNDO
             </button>
             <button
               type="button"
               onClick={onAbort}
-              className="rounded-xl border border-red-900 px-4 py-3 text-sm font-black text-red-300 transition hover:bg-red-950"
+              className="rounded-xl border border-red-900 px-3 py-3 text-sm font-black text-red-300 transition hover:bg-red-950 sm:px-4"
             >
               AFBRYD
             </button>
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
           {stats.map((stat) => (
             <StatTile key={stat.label} label={stat.label} value={stat.value} />
           ))}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-3 sm:p-4 xl:p-6">
         {children}
       </section>
     </div>
@@ -1158,7 +1164,7 @@ function TouchButton({
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-24 rounded-2xl px-4 py-5 text-2xl font-black transition active:scale-[0.98] ${classes[tone]}`}
+      className={`min-h-16 rounded-xl px-2 py-3 text-lg font-black leading-tight transition active:scale-[0.98] sm:min-h-20 sm:rounded-2xl sm:px-4 sm:py-4 sm:text-2xl xl:min-h-24 xl:py-5 ${classes[tone]}`}
     >
       {label}
     </button>
@@ -1195,13 +1201,13 @@ function Bobs27Gameplay({
       onAbort={onAbort}
       canUndo={state.completedTargets > 0}
     >
-      <div className="mb-3 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+      <div className="mb-3 hidden rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 xl:block xl:px-4">
         <div className="text-xs font-black uppercase tracking-wide text-gray-500">Personlig rekord træf %</div>
         <div className="mt-1 text-xl font-black text-orange-400">
           {hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         <TouchButton label="0 HITS" tone="red" onClick={() => onInput(0)} />
         <TouchButton label="1 HIT" tone="amber" onClick={() => onInput(1)} />
         <TouchButton label="2 HITS" tone="orange" onClick={() => onInput(2)} />
@@ -1243,12 +1249,12 @@ function Game420Gameplay({
       onAbort={onAbort}
       canUndo={state.completedTargets > 0}
     >
-      <div className="mb-3 grid gap-2 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 sm:grid-cols-3">
+      <div className="mb-3 hidden gap-2 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 xl:grid xl:grid-cols-3 xl:px-4">
         <CompactStat label="PR score" value={scorePersonalBest ?? "-"} />
         <CompactStat label="PR remaining" value={remaining420PersonalBest ?? "-"} />
         <CompactStat label="PR træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         <TouchButton label="0 HITS" tone="red" onClick={() => onInput(0)} />
         <TouchButton label="1 HIT" tone="amber" onClick={() => onInput(1)} />
         <TouchButton label="2 HITS" tone="orange" onClick={() => onInput(2)} />
@@ -1301,11 +1307,11 @@ function ResultScreen({
   const isGame420 = result.exerciseId === GAME_420_EXERCISE_ID;
 
   return (
-    <div className="grid gap-5">
-      <section className="rounded-2xl border border-emerald-700/60 bg-emerald-950/40 p-5">
+    <div className="grid gap-4 sm:gap-5">
+      <section className="rounded-2xl border border-emerald-700/60 bg-emerald-950/40 p-4 sm:p-5">
         <p className="text-sm font-black uppercase tracking-wide text-emerald-300">Gennemført</p>
         <h2 className="mt-1 text-3xl font-black">{exercise?.name ?? "Træning"}</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
           <StatTile label="Score" value={numericMetric(result, "score") ?? "-"} />
           {isJdc ? (
             <>
@@ -1327,18 +1333,18 @@ function ResultScreen({
             </>
           ) : null}
         </div>
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
           <button
             type="button"
             onClick={onPlayAgain}
-            className="rounded-xl bg-orange-500 px-5 py-4 text-base font-black text-gray-950 transition hover:bg-orange-400"
+            className="rounded-xl bg-orange-500 px-5 py-3 text-base font-black text-gray-950 transition hover:bg-orange-400 sm:py-4"
           >
             Spil igen
           </button>
           <button
             type="button"
             onClick={onBackToDashboard}
-            className="rounded-xl border border-gray-700 px-5 py-4 text-base font-black text-gray-300 transition hover:border-orange-500 hover:text-white"
+            className="rounded-xl border border-gray-700 px-5 py-3 text-base font-black text-gray-300 transition hover:border-orange-500 hover:text-white sm:py-4"
           >
             Tilbage til træning
           </button>
@@ -1346,7 +1352,7 @@ function ResultScreen({
             <button
               type="button"
               onClick={onToggleDetails}
-              className="rounded-xl border border-emerald-600 px-5 py-4 text-base font-black text-emerald-200 transition hover:bg-emerald-900"
+              className="rounded-xl border border-emerald-600 px-5 py-3 text-base font-black text-emerald-200 transition hover:bg-emerald-900 sm:py-4"
             >
               {showDetails ? "Skjul detaljer" : "Se detaljer"}
             </button>
@@ -1399,7 +1405,7 @@ function MonthlyStatsPanel({
   extraStats: { label: string; value: string | number }[];
 }) {
   return (
-    <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+    <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
       <h2 className="text-lg font-black">Denne måned</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <CompactStat label="Gennemført" value={monthlyStats?.completedCount ?? 0} />
@@ -1420,7 +1426,7 @@ function Catch40DetailsTable({ details }: { details: Catch40Result[] }) {
     <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
       <TableHeader columns={["CO", "Resultat", "Pile", "Point"]} />
       {details.map((target) => (
-        <div key={target.checkoutValue} className="grid grid-cols-4 border-t border-gray-800 px-4 py-3 text-sm font-bold">
+        <div key={target.checkoutValue} className="grid grid-cols-4 border-t border-gray-800 px-3 py-3 text-sm font-bold sm:px-4">
           <div>{target.checkoutValue}</div>
           <div className={target.hit ? "text-emerald-300" : "text-red-300"}>{target.hit ? "Hit" : "No"}</div>
           <div>{target.dartsUsed}</div>
@@ -1436,7 +1442,7 @@ function Bobs27DetailsTable({ details }: { details: Bobs27Target[] }) {
     <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
       <TableHeader columns={["Target", "Hits", "Forsøg", "+/-"]} />
       {details.map((target) => (
-        <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-4 py-3 text-sm font-bold">
+        <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-3 py-3 text-sm font-bold sm:px-4">
           <div>{target.target}</div>
           <div>{target.hits}</div>
           <div>{target.attempts}</div>
@@ -1452,7 +1458,7 @@ function Game420DetailsTable({ details }: { details: Game420Target[] }) {
     <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
       <TableHeader columns={["Target", "Hits", "Forsøg", "Score"]} />
       {details.map((target) => (
-        <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-4 py-3 text-sm font-bold">
+        <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-3 py-3 text-sm font-bold sm:px-4">
           <div>{target.target}</div>
           <div>{target.hits}</div>
           <div>{target.attempts}</div>
@@ -1465,7 +1471,7 @@ function Game420DetailsTable({ details }: { details: Game420Target[] }) {
 
 function TableHeader({ columns }: { columns: string[] }) {
   return (
-    <div className="grid grid-cols-4 bg-gray-950 px-4 py-2 text-xs font-black uppercase tracking-wide text-gray-500">
+    <div className="grid grid-cols-4 bg-gray-950 px-3 py-2 text-xs font-black uppercase tracking-wide text-gray-500 sm:px-4">
       {columns.map((column) => (
         <div key={column}>{column}</div>
       ))}
@@ -1475,18 +1481,18 @@ function TableHeader({ columns }: { columns: string[] }) {
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
-      <div className="text-xs font-black uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="mt-1 text-3xl font-black tabular-nums text-orange-400">{value}</div>
+    <div className="min-w-0 rounded-xl border border-gray-800 bg-gray-950 p-3 sm:p-4">
+      <div className="text-[0.65rem] font-black uppercase tracking-wide text-gray-500 sm:text-xs">{label}</div>
+      <div className="mt-1 break-words text-2xl font-black tabular-nums text-orange-400 sm:text-3xl">{value}</div>
     </div>
   );
 }
 
 function CompactStat({ label, value }: { label: string | number; value: string | number }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-950 px-3 py-2">
-      <span className="text-sm font-semibold text-gray-400">{label}</span>
-      <span className="text-base font-black tabular-nums text-white">{value}</span>
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-gray-950 px-3 py-2">
+      <span className="min-w-0 truncate text-sm font-semibold text-gray-400">{label}</span>
+      <span className="shrink-0 text-base font-black tabular-nums text-white">{value}</span>
     </div>
   );
 }
