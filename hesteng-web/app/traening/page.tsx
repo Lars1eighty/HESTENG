@@ -12,6 +12,7 @@ import {
   GAME_420_EXERCISE_ID,
   JDC_CHALLENGE_EXERCISE_ID,
   getTrainingExercise,
+  trainingExercises,
 } from "@/data/trainingExercises";
 import { calculateTrainingMonthlyStats } from "@/lib/trainingMonthlyStatsEngine";
 import { getTrainingResultsForPlayer, saveTrainingResult } from "@/lib/trainingResultStore";
@@ -127,11 +128,20 @@ function percent(done: number, attempts: number) {
   return attempts > 0 ? Math.round((done / attempts) * 100) : 0;
 }
 
+function isPlayableExerciseId(exerciseId: string): exerciseId is ExerciseId {
+  return [
+    JDC_CHALLENGE_EXERCISE_ID,
+    CATCH_40_EXERCISE_ID,
+    BOBS_27_EXERCISE_ID,
+    GAME_420_EXERCISE_ID,
+  ].includes(exerciseId);
+}
+
 export default function TrainingPage() {
   const { currentClubId, currentClub } = useClub();
   const { currentPlayer, currentPlayerId } = useCurrentUser();
-  const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId>(JDC_CHALLENGE_EXERCISE_ID);
-  const activeExercise = getTrainingExercise(activeExerciseId);
+  const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId | null>(null);
+  const activeExercise = activeExerciseId ? getTrainingExercise(activeExerciseId) : null;
   const [results, setResults] = useState<TrainingResult[]>(() => getTrainingResultsForPlayer(currentPlayerId));
   const [lastSavedResult, setLastSavedResult] = useState<TrainingResult | null>(null);
   const [jdcThrows, setJdcThrows] = useState<JdcThrow[]>([]);
@@ -181,6 +191,17 @@ export default function TrainingPage() {
     setCatch40Results([]);
     setBobs27Results([]);
     setGame420Results([]);
+  }
+
+  function handleBackToDashboard() {
+    setActiveExerciseId(null);
+    setLastSavedResult(null);
+    setShowDetails(false);
+    setJdcThrows([]);
+    setCatch40Results([]);
+    setBobs27Results([]);
+    setGame420Results([]);
+    refreshResults();
   }
 
   function buildTrainingResult(exerciseId: ExerciseId, metrics: TrainingResult["metrics"], details?: TrainingResult["details"]) {
@@ -385,34 +406,42 @@ export default function TrainingPage() {
           <p className="mt-2 text-base text-gray-400">{currentClub.name} · træner som {currentPlayer.name}</p>
         </div>
 
-        <div className="mb-5 grid gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2 sm:grid-cols-4">
-          <ExerciseTab
-            active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
-            title="JDC Challenge"
-            description="57 pile"
-            onClick={() => handleExerciseChange(JDC_CHALLENGE_EXERCISE_ID)}
+        {activeExerciseId === null ? (
+          <TrainingDashboard
+            results={results}
+            currentPlayerId={currentPlayerId}
+            onStartExercise={handleExerciseChange}
           />
-          <ExerciseTab
-            active={activeExerciseId === CATCH_40_EXERCISE_ID}
-            title="Catch 40"
-            description="61-100"
-            onClick={() => handleExerciseChange(CATCH_40_EXERCISE_ID)}
-          />
-          <ExerciseTab
-            active={activeExerciseId === BOBS_27_EXERCISE_ID}
-            title="Bob's 27"
-            description="D1-D20"
-            onClick={() => handleExerciseChange(BOBS_27_EXERCISE_ID)}
-          />
-          <ExerciseTab
-            active={activeExerciseId === GAME_420_EXERCISE_ID}
-            title="Game 420"
-            description="420 remaining"
-            onClick={() => handleExerciseChange(GAME_420_EXERCISE_ID)}
-          />
-        </div>
+        ) : (
+          <div className="mb-5 grid gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2 sm:grid-cols-4">
+            <ExerciseTab
+              active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
+              title="JDC Challenge"
+              description="57 pile"
+              onClick={() => handleExerciseChange(JDC_CHALLENGE_EXERCISE_ID)}
+            />
+            <ExerciseTab
+              active={activeExerciseId === CATCH_40_EXERCISE_ID}
+              title="Catch 40"
+              description="61-100"
+              onClick={() => handleExerciseChange(CATCH_40_EXERCISE_ID)}
+            />
+            <ExerciseTab
+              active={activeExerciseId === BOBS_27_EXERCISE_ID}
+              title="Bob's 27"
+              description="D1-D20"
+              onClick={() => handleExerciseChange(BOBS_27_EXERCISE_ID)}
+            />
+            <ExerciseTab
+              active={activeExerciseId === GAME_420_EXERCISE_ID}
+              title="Game 420"
+              description="420 remaining"
+              onClick={() => handleExerciseChange(GAME_420_EXERCISE_ID)}
+            />
+          </div>
+        )}
 
-        {lastSavedResult ? (
+        {activeExerciseId === null ? null : lastSavedResult ? (
           <ResultScreen
             result={lastSavedResult}
             exercise={activeExercise}
@@ -430,6 +459,7 @@ export default function TrainingPage() {
             showDetails={showDetails}
             onToggleDetails={() => setShowDetails((value) => !value)}
             onPlayAgain={handlePlayAgain}
+            onBackToDashboard={handleBackToDashboard}
           />
         ) : activeExerciseId === JDC_CHALLENGE_EXERCISE_ID ? (
           <JdcGameplay
@@ -470,6 +500,285 @@ export default function TrainingPage() {
       </section>
     </main>
   );
+}
+
+function TrainingDashboard({
+  results,
+  currentPlayerId,
+  onStartExercise,
+}: {
+  results: TrainingResult[];
+  currentPlayerId: string;
+  onStartExercise: (exerciseId: ExerciseId) => void;
+}) {
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  const exercises = trainingExercises.filter((exercise) => exercise.isActive && isPlayableExerciseId(exercise.id));
+  const exerciseSummaries = exercises.map((exercise) => buildExerciseSummary(exercise, results, currentPlayerId));
+  const totalThisMonth = exerciseSummaries.reduce((sum, summary) => sum + summary.monthly.completedCount, 0);
+  const improving = exerciseSummaries.filter((summary) => (summary.primaryStats?.changeFromPreviousAverage ?? 0) > 0).length;
+  const declining = exerciseSummaries.filter((summary) => (summary.primaryStats?.changeFromPreviousAverage ?? 0) < 0).length;
+  const bestDevelopment = [...exerciseSummaries]
+    .filter((summary) => summary.primaryStats?.changeFromPreviousAverage !== null)
+    .sort((a, b) => (b.primaryStats?.changeFromPreviousAverage ?? -Infinity) - (a.primaryStats?.changeFromPreviousAverage ?? -Infinity))[0];
+
+  return (
+    <div className="grid gap-5">
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-black">Min træning</h2>
+            <p className="mt-1 text-sm font-semibold text-gray-500">Overblik, udvikling og næste mål</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:min-w-96">
+            <StatTile label="Denne måned" value={totalThisMonth} />
+            <StatTile label="Fremgang" value={improving} />
+            <StatTile label="Tilbage" value={declining} />
+          </div>
+        </div>
+        <div className="mt-3 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm font-bold text-gray-300">
+          Bedste udvikling:{" "}
+          <span className="text-orange-400">
+            {bestDevelopment?.primaryStats?.changeFromPreviousAverage !== null && bestDevelopment
+              ? `${bestDevelopment.exercise.name} ${formatChange(bestDevelopment.primaryStats?.changeFromPreviousAverage ?? null)}`
+              : "-"}
+          </span>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        {exerciseSummaries.map((summary) => (
+          <TrainingExerciseCard
+            key={summary.exercise.id}
+            summary={summary}
+            expanded={selectedExerciseId === summary.exercise.id}
+            onToggle={() => setSelectedExerciseId((current) => current === summary.exercise.id ? null : summary.exercise.id)}
+            onStart={() => onStartExercise(summary.exercise.id as ExerciseId)}
+          />
+        ))}
+      </section>
+    </div>
+  );
+}
+
+function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResult[], currentPlayerId: string) {
+  const exerciseResults = results
+    .filter((result) => result.playerId === currentPlayerId && result.exerciseId === exercise.id)
+    .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+  const primaryMetric = getPrimaryMetric(exercise);
+  const monthly = calculateTrainingMonthlyStats(results, exercise, {
+    playerId: currentPlayerId,
+    month: currentMonthKey(),
+  });
+  const primaryStats = primaryMetric
+    ? monthly.metrics.find((metric) => metric.key === primaryMetric.key) ?? null
+    : null;
+  const latest = exerciseResults[0] ?? null;
+  const personalRecord = primaryMetric
+    ? personalBest(exerciseResults, primaryMetric.key, primaryMetric.personalBest ?? "higherIsBetter")
+    : null;
+  const focus = buildFocusRecommendation(exercise.name, primaryStats, primaryMetric?.personalBest);
+
+  return {
+    exercise,
+    results: exerciseResults,
+    primaryMetric,
+    primaryStats,
+    latest,
+    personalRecord,
+    monthly,
+    focus,
+  };
+}
+
+function getPrimaryMetric(exercise: TrainingExercise) {
+  return exercise.metrics.find((metric) => metric.key === "score") ?? exercise.metrics.find((metric) => metric.personalBest) ?? null;
+}
+
+function buildFocusRecommendation(
+  exerciseName: string,
+  stats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null,
+  direction: TrainingMetricDirection | undefined
+) {
+  if (!stats || !direction || stats.currentAverage === null) {
+    return "Spil en runde og få dit første pejlemærke.";
+  }
+
+  if (stats.currentBottomAverage !== null) {
+    const gap = direction === "lowerIsBetter"
+      ? stats.currentBottomAverage - stats.currentAverage
+      : stats.currentAverage - stats.currentBottomAverage;
+    const threshold = Math.max(5, Math.abs(stats.currentAverage) * 0.08);
+
+    if (gap > threshold) {
+      return direction === "lowerIsBetter"
+        ? `Forsøg at holde næste ${exerciseName} under ${formatValue(stats.currentBottomAverage)}.`
+        : `Forsøg at holde næste ${exerciseName} over ${formatValue(stats.currentBottomAverage)}.`;
+    }
+  }
+
+  if (stats.currentBest !== null) {
+    const nearBest = direction === "lowerIsBetter"
+      ? stats.currentAverage <= stats.currentBest * 1.08
+      : stats.currentAverage >= stats.currentBest * 0.92;
+
+    if (nearBest) return "Du nærmer dig dit topniveau.";
+  }
+
+  return direction === "lowerIsBetter"
+    ? `Forsøg at slå dit måneds-snit: under ${formatValue(stats.currentAverage)}.`
+    : `Forsøg at slå dit måneds-snit: over ${formatValue(stats.currentAverage)}.`;
+}
+
+function TrainingExerciseCard({
+  summary,
+  expanded,
+  onToggle,
+  onStart,
+}: {
+  summary: ReturnType<typeof buildExerciseSummary>;
+  expanded: boolean;
+  onToggle: () => void;
+  onStart: () => void;
+}) {
+  const latestValue = summary.latest && summary.primaryMetric ? numericMetric(summary.latest, summary.primaryMetric.key) : null;
+  const hasResults = summary.results.length > 0;
+
+  return (
+    <article className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Træningsspil</div>
+          <h3 className="mt-1 text-2xl font-black">{summary.exercise.name}</h3>
+          <p className="mt-1 text-sm font-semibold text-gray-500">{summary.exercise.description}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onStart}
+          className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-gray-950 transition hover:bg-orange-400"
+        >
+          Start
+        </button>
+      </div>
+
+      {hasResults ? (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-5">
+            <CompactStat label="Seneste" value={latestValue ?? "-"} />
+            <CompactStat label="PR" value={summary.personalRecord ?? "-"} />
+            <CompactStat label="Månedssnit" value={summary.primaryStats?.currentAverage ?? "-"} />
+            <CompactStat label="Ændring" value={formatChange(summary.primaryStats?.changeFromPreviousAverage ?? null)} />
+            <CompactStat label="Gennemført" value={summary.monthly.completedCount} />
+          </div>
+
+          <LevelGrid stats={summary.primaryStats} />
+
+          <div className="mt-3 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm font-bold text-gray-300">
+            Fokus: <span className="text-orange-300">{summary.focus}</span>
+          </div>
+        </>
+      ) : (
+        <div className="mt-4 rounded-xl border border-gray-800 bg-gray-950 px-4 py-5 text-sm font-bold text-gray-500">
+          Ingen resultater endnu
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onToggle}
+        className="mt-4 rounded-xl border border-gray-700 px-4 py-2 text-sm font-black text-gray-300 transition hover:border-orange-500 hover:text-white"
+      >
+        {expanded ? "Skjul detaljer" : "Vis detaljer"}
+      </button>
+
+      {expanded ? <TrainingExerciseDetails summary={summary} /> : null}
+    </article>
+  );
+}
+
+function LevelGrid({ stats }: { stats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null }) {
+  return (
+    <div className="mt-4 grid grid-cols-3 gap-2">
+      <LevelTile label="Top" value={stats?.currentBest ?? "-"} change={stats?.changeFromPreviousBest ?? null} />
+      <LevelTile label="Normal" value={stats?.currentAverage ?? "-"} change={stats?.changeFromPreviousAverage ?? null} />
+      <LevelTile label="Bund" value={stats?.currentBottomAverage ?? "-"} change={stats?.changeFromPreviousBottom ?? null} />
+    </div>
+  );
+}
+
+function LevelTile({ label, value, change }: { label: string; value: string | number; change: number | null }) {
+  return (
+    <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
+      <div className="text-xs font-black uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="mt-1 text-2xl font-black tabular-nums text-white">{value}</div>
+      <div className={`mt-1 text-xs font-black ${change === null ? "text-gray-600" : change >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+        {formatChange(change)}
+      </div>
+    </div>
+  );
+}
+
+function TrainingExerciseDetails({ summary }: { summary: ReturnType<typeof buildExerciseSummary> }) {
+  return (
+    <section className="mt-4 grid gap-4">
+      <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+        <h4 className="text-sm font-black uppercase tracking-wide text-gray-500">Historik</h4>
+        <div className="mt-3 grid gap-2">
+          {summary.results.slice(0, 12).map((result) => (
+            <TrainingHistoryRow
+              key={result.id}
+              result={result}
+              primaryKey={summary.primaryMetric?.key ?? "score"}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TrainingHistoryRow({ result, primaryKey }: { result: TrainingResult; primaryKey: string }) {
+  const secondary = getSecondaryMetrics(result);
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm font-bold sm:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1.4fr)]">
+      <div className="text-gray-500">{formatDate(result.completedAt)}</div>
+      <div className="text-white">{numericMetric(result, primaryKey) ?? "-"}</div>
+      <div className="truncate text-gray-400">{secondary}</div>
+    </div>
+  );
+}
+
+function formatValue(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function formatChange(value: number | null) {
+  if (value === null) return "-";
+  if (value > 0) return `↑${formatValue(value)}`;
+  if (value < 0) return `↓${formatValue(Math.abs(value))}`;
+  return "0";
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "-";
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getSecondaryMetrics(result: TrainingResult) {
+  if (result.exerciseId === JDC_CHALLENGE_EXERCISE_ID) {
+    return `Shanghai ${numericMetric(result, "shanghaiCount") ?? "-"}`;
+  }
+
+  if (result.exerciseId === CATCH_40_EXERCISE_ID) {
+    return `Finishes ${numericMetric(result, "checkouts") ?? "-"} · Lukke ${numericMetric(result, "checkoutPercent") ?? "-"}%`;
+  }
+
+  if (result.exerciseId === GAME_420_EXERCISE_ID) {
+    return `Remaining ${numericMetric(result, "remaining420") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
+  }
+
+  return `Hits ${numericMetric(result, "hits") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
 }
 
 function calculateJdcState(throws: JdcThrow[]) {
@@ -966,6 +1275,7 @@ function ResultScreen({
   showDetails,
   onToggleDetails,
   onPlayAgain,
+  onBackToDashboard,
 }: {
   result: TrainingResult;
   exercise: TrainingExercise | null;
@@ -983,6 +1293,7 @@ function ResultScreen({
   showDetails: boolean;
   onToggleDetails: () => void;
   onPlayAgain: () => void;
+  onBackToDashboard: () => void;
 }) {
   const isJdc = result.exerciseId === JDC_CHALLENGE_EXERCISE_ID;
   const isCatch40 = result.exerciseId === CATCH_40_EXERCISE_ID;
@@ -1026,7 +1337,7 @@ function ResultScreen({
           </button>
           <button
             type="button"
-            onClick={onPlayAgain}
+            onClick={onBackToDashboard}
             className="rounded-xl border border-gray-700 px-5 py-4 text-base font-black text-gray-300 transition hover:border-orange-500 hover:text-white"
           >
             Tilbage til træning

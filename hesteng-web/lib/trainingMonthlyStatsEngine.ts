@@ -13,8 +13,13 @@ export type TrainingMonthlyMetricStats = {
   currentTotal: number | null;
   currentAverage: number | null;
   currentBest: number | null;
+  currentBottomAverage: number | null;
   previousAverage: number | null;
+  previousBest: number | null;
+  previousBottomAverage: number | null;
   changeFromPreviousAverage: number | null;
+  changeFromPreviousBest: number | null;
+  changeFromPreviousBottom: number | null;
 };
 
 export type TrainingMonthlyStats = {
@@ -98,6 +103,21 @@ function best(values: number[], direction: TrainingMetricDirection | undefined) 
   return direction === "higherIsBetter" ? Math.max(...values) : Math.min(...values);
 }
 
+function bottomAverage(values: number[], direction: TrainingMetricDirection | undefined) {
+  if (!direction || values.length === 0) return null;
+  const bottomCount = Math.max(1, Math.ceil(values.length * 0.25));
+  const sortedWorstFirst = [...values].sort((a, b) => (
+    direction === "higherIsBetter" ? a - b : b - a
+  ));
+  return average(sortedWorstFirst.slice(0, bottomCount));
+}
+
+function change(current: number | null, previous: number | null, direction: TrainingMetricDirection | undefined) {
+  if (current === null || previous === null) return null;
+  const rawChange = direction === "lowerIsBetter" ? previous - current : current - previous;
+  return Number(rawChange.toFixed(2));
+}
+
 export function calculateTrainingMonthlyStats(
   results: TrainingResult[],
   exercise: TrainingExercise,
@@ -127,6 +147,10 @@ export function calculateTrainingMonthlyStats(
       const previousValues = numericValues(previousResults, metric);
       const currentAverage = average(currentValues);
       const previousAverage = average(previousValues);
+      const currentBest = best(currentValues, metric.personalBest);
+      const previousBest = best(previousValues, metric.personalBest);
+      const currentBottomAverage = bottomAverage(currentValues, metric.personalBest);
+      const previousBottomAverage = bottomAverage(previousValues, metric.personalBest);
 
       return {
         key: metric.key,
@@ -134,12 +158,14 @@ export function calculateTrainingMonthlyStats(
         personalBest: metric.personalBest,
         currentTotal: total(currentValues),
         currentAverage,
-        currentBest: best(currentValues, metric.personalBest),
+        currentBest,
+        currentBottomAverage,
         previousAverage,
-        changeFromPreviousAverage:
-          currentAverage !== null && previousAverage !== null
-            ? Number((currentAverage - previousAverage).toFixed(2))
-            : null,
+        previousBest,
+        previousBottomAverage,
+        changeFromPreviousAverage: change(currentAverage, previousAverage, metric.personalBest),
+        changeFromPreviousBest: change(currentBest, previousBest, metric.personalBest),
+        changeFromPreviousBottom: change(currentBottomAverage, previousBottomAverage, metric.personalBest),
       };
     }),
   };
