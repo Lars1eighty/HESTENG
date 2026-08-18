@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { KlubaftenProvider } from "@/context/KlubaftenContext";
+import { ClubProvider } from "@/context/ClubContext";
 
 export const metadata: Metadata = {
   title: "HESTENG",
@@ -15,9 +16,11 @@ export default function RootLayout({
   return (
     <html lang="da">
       <body>
-        <KlubaftenProvider>
-          {children}
-        </KlubaftenProvider>
+        <ClubProvider>
+          <KlubaftenProvider>
+            {children}
+          </KlubaftenProvider>
+        </ClubProvider>
       </body>
     </html>
   );

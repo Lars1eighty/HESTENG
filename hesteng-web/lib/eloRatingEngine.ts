@@ -1,11 +1,14 @@
 import type { CompletedMatch } from "@/lib/matchStore";
+import { DEMO_CLUB_ID } from "@/data/clubs";
 import { playerEloSeed, type PlayerEloSeedEntry } from "@/data/playerEloSeed";
+import { getCurrentClubId } from "@/lib/currentClub";
 import { normalizeName } from "@/lib/playerIdentity";
 
 export const DEFAULT_ELO = 1200;
 export const ELO_K_FACTOR = 24;
 
 export type PlayerEloRating = {
+  clubId?: string;
   playerId?: string;
   player: string;
   elo: number;
@@ -14,7 +17,9 @@ export type PlayerEloRating = {
 };
 
 export type EloRatingEvent = {
+  clubId?: string;
   matchId: string;
+  clubNightId?: string;
   player1: string;
   player2: string;
   winner: string;
@@ -56,16 +61,17 @@ function samePlayer(left: string, right: string) {
   return normalizeName(left) === normalizeName(right);
 }
 
-function playerHasRating(player: string, ratings: PlayerEloRating[]) {
-  return ratings.some((rating) => samePlayer(rating.player, player));
+function playerHasRating(player: string, clubId: string, ratings: PlayerEloRating[]) {
+  return ratings.some((rating) => (rating.clubId ?? DEMO_CLUB_ID) === clubId && samePlayer(rating.player, player));
 }
 
-function playerHasRatingEvent(player: string, events: EloRatingEvent[]) {
-  return events.some((event) => samePlayer(event.player1, player) || samePlayer(event.player2, player));
+function playerHasRatingEvent(player: string, clubId: string, events: EloRatingEvent[]) {
+  return events.some((event) => (event.clubId ?? DEMO_CLUB_ID) === clubId && (samePlayer(event.player1, player) || samePlayer(event.player2, player)));
 }
 
 function seedToRating(seed: PlayerEloSeedEntry): PlayerEloRating {
   return {
+    clubId: seed.clubId ?? DEMO_CLUB_ID,
     playerId: seed.playerId,
     player: seed.name,
     elo: seed.elo,
@@ -74,35 +80,44 @@ function seedToRating(seed: PlayerEloSeedEntry): PlayerEloRating {
   };
 }
 
-function getInitialSeedRatings(): PlayerEloRating[] {
-  return playerEloSeed.map(seedToRating);
+function getInitialSeedRatings(clubId = getCurrentClubId()): PlayerEloRating[] {
+  return playerEloSeed.filter((seed) => (seed.clubId ?? DEMO_CLUB_ID) === clubId).map(seedToRating);
 }
 
-function seedInitialRatings(ratings: PlayerEloRating[], events: EloRatingEvent[]) {
+function seedInitialRatings(ratings: PlayerEloRating[], events: EloRatingEvent[], clubId = getCurrentClubId()) {
   const seededRatings = playerEloSeed
-    .filter((seed) => !playerHasRating(seed.name, ratings) && !playerHasRatingEvent(seed.name, events))
+    .filter((seed) => (seed.clubId ?? DEMO_CLUB_ID) === clubId)
+    .filter((seed) => !playerHasRating(seed.name, clubId, ratings) && !playerHasRatingEvent(seed.name, clubId, events))
     .map(seedToRating);
 
   return [...ratings, ...seededRatings].sort((a, b) => a.player.localeCompare(b.player));
 }
 
-export function getEloRatings(): PlayerEloRating[] {
+export function getEloRatings(clubId = getCurrentClubId()): PlayerEloRating[] {
   const storedRatings = readStorageArray<PlayerEloRating>(RATINGS_STORAGE_KEY);
-  const seededRatings = seedInitialRatings(storedRatings, getEloEvents());
+  const migratedRatings = storedRatings.map((rating) => ({
+    ...rating,
+    clubId: rating.clubId ?? DEMO_CLUB_ID,
+  }));
+  const seededRatings = seedInitialRatings(migratedRatings, getEloEvents(), clubId);
 
-  if (seededRatings.length !== storedRatings.length) {
+  if (JSON.stringify(seededRatings) !== JSON.stringify(storedRatings)) {
     writeStorageArray<PlayerEloRating>(RATINGS_STORAGE_KEY, seededRatings);
   }
 
-  return seededRatings;
+  return seededRatings.filter((rating) => (rating.clubId ?? DEMO_CLUB_ID) === clubId);
 }
 
 export function getEloEvents(): EloRatingEvent[] {
-  return readStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY);
+  return readStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY).map((event) => ({
+    ...event,
+    clubId: event.clubId ?? DEMO_CLUB_ID,
+  }));
 }
 
-export function getPlayerElo(player: string): PlayerEloRating {
-  return getEloRatings().find((rating) => samePlayer(rating.player, player)) ?? {
+export function getPlayerElo(player: string, clubId = getCurrentClubId()): PlayerEloRating {
+  return getEloRatings(clubId).find((rating) => samePlayer(rating.player, player)) ?? {
+    clubId,
     player,
     elo: DEFAULT_ELO,
     updatedAt: null,
@@ -136,11 +151,16 @@ function getMatchPlayers(match: CompletedMatch) {
 }
 
 export function applyEloForCompletedMatch(match: CompletedMatch): EloRatingEvent {
-  const existingEvent = getEloEvents().find((event) => event.matchId === match.id);
+  const clubId = match.clubId ?? DEMO_CLUB_ID;
+  const existingEvent = getEloEvents().find((event) => event.matchId === match.id && (event.clubId ?? DEMO_CLUB_ID) === clubId);
   if (existingEvent) return existingEvent;
 
   const { player1, player2, winner, loser } = getMatchPlayers(match);
-  const ratings = getEloRatings();
+  const ratings = getEloRatings(clubId);
+  const allRatings = readStorageArray<PlayerEloRating>(RATINGS_STORAGE_KEY).map((rating) => ({
+    ...rating,
+    clubId: rating.clubId ?? DEMO_CLUB_ID,
+  }));
   const player1Rating = ratings.find((rating) => samePlayer(rating.player, player1));
   const player2Rating = ratings.find((rating) => samePlayer(rating.player, player2));
   const player1Before = player1Rating?.elo ?? DEFAULT_ELO;
@@ -152,7 +172,9 @@ export function applyEloForCompletedMatch(match: CompletedMatch): EloRatingEvent
   const createdAt = new Date().toISOString();
 
   const event: EloRatingEvent = {
+    clubId,
     matchId: match.id,
+    clubNightId: match.clubNightId,
     player1,
     player2,
     winner,
@@ -166,8 +188,12 @@ export function applyEloForCompletedMatch(match: CompletedMatch): EloRatingEvent
     createdAt,
   };
 
-  const withoutPlayers = ratings.filter((rating) => !samePlayer(rating.player, player1) && !samePlayer(rating.player, player2));
+  const withoutPlayers = allRatings.filter((rating) => (
+    (rating.clubId ?? DEMO_CLUB_ID) !== clubId ||
+    (!samePlayer(rating.player, player1) && !samePlayer(rating.player, player2))
+  ));
   const updatedPlayer1: PlayerEloRating = {
+    clubId,
     playerId: player1Rating?.playerId,
     player: player1,
     elo: event.player1After,
@@ -175,6 +201,7 @@ export function applyEloForCompletedMatch(match: CompletedMatch): EloRatingEvent
     source: "match",
   };
   const updatedPlayer2: PlayerEloRating = {
+    clubId,
     playerId: player2Rating?.playerId,
     player: player2,
     elo: event.player2After,
@@ -205,14 +232,61 @@ export function calculateEveningEloDeltas(matchIds: string[]): Map<string, numbe
   return deltas;
 }
 
-export function removeEloEventsAndRebuildRatings(matchIds: string[]): EloRatingEvent[] {
+export function calculateClubNightEloDeltas(clubNightId: string, fallbackMatchIds: string[] = []): Map<string, number> {
+  const deltas = new Map<string, number>();
+  const fallbackIds = new Set(fallbackMatchIds);
+
+  getEloEvents().forEach((event) => {
+    if (event.clubNightId !== clubNightId && !fallbackIds.has(event.matchId)) return;
+    deltas.set(event.player1, (deltas.get(event.player1) ?? 0) + event.player1Delta);
+    deltas.set(event.player2, (deltas.get(event.player2) ?? 0) + event.player2Delta);
+  });
+
+  return deltas;
+}
+
+export function calculateClubNightEloDeltasInClub(clubId: string, clubNightId: string, fallbackMatchIds: string[] = []): Map<string, number> {
+  const deltas = new Map<string, number>();
+  const fallbackIds = new Set(fallbackMatchIds);
+
+  getEloEvents().forEach((event) => {
+    if ((event.clubId ?? DEMO_CLUB_ID) !== clubId) return;
+    if (event.clubNightId !== clubNightId && !fallbackIds.has(event.matchId)) return;
+    deltas.set(event.player1, (deltas.get(event.player1) ?? 0) + event.player1Delta);
+    deltas.set(event.player2, (deltas.get(event.player2) ?? 0) + event.player2Delta);
+  });
+
+  return deltas;
+}
+
+export function removeEloEventsForClubNightAndRebuildRatings(clubNightId: string, fallbackMatchIds: string[] = []): EloRatingEvent[] {
+  const fallbackIds = new Set(fallbackMatchIds);
+  const matchIds = getEloEvents()
+    .filter((event) => event.clubNightId === clubNightId || fallbackIds.has(event.matchId))
+    .map((event) => event.matchId);
+
+  return removeEloEventsAndRebuildRatings(matchIds);
+}
+
+export function removeEloEventsForClubNightInClubAndRebuildRatings(clubId: string, clubNightId: string, fallbackMatchIds: string[] = []): EloRatingEvent[] {
+  const fallbackIds = new Set(fallbackMatchIds);
+  const matchIds = getEloEvents()
+    .filter((event) => (event.clubId ?? DEMO_CLUB_ID) === clubId)
+    .filter((event) => event.clubNightId === clubNightId || fallbackIds.has(event.matchId))
+    .map((event) => event.matchId);
+
+  return removeEloEventsAndRebuildRatings(matchIds, clubId);
+}
+
+export function removeEloEventsAndRebuildRatings(matchIds: string[], clubId = getCurrentClubId()): EloRatingEvent[] {
   const ids = new Set(matchIds);
   const remainingEvents = getEloEvents()
+    .filter((event) => (event.clubId ?? DEMO_CLUB_ID) === clubId)
     .filter((event) => !ids.has(event.matchId))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const ratingMap = new Map<string, PlayerEloRating>();
 
-  getInitialSeedRatings().forEach((rating) => {
+  getInitialSeedRatings(clubId).forEach((rating) => {
     ratingMap.set(normalizeName(rating.player), rating);
   });
 
@@ -228,6 +302,7 @@ export function removeEloEventsAndRebuildRatings(matchIds: string[]): EloRatingE
     );
 
     ratingMap.set(player1Key, {
+      clubId,
       playerId: player1Rating?.playerId,
       player: event.player1,
       elo: rebuilt.player1After,
@@ -235,6 +310,7 @@ export function removeEloEventsAndRebuildRatings(matchIds: string[]): EloRatingE
       source: "match",
     });
     ratingMap.set(player2Key, {
+      clubId,
       playerId: player2Rating?.playerId,
       player: event.player2,
       elo: rebuilt.player2After,
@@ -247,9 +323,17 @@ export function removeEloEventsAndRebuildRatings(matchIds: string[]): EloRatingE
 
   writeStorageArray<PlayerEloRating>(
     RATINGS_STORAGE_KEY,
-    [...ratingMap.values()].sort((a, b) => a.player.localeCompare(b.player))
+    [
+      ...readStorageArray<PlayerEloRating>(RATINGS_STORAGE_KEY)
+        .map((rating) => ({ ...rating, clubId: rating.clubId ?? DEMO_CLUB_ID }))
+        .filter((rating) => (rating.clubId ?? DEMO_CLUB_ID) !== clubId),
+      ...ratingMap.values(),
+    ].sort((a, b) => a.player.localeCompare(b.player))
   );
-  writeStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY, [...rebuiltEvents].reverse());
+  writeStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY, [
+    ...getEloEvents().filter((event) => (event.clubId ?? DEMO_CLUB_ID) !== clubId),
+    ...rebuiltEvents,
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
 
   return rebuiltEvents;
 }

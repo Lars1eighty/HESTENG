@@ -13,7 +13,7 @@ export const dashboardCards = [
     description: "Start en individuel træning.",
     icon: "🎯",
     buttonText: "Start træning →",
-    href: "#",
+    href: "/traening",
   },
   {
     label: "SPILLERE",
@@ -21,7 +21,7 @@ export const dashboardCards = [
     description: "Administrér spillere.",
     icon: "👥",
     buttonText: "Åbn spillere →",
-    href: "#",
+    href: "/spillere",
   },
   {
     label: "RANGLISTER",
@@ -29,6 +29,6 @@ export const dashboardCards = [
     description: "Se aktuelle ranglister.",
     icon: "📊",
     buttonText: "Vis ranglister →",
-    href: "#",
+    href: "/ranglister",
   },
 ];

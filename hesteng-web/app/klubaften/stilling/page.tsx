@@ -3,11 +3,20 @@
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useParams } from "next/navigation";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { calculatePoolStandings } from "@/lib/standingsEngine";
 
 export default function StillingPage() {
-  const { pools, matches } = useKlubaften();
+  const params = useParams<{ clubNightId?: string }>();
+  const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
+  const { pools, matches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
+  const clubNightId = routeClubNightId ?? currentClubNightId;
+
+  useEffect(() => {
+    if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
+  }, [routeClubNightId, setCurrentClubNightId]);
 
   if (pools.length === 0) {
     return (
@@ -32,7 +41,7 @@ export default function StillingPage() {
             <h1 className="text-4xl font-bold">🏆 Puljestilling</h1>
             <p className="mt-2 text-gray-400">Live rangering baseret på afsluttede kampe.</p>
           </div>
-          <Link href="/klubaften/live" className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-600">🔴 Live scoring</Link>
+          <Link href={clubNightId ? `/klubaften/${clubNightId}/live` : "/klubaften/live"} className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-600">🔴 Live scoring</Link>
         </div>
 
         <div className="space-y-8">

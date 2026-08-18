@@ -1,39 +1,53 @@
 "use client";
 
-import { use, useCallback, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import MatchScorer from "@/components/MatchScorer";
 import { useKlubaften } from "@/context/KlubaftenContext";
-import { getCompletedMatch, type CompletedMatch } from "@/lib/matchStore";
+import { getCompletedMatchInClub, type CompletedMatch } from "@/lib/matchStore";
 import { applyEloForCompletedMatch } from "@/lib/eloRatingEngine";
 
 const LEG_OPTIONS = [3, 5, 7, 9];
 
 export default function KampScoringPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const { matches, setMatches } = useKlubaften();
-  const match = matches.find((item) => item.id === id);
+  const { id, clubNightId: routeClubNightId } = use(params as Promise<{ id: string; clubNightId?: string }>);
+  const { currentClubId, clubNights, matches, setMatches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
+  const clubNightId = routeClubNightId ?? currentClubNightId;
+  const clubNight = clubNights.find((item) => item.id === clubNightId) ?? null;
+  const scopedMatches = clubNight?.matches ?? matches;
+  const match = scopedMatches.find((item) => item.id === id);
   const [selectedBestOfLegs, setSelectedBestOfLegs] = useState(5);
 
+  useEffect(() => {
+    if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
+  }, [routeClubNightId, setCurrentClubNightId]);
+
   const saveMatchResult = useCallback((completedMatch: CompletedMatch) => {
-    applyEloForCompletedMatch(completedMatch);
-    setMatches(matches.map((item) => {
-      if (item.id !== completedMatch.id) return item;
+    const scopedCompletedMatch = {
+      ...completedMatch,
+      clubId: completedMatch.clubId ?? clubNight?.clubId ?? currentClubId,
+      clubNightId: completedMatch.clubNightId ?? clubNightId ?? undefined,
+    };
+    applyEloForCompletedMatch(scopedCompletedMatch);
+    setMatches(scopedMatches.map((item) => {
+      if (item.id !== scopedCompletedMatch.id) return item;
       const loser = completedMatch.winner === item.player1 ? item.player2 : item.player1;
       return {
         ...item,
-        bestOfLegs: completedMatch.bestOfLegs,
-        score1: completedMatch.score1,
-        score2: completedMatch.score2,
-        winner: completedMatch.winner,
+        clubId: item.clubId ?? clubNight?.clubId ?? currentClubId,
+        clubNightId: item.clubNightId ?? clubNightId ?? undefined,
+        bestOfLegs: scopedCompletedMatch.bestOfLegs,
+        score1: scopedCompletedMatch.score1,
+        score2: scopedCompletedMatch.score2,
+        winner: scopedCompletedMatch.winner,
         loser,
-        finishedAt: completedMatch.finishedAt,
+        finishedAt: scopedCompletedMatch.finishedAt,
         status: "finished",
       };
     }));
-  }, [matches, setMatches]);
+  }, [clubNight?.clubId, clubNightId, currentClubId, scopedMatches, setMatches]);
 
   if (!match) {
     return (
@@ -50,14 +64,18 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
   }
 
   const bestOfLegs = match.bestOfLegs ?? 5;
-  const isSetupRequired = match.status === "pending";
+  const isReadOnly = clubNight?.status !== "active";
+  const isSetupRequired = match.status === "pending" && !isReadOnly;
   const isFinished = match.status === "finished";
   const matchId = match.id;
-  const completedMatch = isFinished ? getCompletedMatch(match.id) : null;
+  const completedMatch = isFinished ? getCompletedMatchInClub(currentClubId, match.id) : null;
 
   function startMatch() {
-    setMatches(matches.map((item) => item.id === matchId ? {
+    if (isReadOnly) return;
+    setMatches(scopedMatches.map((item) => item.id === matchId ? {
       ...item,
+      clubId: item.clubId ?? clubNight?.clubId ?? currentClubId,
+      clubNightId: item.clubNightId ?? clubNightId ?? undefined,
       bestOfLegs: selectedBestOfLegs,
       status: "live",
     } : item));
@@ -74,7 +92,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
             <h1 className="mt-2 text-4xl font-bold">{match.player1} – {match.player2}</h1>
             <p className="mt-2 text-gray-400">501 Double Out · Bedst af {isSetupRequired ? selectedBestOfLegs : bestOfLegs} legs</p>
           </div>
-          <Link href="/klubaften/live" className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">
+          <Link href={clubNightId ? `/klubaften/${clubNightId}/live` : "/klubaften/live"} className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">
             Tilbage til live
           </Link>
         </div>
@@ -103,13 +121,17 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
             <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <Link href="/klubaften/kampe" className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-black hover:bg-orange-400">
+              <Link href={clubNightId ? `/klubaften/${clubNightId}/kampe` : "/klubaften/kampe"} className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-black hover:bg-orange-400">
                 Tilbage til kampoversigt
               </Link>
-              <Link href="/klubaften/stilling" className="rounded-xl border border-gray-700 px-5 py-3 text-sm font-semibold hover:bg-gray-800">
+              <Link href={clubNightId ? `/klubaften/${clubNightId}/stilling` : "/klubaften/stilling"} className="rounded-xl border border-gray-700 px-5 py-3 text-sm font-semibold hover:bg-gray-800">
                 Se puljestilling
               </Link>
             </div>
+          </div>
+        ) : isReadOnly ? (
+          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">
+            Denne klubaften ligger i arkiv og kan kun åbnes som historik.
           </div>
         ) : isSetupRequired ? (
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
@@ -125,6 +147,8 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
         ) : (
           <MatchScorer
             matchId={match.id}
+            clubId={clubNight?.clubId ?? currentClubId}
+            clubNightId={clubNightId ?? undefined}
             player1={match.player1}
             player2={match.player2}
             bestOfLegs={bestOfLegs}

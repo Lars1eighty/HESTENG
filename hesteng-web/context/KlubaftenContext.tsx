@@ -1,7 +1,10 @@
 "use client";
 
-import { createContext, useContext, useSyncExternalStore, ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, ReactNode } from "react";
 import type { ClubMatch } from "@/lib/matchEngine";
+import { DEMO_CLUB_ID } from "@/data/clubs";
+import { useClub } from "@/context/ClubContext";
+import { getCurrentClubId } from "@/lib/currentClub";
 
 export type Pool = {
   name: string;
@@ -9,6 +12,16 @@ export type Pool = {
 };
 
 type KlubaftenContextType = {
+  currentClubId: string;
+  clubNights: ClubNight[];
+  activeClubNights: ClubNight[];
+  archivedClubNights: ClubNight[];
+  currentClubNightId: string | null;
+  currentClubNight: ClubNight | null;
+  setCurrentClubNightId: (clubNightId: string | null) => void;
+  createClubNight: (input: { name: string; date: string; boardCount?: number; handicapBoards?: number[] }) => ClubNight;
+  updateClubNight: (clubNightId: string, update: (clubNight: ClubNight) => ClubNight) => void;
+  deleteClubNight: (clubNightId: string) => void;
   selectedPlayers: string[];
   setSelectedPlayers: (players: string[]) => void;
   pools: Pool[];
@@ -21,40 +34,132 @@ type KlubaftenContextType = {
   setHandicapBoards: (boards: number[]) => void;
   isFinished: boolean;
   finishKlubaften: () => void;
+  finishClubNight: (clubNightId?: string) => void;
+  abortClubNight: (clubNightId?: string) => void;
 };
 
 const KlubaftenContext = createContext<KlubaftenContextType | undefined>(undefined);
 const STORAGE_KEY = "hesteng.klubaftenState";
 const STORAGE_CHANGE_EVENT = "hesteng.klubaftenStateChanged";
 
-type KlubaftenSnapshot = {
+export type ClubNightStatus = "active" | "finished" | "aborted";
+
+export type ClubNight = {
+  id: string;
+  clubId?: string;
+  name: string;
+  date: string;
+  status: ClubNightStatus;
   selectedPlayers: string[];
   pools: Pool[];
   matches: ClubMatch[];
   boardCount: number;
   handicapBoards: number[];
-  isFinished: boolean;
+  createdAt: string;
+  finishedAt?: string;
 };
 
-const DEFAULT_KLUBAFTEN: KlubaftenSnapshot = {
+type LegacyKlubaftenSnapshot = {
+  selectedPlayers?: string[];
+  pools?: Pool[];
+  matches?: ClubMatch[];
+  boardCount?: number;
+  handicapBoards?: number[];
+  isFinished?: boolean;
+};
+
+type KlubaftenSnapshot = {
+  clubNights: ClubNight[];
+  currentClubNightId: string | null;
+};
+
+const EMPTY_CLUB_NIGHT: Omit<ClubNight, "id" | "name" | "date" | "status" | "createdAt" | "finishedAt"> = {
   selectedPlayers: [],
   pools: [],
   matches: [],
   boardCount: 13,
   handicapBoards: [],
-  isFinished: false,
+};
+
+const DEFAULT_KLUBAFTEN: KlubaftenSnapshot = {
+  clubNights: [],
+  currentClubNightId: null,
 };
 let cachedRawSnapshot: string | null = null;
 let cachedSnapshot: KlubaftenSnapshot = DEFAULT_KLUBAFTEN;
 
-function normalizeSnapshot(snapshot: Partial<KlubaftenSnapshot>): KlubaftenSnapshot {
+function createId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `club-night-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function normalizeClubNight(clubNight: Partial<ClubNight>, fallbackId = createId(), fallbackClubId = getCurrentClubId()): ClubNight {
+  const id = clubNight.id ?? fallbackId;
+  const clubId = clubNight.clubId ?? fallbackClubId;
   return {
-    selectedPlayers: snapshot.selectedPlayers ?? DEFAULT_KLUBAFTEN.selectedPlayers,
-    pools: snapshot.pools ?? DEFAULT_KLUBAFTEN.pools,
-    matches: snapshot.matches ?? DEFAULT_KLUBAFTEN.matches,
-    boardCount: snapshot.boardCount ?? DEFAULT_KLUBAFTEN.boardCount,
-    handicapBoards: snapshot.handicapBoards ?? DEFAULT_KLUBAFTEN.handicapBoards,
-    isFinished: snapshot.isFinished ?? DEFAULT_KLUBAFTEN.isFinished,
+    id,
+    clubId,
+    name: clubNight.name ?? "Klubaften",
+    date: clubNight.date ?? todayIsoDate(),
+    status: clubNight.status ?? "active",
+    selectedPlayers: clubNight.selectedPlayers ?? EMPTY_CLUB_NIGHT.selectedPlayers,
+    pools: clubNight.pools ?? EMPTY_CLUB_NIGHT.pools,
+    matches: (clubNight.matches ?? EMPTY_CLUB_NIGHT.matches).map((match) => ({
+      ...match,
+      clubId: match.clubId ?? clubId,
+      clubNightId: match.clubNightId ?? id,
+    })),
+    boardCount: clubNight.boardCount ?? EMPTY_CLUB_NIGHT.boardCount,
+    handicapBoards: clubNight.handicapBoards ?? EMPTY_CLUB_NIGHT.handicapBoards,
+    createdAt: clubNight.createdAt ?? new Date().toISOString(),
+    finishedAt: clubNight.finishedAt,
+  };
+}
+
+function migrateLegacySnapshot(snapshot: LegacyKlubaftenSnapshot): KlubaftenSnapshot {
+  const hasLegacyData =
+    (snapshot.selectedPlayers?.length ?? 0) > 0 ||
+    (snapshot.pools?.length ?? 0) > 0 ||
+    (snapshot.matches?.length ?? 0) > 0;
+
+  if (!hasLegacyData) return DEFAULT_KLUBAFTEN;
+
+  const legacyId = "legacy-club-night";
+  const clubNight = normalizeClubNight({
+    id: legacyId,
+    clubId: DEMO_CLUB_ID,
+    name: "Migreret klubaften",
+    date: todayIsoDate(),
+    status: snapshot.isFinished ? "finished" : "active",
+    selectedPlayers: snapshot.selectedPlayers,
+    pools: snapshot.pools,
+    matches: snapshot.matches,
+    boardCount: snapshot.boardCount,
+    handicapBoards: snapshot.handicapBoards,
+    createdAt: new Date().toISOString(),
+    finishedAt: snapshot.isFinished ? new Date().toISOString() : undefined,
+  }, legacyId, DEMO_CLUB_ID);
+
+  return {
+    clubNights: [clubNight],
+    currentClubNightId: clubNight.id,
+  };
+}
+
+function normalizeSnapshot(snapshot: Partial<KlubaftenSnapshot> & LegacyKlubaftenSnapshot): KlubaftenSnapshot {
+  if (!Array.isArray(snapshot.clubNights)) return migrateLegacySnapshot(snapshot);
+
+  const clubNights = snapshot.clubNights.map((clubNight, index) => normalizeClubNight(clubNight, `club-night-${index + 1}`, clubNight.clubId ?? DEMO_CLUB_ID));
+  const currentExists = clubNights.some((clubNight) => clubNight.id === snapshot.currentClubNightId);
+  const firstActive = clubNights.find((clubNight) => clubNight.status === "active") ?? clubNights[0] ?? null;
+
+  return {
+    clubNights,
+    currentClubNightId: currentExists ? snapshot.currentClubNightId ?? null : firstActive?.id ?? null,
   };
 }
 
@@ -75,12 +180,20 @@ function getStoredKlubaften(): KlubaftenSnapshot {
 
 function saveStoredKlubaften(snapshot: KlubaftenSnapshot) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  const normalized = normalizeSnapshot(snapshot);
+  cachedRawSnapshot = JSON.stringify(normalized);
+  cachedSnapshot = normalized;
+  window.localStorage.setItem(STORAGE_KEY, cachedRawSnapshot);
   window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
 }
 
 function updateStoredKlubaften(update: (snapshot: KlubaftenSnapshot) => KlubaftenSnapshot) {
-  saveStoredKlubaften(update(getStoredKlubaften()));
+  const current = getStoredKlubaften();
+  const next = normalizeSnapshot(update(current));
+
+  if (JSON.stringify(current) === JSON.stringify(next)) return;
+
+  saveStoredKlubaften(next);
 }
 
 function subscribeToKlubaften(callback: () => void) {
@@ -100,30 +213,144 @@ function subscribeToKlubaften(callback: () => void) {
 
 export function KlubaftenProvider({ children }: { children: ReactNode }) {
   const snapshot = useSyncExternalStore(subscribeToKlubaften, getStoredKlubaften, () => DEFAULT_KLUBAFTEN);
-  const setSelectedPlayers = (players: string[]) => updateStoredKlubaften((current) => ({ ...current, selectedPlayers: players }));
-  const setPools = (pools: Pool[]) => updateStoredKlubaften((current) => ({ ...current, pools }));
-  const setMatches = (matches: ClubMatch[]) => updateStoredKlubaften((current) => ({ ...current, matches }));
-  const setBoardCount = (boardCount: number) => updateStoredKlubaften((current) => ({ ...current, boardCount }));
-  const setHandicapBoards = (handicapBoards: number[]) => updateStoredKlubaften((current) => ({ ...current, handicapBoards }));
-  const finishKlubaften = () => updateStoredKlubaften((current) => ({ ...current, isFinished: true }));
+  const { currentClubId } = useClub();
+  const scopedClubNights = useMemo(
+    () => snapshot.clubNights.filter((clubNight) => (clubNight.clubId ?? DEMO_CLUB_ID) === currentClubId),
+    [currentClubId, snapshot.clubNights]
+  );
+  const currentClubNight = useMemo(
+    () => scopedClubNights.find((clubNight) => clubNight.id === snapshot.currentClubNightId) ?? null,
+    [scopedClubNights, snapshot.currentClubNightId]
+  );
+  const activeClubNights = useMemo(
+    () => scopedClubNights.filter((clubNight) => clubNight.status === "active"),
+    [scopedClubNights]
+  );
+  const archivedClubNights = useMemo(
+    () => scopedClubNights.filter((clubNight) => clubNight.status !== "active"),
+    [scopedClubNights]
+  );
+
+  const setCurrentClubNightId = useCallback((clubNightId: string | null) => updateStoredKlubaften((current) => {
+    if (current.currentClubNightId === clubNightId) return current;
+    return {
+      ...current,
+      currentClubNightId: clubNightId,
+    };
+  }), []);
+
+  const updateClubNight = useCallback((clubNightId: string, update: (clubNight: ClubNight) => ClubNight) => {
+    updateStoredKlubaften((current) => ({
+      ...current,
+      clubNights: current.clubNights.map((clubNight) => clubNight.id === clubNightId ? normalizeClubNight(update(clubNight), clubNight.id) : clubNight),
+      currentClubNightId: current.currentClubNightId ?? clubNightId,
+    }));
+  }, []);
+
+  const deleteClubNight = useCallback((clubNightId: string) => {
+    updateStoredKlubaften((current) => {
+      const remainingClubNights = current.clubNights.filter((clubNight) => clubNight.id !== clubNightId);
+      const currentWasDeleted = current.currentClubNightId === clubNightId;
+      const nextCurrentClubNight = currentWasDeleted
+        ? remainingClubNights.find((clubNight) => clubNight.status === "active") ?? remainingClubNights[0] ?? null
+        : remainingClubNights.find((clubNight) => clubNight.id === current.currentClubNightId) ?? null;
+
+      return {
+        clubNights: remainingClubNights,
+        currentClubNightId: nextCurrentClubNight?.id ?? null,
+      };
+    });
+  }, []);
+
+  const updateCurrentClubNight = useCallback((update: (clubNight: ClubNight) => ClubNight) => {
+    const clubNightId = getStoredKlubaften().currentClubNightId;
+    if (!clubNightId) return;
+    updateClubNight(clubNightId, update);
+  }, [updateClubNight]);
+
+  const createClubNight = useCallback((input: { name: string; date: string; boardCount?: number; handicapBoards?: number[] }) => {
+    const now = new Date().toISOString();
+    const clubNight = normalizeClubNight({
+      id: createId(),
+      clubId: currentClubId,
+      name: input.name.trim() || "Klubaften",
+      date: input.date || todayIsoDate(),
+      status: "active",
+      boardCount: input.boardCount ?? EMPTY_CLUB_NIGHT.boardCount,
+      handicapBoards: input.handicapBoards ?? EMPTY_CLUB_NIGHT.handicapBoards,
+      createdAt: now,
+    }, undefined, currentClubId);
+
+    updateStoredKlubaften((current) => ({
+      clubNights: [clubNight, ...current.clubNights],
+      currentClubNightId: clubNight.id,
+    }));
+
+    return clubNight;
+  }, [currentClubId]);
+
+  const setSelectedPlayers = useCallback((players: string[]) => updateCurrentClubNight((current) => ({ ...current, selectedPlayers: players })), [updateCurrentClubNight]);
+  const setPools = useCallback((pools: Pool[]) => updateCurrentClubNight((current) => ({ ...current, pools })), [updateCurrentClubNight]);
+  const setMatches = useCallback((matches: ClubMatch[]) => updateCurrentClubNight((current) => ({ ...current, matches })), [updateCurrentClubNight]);
+  const setBoardCount = useCallback((boardCount: number) => updateCurrentClubNight((current) => ({ ...current, boardCount })), [updateCurrentClubNight]);
+  const setHandicapBoards = useCallback((handicapBoards: number[]) => updateCurrentClubNight((current) => ({ ...current, handicapBoards })), [updateCurrentClubNight]);
+  const finishClubNight = useCallback((clubNightId = getStoredKlubaften().currentClubNightId ?? undefined) => {
+    if (!clubNightId) return;
+    updateClubNight(clubNightId, (current) => ({ ...current, status: "finished", finishedAt: new Date().toISOString() }));
+  }, [updateClubNight]);
+  const abortClubNight = useCallback((clubNightId = getStoredKlubaften().currentClubNightId ?? undefined) => {
+    if (!clubNightId) return;
+    updateClubNight(clubNightId, (current) => ({ ...current, status: "aborted", finishedAt: new Date().toISOString() }));
+  }, [updateClubNight]);
+  const finishKlubaften = useCallback(() => finishClubNight(), [finishClubNight]);
+  const contextValue = useMemo(() => ({
+    currentClubId,
+    clubNights: scopedClubNights,
+    activeClubNights,
+    archivedClubNights,
+    currentClubNightId: snapshot.currentClubNightId,
+    currentClubNight,
+    setCurrentClubNightId,
+    createClubNight,
+    updateClubNight,
+    deleteClubNight,
+    selectedPlayers: currentClubNight?.selectedPlayers ?? EMPTY_CLUB_NIGHT.selectedPlayers,
+    setSelectedPlayers,
+    pools: currentClubNight?.pools ?? EMPTY_CLUB_NIGHT.pools,
+    setPools,
+    matches: currentClubNight?.matches.filter((match) => (match.clubId ?? currentClubId) === currentClubId) ?? EMPTY_CLUB_NIGHT.matches,
+    setMatches,
+    boardCount: currentClubNight?.boardCount ?? EMPTY_CLUB_NIGHT.boardCount,
+    setBoardCount,
+    handicapBoards: currentClubNight?.handicapBoards ?? EMPTY_CLUB_NIGHT.handicapBoards,
+    setHandicapBoards,
+    isFinished: currentClubNight?.status === "finished",
+    finishKlubaften,
+    finishClubNight,
+    abortClubNight,
+  }), [
+    abortClubNight,
+    activeClubNights,
+    archivedClubNights,
+    createClubNight,
+    currentClubNight,
+    currentClubId,
+    deleteClubNight,
+    finishClubNight,
+    finishKlubaften,
+    setBoardCount,
+    setCurrentClubNightId,
+    setHandicapBoards,
+    setMatches,
+    setPools,
+    setSelectedPlayers,
+    scopedClubNights,
+    snapshot.currentClubNightId,
+    updateClubNight,
+  ]);
 
   return (
-    <KlubaftenContext.Provider
-      value={{
-        selectedPlayers: snapshot.selectedPlayers,
-        setSelectedPlayers,
-        pools: snapshot.pools,
-        setPools,
-        matches: snapshot.matches,
-        setMatches,
-        boardCount: snapshot.boardCount,
-        setBoardCount,
-        handicapBoards: snapshot.handicapBoards,
-        setHandicapBoards,
-        isFinished: snapshot.isFinished,
-        finishKlubaften,
-      }}
-    >
+    <KlubaftenContext.Provider value={contextValue}>
       {children}
     </KlubaftenContext.Provider>
   );

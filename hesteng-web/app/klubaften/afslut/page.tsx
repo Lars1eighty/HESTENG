@@ -2,31 +2,44 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useParams } from "next/navigation";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { calculatePoolStandings } from "@/lib/standingsEngine";
-import { deleteCompletedMatches } from "@/lib/matchStore";
-import { removeEloEventsAndRebuildRatings } from "@/lib/eloRatingEngine";
+import { deleteCompletedMatchesForClubNightInClub } from "@/lib/matchStore";
+import { removeEloEventsForClubNightInClubAndRebuildRatings } from "@/lib/eloRatingEngine";
 
 export default function AfslutKlubaftenPage() {
   const router = useRouter();
-  const { pools, matches, setMatches, isFinished, finishKlubaften } = useKlubaften();
+  const params = useParams<{ clubNightId?: string }>();
+  const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
+  const { currentClubId, pools, matches, setMatches, isFinished, finishClubNight, abortClubNight, deleteClubNight, currentClubNightId, currentClubNight, setCurrentClubNightId } = useKlubaften();
   const [abortStep, setAbortStep] = useState<"closed" | "choice" | "confirmDelete">("closed");
+  const [deleteStep, setDeleteStep] = useState<"closed" | "choice" | "confirmDelete">("closed");
+  const clubNightId = routeClubNightId ?? currentClubNightId;
+  const isArchived = currentClubNight?.status !== "active";
   const unfinished = matches.filter((match) => match.status !== "finished").length;
-  const currentFinishedMatchIds = matches.filter((match) => match.status === "finished").map((match) => match.id);
+  const currentFinishedMatchIds = matches.filter((match) => match.status === "finished" && (!clubNightId || match.clubNightId === clubNightId)).map((match) => match.id);
+  const currentMatchIds = matches.map((match) => match.id);
+
+  useEffect(() => {
+    if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
+  }, [routeClubNightId, setCurrentClubNightId]);
 
   function abortAndKeepResults() {
-    finishKlubaften();
+    abortClubNight(clubNightId ?? undefined);
     router.push("/");
   }
 
   function abortAndDeleteResults() {
+    if (!clubNightId) return;
     const ids = new Set(currentFinishedMatchIds);
 
-    deleteCompletedMatches(currentFinishedMatchIds);
-    removeEloEventsAndRebuildRatings(currentFinishedMatchIds);
+    deleteCompletedMatchesForClubNightInClub(currentClubId, clubNightId, currentFinishedMatchIds);
+    removeEloEventsForClubNightInClubAndRebuildRatings(currentClubId, clubNightId, currentFinishedMatchIds);
     setMatches(matches.map((match) => {
       if (!ids.has(match.id)) return match;
       const { winner, loser, finishedAt, ...rest } = match;
@@ -40,11 +53,40 @@ export default function AfslutKlubaftenPage() {
         status: "pending",
       };
     }));
-    finishKlubaften();
+    abortClubNight(clubNightId);
     router.push("/");
   }
 
-  if (isFinished) {
+  function finishCurrentClubNight() {
+    finishClubNight(clubNightId ?? undefined);
+  }
+
+  function deleteCurrentClubNightPermanently() {
+    if (!clubNightId) return;
+    deleteCompletedMatchesForClubNightInClub(currentClubId, clubNightId, currentMatchIds);
+    removeEloEventsForClubNightInClubAndRebuildRatings(currentClubId, clubNightId, currentMatchIds);
+    deleteClubNight(clubNightId);
+    router.push("/klubaften");
+  }
+
+  const deleteDangerZone = (
+    <section className="mt-8 rounded-2xl border border-red-900 bg-red-950/20 p-6">
+      <div className="text-sm font-bold uppercase tracking-wide text-red-300">Test/admin: permanent sletning</div>
+      <h2 className="mt-2 text-2xl font-bold text-red-200">Slet klubaften</h2>
+      <p className="mt-2 text-sm text-gray-400">
+        Fjerner denne klubaften permanent fra både aktive klubaftner og arkiv. Spillerregister og ELO-seed bevares.
+      </p>
+      <button
+        type="button"
+        onClick={() => setDeleteStep("choice")}
+        className="mt-5 rounded-xl border border-red-700 bg-red-500/10 px-5 py-3 font-bold text-red-300 hover:bg-red-500/20"
+      >
+        Slet klubaften
+      </button>
+    </section>
+  );
+
+  if (isFinished || isArchived) {
     return (
       <main className="min-h-screen bg-gray-950 text-white">
         <Header />
@@ -52,12 +94,19 @@ export default function AfslutKlubaftenPage() {
           <BackButton />
           <div className="rounded-2xl border border-green-800 bg-green-950/30 p-10 text-center">
             <div className="text-5xl">🏁</div>
-            <h1 className="mt-4 text-4xl font-bold">Klubaften afsluttet</h1>
+            <h1 className="mt-4 text-4xl font-bold">Klubaften arkiveret</h1>
             <p className="mt-3 text-gray-400">Resultaterne er låst for denne klubaften.</p>
-            <Link href="/klubaften/stilling" className="mt-8 inline-block rounded-xl bg-orange-500 px-6 py-3 font-semibold hover:bg-orange-600">
+            <Link href={clubNightId ? `/klubaften/${clubNightId}/stilling` : "/klubaften/stilling"} className="mt-8 inline-block rounded-xl bg-orange-500 px-6 py-3 font-semibold hover:bg-orange-600">
               Se endelig stilling
             </Link>
           </div>
+          {deleteDangerZone}
+          <DeleteClubNightDialog
+            step={deleteStep}
+            onAskConfirm={() => setDeleteStep("confirmDelete")}
+            onCancel={() => setDeleteStep("closed")}
+            onDelete={deleteCurrentClubNightPermanently}
+          />
         </section>
       </main>
     );
@@ -98,7 +147,7 @@ export default function AfslutKlubaftenPage() {
 
         <button
           type="button"
-          onClick={finishKlubaften}
+          onClick={finishCurrentClubNight}
           className="w-full rounded-xl bg-red-600 py-4 text-lg font-bold hover:bg-red-700"
         >
           🏁 Afslut klubaften
@@ -111,6 +160,8 @@ export default function AfslutKlubaftenPage() {
         >
           Afbryd klubaften
         </button>
+
+        {deleteDangerZone}
 
         {abortStep !== "closed" && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
@@ -170,7 +221,72 @@ export default function AfslutKlubaftenPage() {
             </div>
           </div>
         )}
+
+        <DeleteClubNightDialog
+          step={deleteStep}
+          onAskConfirm={() => setDeleteStep("confirmDelete")}
+          onCancel={() => setDeleteStep("closed")}
+          onDelete={deleteCurrentClubNightPermanently}
+        />
       </section>
     </main>
+  );
+}
+
+function DeleteClubNightDialog({
+  step,
+  onAskConfirm,
+  onCancel,
+  onDelete,
+}: {
+  step: "closed" | "choice" | "confirmDelete";
+  onAskConfirm: () => void;
+  onCancel: () => void;
+  onDelete: () => void;
+}) {
+  if (step === "closed") return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
+      <div className="w-full max-w-xl rounded-2xl border border-red-900 bg-gray-950 p-7 shadow-2xl">
+        {step === "choice" ? (
+          <>
+            <h2 className="text-3xl font-bold text-red-200">Slet klubaften?</h2>
+            <p className="mt-3 text-gray-400">
+              Denne handling er kun til test/admin og fjerner hele klubaftenen fra HESTENG.
+            </p>
+            <button
+              type="button"
+              onClick={onAskConfirm}
+              className="mt-6 w-full rounded-xl border border-red-700 bg-red-500/10 px-5 py-4 text-left font-bold text-red-300 hover:bg-red-500/20"
+            >
+              Fortsæt til permanent sletning
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="text-3xl font-bold text-red-300">Er du sikker?</h2>
+            <p className="mt-3 text-gray-300">
+              Denne klubaften fjernes permanent. Kampdata, MatchStore-resultater og tilhørende ELO-events for denne klubaften slettes.
+            </p>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="mt-6 w-full rounded-xl bg-red-600 px-5 py-4 font-bold text-white hover:bg-red-700"
+            >
+              Ja, slet klubaftenen permanent
+            </button>
+          </>
+        )}
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-4 w-full rounded-xl border border-gray-700 px-5 py-3 font-semibold text-gray-300 hover:bg-gray-800"
+        >
+          Annuller
+        </button>
+      </div>
+    </div>
   );
 }

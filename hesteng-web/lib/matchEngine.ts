@@ -2,6 +2,8 @@ import { Pool } from "@/context/KlubaftenContext";
 
 export type ClubMatch = {
   id: string;
+  clubId?: string;
+  clubNightId?: string;
   pool: string;
   round: number;
   player1: string;
@@ -46,7 +48,9 @@ function createRoundRobin(players: string[]): string[][] {
 
 export function createClubNightMatches(
   pools: Pool[],
-  boardCount = CLUB_NIGHT_BOARD_COUNT
+  boardCount = CLUB_NIGHT_BOARD_COUNT,
+  clubNightId?: string,
+  clubId?: string
 ): ClubMatch[] {
   if (boardCount !== CLUB_NIGHT_BOARD_COUNT) {
     throw new Error("Klubaften bruger præcis 13 baner");
@@ -62,7 +66,9 @@ export function createClubNightMatches(
         const board = (matchIndex % boardCount) + 1;
 
         matches.push({
-          id: `thu-${matchNumber++}`,
+          id: clubNightId ? `${clubNightId}-match-${matchNumber++}` : `thu-${matchNumber++}`,
+          clubId,
+          clubNightId,
           pool: pool.name,
           round: roundIndex + 1,
           player1,

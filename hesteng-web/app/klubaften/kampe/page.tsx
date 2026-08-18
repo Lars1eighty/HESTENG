@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { createClubNightMatches } from "@/lib/matchEngine";
 import { getNextMatchesByBoard } from "@/lib/liveEngine";
@@ -21,11 +22,20 @@ function getStatusClasses(status: "pending" | "live" | "finished") {
 }
 
 export default function KampePage() {
-  const { pools, matches, setMatches } = useKlubaften();
+  const params = useParams<{ clubNightId?: string }>();
+  const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
+  const { currentClubId, pools, matches, setMatches, currentClubNightId, currentClubNight, setCurrentClubNightId } = useKlubaften();
+  const clubNightId = routeClubNightId ?? currentClubNightId;
 
   useEffect(() => {
-    if (pools.length > 0 && matches.length === 0) setMatches(createClubNightMatches(pools));
-  }, [pools, matches.length, setMatches]);
+    if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
+  }, [routeClubNightId, setCurrentClubNightId]);
+
+  useEffect(() => {
+    if (pools.length > 0 && matches.length === 0 && clubNightId && currentClubNight?.status === "active") {
+      setMatches(createClubNightMatches(pools, 13, clubNightId, currentClubId));
+    }
+  }, [clubNightId, currentClubId, currentClubNight?.status, pools, matches.length, setMatches]);
 
   if (pools.length === 0) {
     return (
@@ -57,8 +67,8 @@ export default function KampePage() {
             <p className="mt-2 text-gray-400">Færdige {finished} · I gang {live} · Mangler {pending}</p>
           </div>
           <div className="flex gap-3">
-            <Link href="/klubaften/puljer" className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">Se puljer</Link>
-            <Link href="/klubaften/live" className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-600">🔴 Live scoring</Link>
+            <Link href={clubNightId ? `/klubaften/${clubNightId}/puljer` : "/klubaften/puljer"} className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">Se puljer</Link>
+            <Link href={clubNightId ? `/klubaften/${clubNightId}/live` : "/klubaften/live"} className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-600">🔴 Live scoring</Link>
           </div>
         </div>
 
@@ -86,7 +96,7 @@ export default function KampePage() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   {poolMatches.map((match) => (
-                    <Link key={match.id} href={`/klubaften/kamp/${match.id}`} className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 transition hover:border-gray-600 hover:bg-gray-800">
+                    <Link key={match.id} href={clubNightId ? `/klubaften/${clubNightId}/kamp/${match.id}` : `/klubaften/kamp/${match.id}`} className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 transition hover:border-gray-600 hover:bg-gray-800">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-sm text-gray-400">{match.pool} · Runde {match.round} · Bane {match.board}</div>
                         <span className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClasses(match.status)}`}>{getStatusLabel(match.status)}</span>

@@ -19,6 +19,7 @@ type PlayerScore = {
   entries: number;
   checkouts: number;
   checkoutAttempts: number;
+  highestCheckout: number;
   oneEighties: number;
   lastInput: number | null;
   legDarts: number;
@@ -29,6 +30,8 @@ type PlayerScore = {
 
 type Props = {
   matchId: string;
+  clubId?: string;
+  clubNightId?: string;
   player1: string;
   player2: string;
   bestOfLegs?: number;
@@ -142,10 +145,10 @@ function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
 
-export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null, onMatchComplete }: Props) {
+export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null, onMatchComplete }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
-    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
-    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
+    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
+    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [inputMode, setInputMode] = useState<"score" | "darts">("score");
@@ -183,12 +186,15 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
       checkouts: player.checkouts,
       checkoutAttempts: player.checkoutAttempts,
       checkoutPercent: player.checkoutAttempts ? Math.round((player.checkouts / player.checkoutAttempts) * 100) : 0,
+      highestCheckout: player.highestCheckout,
       oneEighties: player.oneEighties,
       fastestLegDarts: player.fastestLegDarts,
-    })) as [{ name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; oneEighties: number; fastestLegDarts: number | null }, { name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; oneEighties: number; fastestLegDarts: number | null }];
+    })) as [{ name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; highestCheckout: number; oneEighties: number; fastestLegDarts: number | null }, { name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; highestCheckout: number; oneEighties: number; fastestLegDarts: number | null }];
 
     return {
       id: matchId,
+      clubId,
+      clubNightId,
       player1: players[0].name,
       player2: players[1].name,
       winner: matchWinner.name,
@@ -202,7 +208,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
       finishedAt: new Date().toISOString(),
       players: stats,
     };
-  }, [bestOfLegs, board, matchId, matchWinner, players, pool, round]);
+  }, [bestOfLegs, board, clubId, clubNightId, matchId, matchWinner, players, pool, round]);
 
   useEffect(() => {
     if (!matchWinner || saved) return;
@@ -356,6 +362,7 @@ export default function MatchScorer({ matchId, player1, player2, bestOfLegs = 3,
         entries: player.entries + 1,
         checkouts: player.checkouts + 1,
         checkoutAttempts: player.checkoutAttempts + darts,
+        highestCheckout: Math.max(player.highestCheckout, score),
         oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
         lastInput: score,
         legDarts: 0,

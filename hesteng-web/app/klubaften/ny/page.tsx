@@ -2,11 +2,17 @@
 
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useKlubaften } from "@/context/KlubaftenContext";
 
 export default function NyKlubaftenPage() {
-  const { boardCount, setBoardCount, handicapBoards, setHandicapBoards } = useKlubaften();
+  const router = useRouter();
+  const { createClubNight } = useKlubaften();
+  const [name, setName] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [boardCount, setBoardCount] = useState(13);
+  const [handicapBoards, setHandicapBoards] = useState<number[]>([]);
 
   const toggleHandicap = (board: number) => {
     setHandicapBoards(
@@ -17,6 +23,16 @@ export default function NyKlubaftenPage() {
   };
 
   const availableHandicapBoards = [4, 13].filter((board) => board <= boardCount);
+
+  function submitClubNight() {
+    const clubNight = createClubNight({
+      name: name.trim() || "Klubaften",
+      date,
+      boardCount,
+      handicapBoards,
+    });
+    router.push(`/klubaften/${clubNight.id}/spillere`);
+  }
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -37,6 +53,8 @@ export default function NyKlubaftenPage() {
 
             <input
               type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
               placeholder="F.eks. Klubaften d. 6. august"
               className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 outline-none focus:border-orange-500"
             />
@@ -49,6 +67,8 @@ export default function NyKlubaftenPage() {
 
             <input
               type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
               className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 outline-none focus:border-orange-500"
             />
           </div>
@@ -114,12 +134,13 @@ export default function NyKlubaftenPage() {
             </select>
           </div>
 
-          <Link
-            href="/klubaften/spillere"
-            className="block w-full rounded-xl bg-orange-500 py-3 text-center text-lg font-semibold hover:bg-orange-600"
+          <button
+            type="button"
+            onClick={submitClubNight}
+            className="block w-full rounded-xl bg-orange-500 py-3 text-center text-lg font-semibold text-black hover:bg-orange-400"
           >
             Opret klubaften
-          </Link>
+          </button>
         </div>
       </section>
     </main>

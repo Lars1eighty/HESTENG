@@ -3,11 +3,20 @@
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useParams } from "next/navigation";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { getNextMatchesByBoard } from "@/lib/liveEngine";
 
 export default function LivePage() {
-  const { matches } = useKlubaften();
+  const params = useParams<{ clubNightId?: string }>();
+  const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
+  const { matches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
+  const clubNightId = routeClubNightId ?? currentClubNightId;
+
+  useEffect(() => {
+    if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
+  }, [routeClubNightId, setCurrentClubNightId]);
   const nextMatches = getNextMatchesByBoard(matches);
   const finishedCount = matches.filter((match) => match.status === "finished").length;
 
@@ -39,7 +48,7 @@ export default function LivePage() {
               {finishedCount} færdige · {nextMatches.length} aktive baner
             </p>
           </div>
-          <Link href="/klubaften/kampe" className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">
+          <Link href={clubNightId ? `/klubaften/${clubNightId}/kampe` : "/klubaften/kampe"} className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">
             Kampoversigt
           </Link>
         </div>
@@ -57,7 +66,7 @@ export default function LivePage() {
           {nextMatches.map((match) => (
             <Link
               key={match.id}
-              href={`/klubaften/kamp/${match.id}`}
+              href={clubNightId ? `/klubaften/${clubNightId}/kamp/${match.id}` : `/klubaften/kamp/${match.id}`}
               className="group block rounded-2xl border border-gray-800 bg-gray-900 p-6 transition hover:border-orange-500 hover:bg-gray-800"
             >
               <div className="mb-5 flex items-center justify-between text-sm text-gray-500">

@@ -1,4 +1,5 @@
 export type PlayerEloSeedEntry = {
+  clubId?: string;
   playerId?: string;
   name: string;
   elo: number;

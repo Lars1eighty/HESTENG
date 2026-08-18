@@ -4,11 +4,19 @@ import { useEffect } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { createClubNightPools } from "@/lib/thuPoolEngine";
 
 export default function PuljerPage() {
-  const { selectedPlayers, pools, setPools } = useKlubaften();
+  const params = useParams<{ clubNightId?: string }>();
+  const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
+  const { selectedPlayers, pools, setPools, currentClubNightId, setCurrentClubNightId } = useKlubaften();
+  const clubNightId = routeClubNightId ?? currentClubNightId;
+
+  useEffect(() => {
+    if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
+  }, [routeClubNightId, setCurrentClubNightId]);
 
   useEffect(() => {
     if (selectedPlayers.length >= 10) {
@@ -69,7 +77,7 @@ export default function PuljerPage() {
         </div>
 
         <Link
-          href="/klubaften/kampe"
+          href={clubNightId ? `/klubaften/${clubNightId}/kampe` : "/klubaften/kampe"}
           className="mt-8 block w-full rounded-xl bg-orange-500 py-3 text-center text-lg font-semibold hover:bg-orange-600"
         >
           Generér kampe + tildel baner

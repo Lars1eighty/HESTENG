@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useClub } from "@/context/ClubContext";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { getSelectablePlayerNames } from "@/lib/playerRegistry";
 
 export default function PlayerSearch() {
   const [search, setSearch] = useState("");
+  const { currentClubId } = useClub();
   const { selectedPlayers, setSelectedPlayers } = useKlubaften();
-  const players = useMemo(() => getSelectablePlayerNames(), []);
+  const players = useMemo(() => getSelectablePlayerNames(currentClubId), [currentClubId]);
 
   const filteredPlayers = useMemo(() => {
     if (!search.trim()) return [];
