@@ -654,8 +654,20 @@ function TrainingExerciseCard({
   const latestHitPercent = summary.latest ? numericMetric(summary.latest, "hitPercent") : null;
   const monthlyHitPercent = summary.monthly.metrics.find((metric) => metric.key === "hitPercent") ?? null;
 
+  function handleCardKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    onStart();
+  }
+
   return (
-    <article className="min-w-0 rounded-2xl border border-gray-800 bg-gray-900 p-3 sm:p-5">
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={onStart}
+      onKeyDown={handleCardKeyDown}
+      className="min-w-0 cursor-pointer rounded-2xl border border-gray-800 bg-gray-900 p-3 transition hover:border-orange-500/70 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:p-5"
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Træningsspil</div>
@@ -664,8 +676,11 @@ function TrainingExerciseCard({
         </div>
         <button
           type="button"
-          onClick={onStart}
-          className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-gray-950 transition hover:bg-orange-400 sm:shrink-0"
+          onClick={(event) => {
+            event.stopPropagation();
+            onStart();
+          }}
+          className="min-h-11 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-gray-950 transition hover:bg-orange-400 sm:shrink-0"
         >
           Start
         </button>
@@ -702,8 +717,11 @@ function TrainingExerciseCard({
 
       <button
         type="button"
-        onClick={onToggle}
-        className="mt-4 rounded-xl border border-gray-700 px-4 py-2 text-sm font-black text-gray-300 transition hover:border-orange-500 hover:text-white"
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle();
+        }}
+        className="mt-4 min-h-11 rounded-xl border border-gray-700 px-4 py-2 text-sm font-black text-gray-300 transition hover:border-orange-500 hover:text-white"
       >
         {expanded ? "Skjul detaljer" : "Vis detaljer"}
       </button>
