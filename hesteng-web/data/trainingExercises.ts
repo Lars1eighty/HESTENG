@@ -25,6 +25,22 @@ export const trainingExercises: TrainingExercise[] = [
         valueType: "count",
         personalBest: "higherIsBetter",
       },
+      {
+        key: "hits",
+        label: "Hits",
+        valueType: "count",
+      },
+      {
+        key: "attempts",
+        label: "Forsøg",
+        valueType: "count",
+      },
+      {
+        key: "hitPercent",
+        label: "Træf %",
+        valueType: "percent",
+        personalBest: "higherIsBetter",
+      },
     ],
   },
   {

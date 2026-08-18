@@ -88,11 +88,11 @@ const CATCH_40_TARGETS = Array.from({ length: 40 }, (_, index) => index + 61);
 const BOBS_27_TARGETS = [
   ...Array.from({ length: 20 }, (_, index) => ({
     target: `D${index + 1}`,
-    value: index + 1,
+    value: (index + 1) * 2,
   })),
   {
     target: "BULL",
-    value: 25,
+    value: 50,
   },
 ];
 const GAME_420_TARGETS = [
@@ -164,7 +164,6 @@ export default function TrainingPage() {
   const checkoutPercentStats = monthlyStats?.metrics.find((metric) => metric.key === "checkoutPercent") ?? null;
   const hitPercentStats = monthlyStats?.metrics.find((metric) => metric.key === "hitPercent") ?? null;
   const scorePersonalBest = personalBest(selectedPlayerResults, "score", "higherIsBetter");
-  const shanghaiPersonalBest = personalBest(selectedPlayerResults, "shanghaiCount", "higherIsBetter");
   const checkoutPercentPersonalBest = personalBest(selectedPlayerResults, "checkoutPercent", "higherIsBetter");
   const highestCheckoutPersonalBest = personalBest(selectedPlayerResults, "highestCheckout", "higherIsBetter");
   const hitPercentPersonalBest = personalBest(selectedPlayerResults, "hitPercent", "higherIsBetter");
@@ -235,6 +234,9 @@ export default function TrainingPage() {
         {
           score: nextState.score,
           shanghaiCount: nextState.shanghaiCount,
+          hits: nextState.hits,
+          attempts: nextState.attempts,
+          hitPercent: nextState.hitPercent,
         },
         {
           rounds: nextState.details,
@@ -451,8 +453,6 @@ export default function TrainingPage() {
           <ResultScreen
             result={lastSavedResult}
             exercise={activeExercise}
-            scorePersonalBest={scorePersonalBest}
-            shanghaiPersonalBest={shanghaiPersonalBest}
             checkoutPercentPersonalBest={checkoutPercentPersonalBest}
             highestCheckoutPersonalBest={highestCheckoutPersonalBest}
             hitPercentPersonalBest={hitPercentPersonalBest}
@@ -648,6 +648,11 @@ function TrainingExerciseCard({
 }) {
   const latestValue = summary.latest && summary.primaryMetric ? numericMetric(summary.latest, summary.primaryMetric.key) : null;
   const hasResults = summary.results.length > 0;
+  const isJdc = summary.exercise.id === JDC_CHALLENGE_EXERCISE_ID;
+  const latestHits = summary.latest ? numericMetric(summary.latest, "hits") : null;
+  const latestAttempts = summary.latest ? numericMetric(summary.latest, "attempts") : null;
+  const latestHitPercent = summary.latest ? numericMetric(summary.latest, "hitPercent") : null;
+  const monthlyHitPercent = summary.monthly.metrics.find((metric) => metric.key === "hitPercent") ?? null;
 
   return (
     <article className="min-w-0 rounded-2xl border border-gray-800 bg-gray-900 p-3 sm:p-5">
@@ -675,6 +680,13 @@ function TrainingExerciseCard({
             <CompactStat label="Ændring" value={formatChange(summary.primaryStats?.changeFromPreviousAverage ?? null)} />
             <CompactStat label="Gennemført" value={summary.monthly.completedCount} />
           </div>
+
+          {isJdc ? (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <CompactStat label="Hits / forsøg" value={latestHits !== null && latestAttempts !== null ? `${latestHits}/${latestAttempts}` : "-"} />
+              <CompactStat label="Hit %" value={latestHitPercent !== null ? `${latestHitPercent}%` : monthlyHitPercent?.currentAverage != null ? `${monthlyHitPercent.currentAverage}% snit` : "-"} />
+            </div>
+          ) : null}
 
           <LevelGrid stats={summary.primaryStats} />
 
@@ -773,7 +785,7 @@ function formatDate(value: string) {
 
 function getSecondaryMetrics(result: TrainingResult) {
   if (result.exerciseId === JDC_CHALLENGE_EXERCISE_ID) {
-    return `Shanghai ${numericMetric(result, "shanghaiCount") ?? "-"}`;
+    return `Hits ${numericMetric(result, "hits") ?? "-"}/${numericMetric(result, "attempts") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
   }
 
   if (result.exerciseId === CATCH_40_EXERCISE_ID) {
@@ -791,6 +803,8 @@ function calculateJdcState(throws: JdcThrow[]) {
   let cursor = 0;
   let score = 0;
   let shanghaiCount = 0;
+  const hits = throws.filter((value) => value !== "miss").length;
+  const attempts = throws.length;
   const details: JdcDetail[] = [];
   let currentStep: JdcStep | null = null;
   let currentDart = 1;
@@ -826,6 +840,9 @@ function calculateJdcState(throws: JdcThrow[]) {
   return {
     score,
     shanghaiCount,
+    hits,
+    attempts,
+    hitPercent: percent(hits, attempts),
     details,
     throwsUsed: throws.length,
     dartsRemaining: JDC_TOTAL_DARTS - throws.length,
@@ -1019,7 +1036,8 @@ function JdcGameplay({
       stats={[
         { label: "Score", value: state.score },
         { label: "Shanghai", value: state.shanghaiCount },
-        { label: "Pil", value: state.currentStep ? `${state.currentDart}/${state.currentStep.darts}` : "-" },
+        { label: "Hits", value: `${state.hits}/${state.attempts}` },
+        { label: "Træf %", value: `${state.hitPercent}%` },
         { label: "PR", value: scorePersonalBest ?? "-" },
       ]}
       onUndo={onUndo}
@@ -1267,8 +1285,6 @@ function Game420Gameplay({
 function ResultScreen({
   result,
   exercise,
-  scorePersonalBest,
-  shanghaiPersonalBest,
   checkoutPercentPersonalBest,
   highestCheckoutPersonalBest,
   hitPercentPersonalBest,
@@ -1285,8 +1301,6 @@ function ResultScreen({
 }: {
   result: TrainingResult;
   exercise: TrainingExercise | null;
-  scorePersonalBest: number | null;
-  shanghaiPersonalBest: number | null;
   checkoutPercentPersonalBest: number | null;
   highestCheckoutPersonalBest: number | null;
   hitPercentPersonalBest: number | null;
@@ -1316,8 +1330,8 @@ function ResultScreen({
           {isJdc ? (
             <>
               <StatTile label="Shanghai" value={numericMetric(result, "shanghaiCount") ?? 0} />
-              <StatTile label="PR score" value={scorePersonalBest ?? "-"} />
-              <StatTile label="PR Shanghai" value={shanghaiPersonalBest ?? "-"} />
+              <StatTile label="Hits" value={`${numericMetric(result, "hits") ?? 0}/${numericMetric(result, "attempts") ?? 0}`} />
+              <StatTile label="Træf %" value={`${numericMetric(result, "hitPercent") ?? 0}%`} />
             </>
           ) : isCatch40 ? (
             <>
@@ -1368,6 +1382,8 @@ function ResultScreen({
             ? [
                 { label: "Shanghai total", value: shanghaiStats?.currentTotal ?? "-" },
                 { label: "Shanghai snit", value: shanghaiStats?.currentAverage ?? "-" },
+                { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+                { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
               ]
             : isCatch40
               ? [
