@@ -2,6 +2,7 @@ import type { TrainingExercise } from "@/lib/trainingTypes";
 
 export const JDC_CHALLENGE_EXERCISE_ID = "jdc-challenge";
 export const CATCH_40_EXERCISE_ID = "catch-40";
+export const BOBS_27_EXERCISE_ID = "bobs-27";
 
 export const trainingExercises: TrainingExercise[] = [
   {
@@ -58,6 +59,37 @@ export const trainingExercises: TrainingExercise[] = [
         key: "highestCheckout",
         label: "Højeste luk",
         valueType: "number",
+        personalBest: "higherIsBetter",
+      },
+    ],
+  },
+  {
+    id: BOBS_27_EXERCISE_ID,
+    name: "Bob's 27",
+    type: "double-training",
+    description: "Registrer hits på doubles fra D1 til D20 med tre forsøg pr. double.",
+    isActive: true,
+    metrics: [
+      {
+        key: "score",
+        label: "Score",
+        valueType: "number",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "hits",
+        label: "Hits",
+        valueType: "count",
+      },
+      {
+        key: "attempts",
+        label: "Forsøg",
+        valueType: "count",
+      },
+      {
+        key: "hitPercent",
+        label: "Træf %",
+        valueType: "percent",
         personalBest: "higherIsBetter",
       },
     ],

@@ -6,6 +6,7 @@ import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
 import { useClub } from "@/context/ClubContext";
 import {
+  BOBS_27_EXERCISE_ID,
   CATCH_40_EXERCISE_ID,
   JDC_CHALLENGE_EXERCISE_ID,
   getTrainingExercise,
@@ -15,7 +16,7 @@ import { calculateTrainingMonthlyStats } from "@/lib/trainingMonthlyStatsEngine"
 import { getTrainingResultsForClub, saveTrainingResult } from "@/lib/trainingResultStore";
 import type { TrainingExercise, TrainingMetricDirection, TrainingResult } from "@/lib/trainingTypes";
 
-type ExerciseId = typeof JDC_CHALLENGE_EXERCISE_ID | typeof CATCH_40_EXERCISE_ID;
+type ExerciseId = typeof JDC_CHALLENGE_EXERCISE_ID | typeof CATCH_40_EXERCISE_ID | typeof BOBS_27_EXERCISE_ID;
 
 type Catch40Target = {
   checkoutValue: number;
@@ -23,7 +24,14 @@ type Catch40Target = {
   attempts: number;
 };
 
+type Bobs27Double = {
+  doubleValue: number;
+  hits: number;
+  attempts: number;
+};
+
 const CATCH_40_TARGETS = Array.from({ length: 40 }, (_, index) => index + 61);
+const BOBS_27_DOUBLES = Array.from({ length: 20 }, (_, index) => index + 1);
 
 function currentMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -51,8 +59,20 @@ function createInitialCatch40Targets(): Catch40Target[] {
   }));
 }
 
+function createInitialBobs27Doubles(): Bobs27Double[] {
+  return BOBS_27_DOUBLES.map((doubleValue) => ({
+    doubleValue,
+    hits: 0,
+    attempts: 3,
+  }));
+}
+
 function calculateCheckoutPercent(checkouts: number, checkoutAttempts: number) {
   return checkoutAttempts > 0 ? Math.round((checkouts / checkoutAttempts) * 100) : 0;
+}
+
+function calculateHitPercent(hits: number, attempts: number) {
+  return attempts > 0 ? Math.round((hits / attempts) * 100) : 0;
 }
 
 export default function TrainingPage() {
@@ -64,7 +84,9 @@ export default function TrainingPage() {
   const [scoreInput, setScoreInput] = useState("");
   const [shanghaiInput, setShanghaiInput] = useState("");
   const [catch40Targets, setCatch40Targets] = useState<Catch40Target[]>(createInitialCatch40Targets);
+  const [bobs27Doubles, setBobs27Doubles] = useState<Bobs27Double[]>(createInitialBobs27Doubles);
   const [showCatch40Details, setShowCatch40Details] = useState(false);
+  const [showBobs27Details, setShowBobs27Details] = useState(false);
   const [results, setResults] = useState<TrainingResult[]>(() => getTrainingResultsForClub(currentClubId));
   const [lastSavedResult, setLastSavedResult] = useState<TrainingResult | null>(null);
 
@@ -84,10 +106,12 @@ export default function TrainingPage() {
   const scoreStats = monthlyStats?.metrics.find((metric) => metric.key === "score") ?? null;
   const shanghaiStats = monthlyStats?.metrics.find((metric) => metric.key === "shanghaiCount") ?? null;
   const checkoutPercentStats = monthlyStats?.metrics.find((metric) => metric.key === "checkoutPercent") ?? null;
+  const hitPercentStats = monthlyStats?.metrics.find((metric) => metric.key === "hitPercent") ?? null;
   const scorePersonalBest = personalBest(selectedPlayerResults, "score", "higherIsBetter");
   const shanghaiPersonalBest = personalBest(selectedPlayerResults, "shanghaiCount", "higherIsBetter");
   const checkoutPercentPersonalBest = personalBest(selectedPlayerResults, "checkoutPercent", "higherIsBetter");
   const highestCheckoutPersonalBest = personalBest(selectedPlayerResults, "highestCheckout", "higherIsBetter");
+  const hitPercentPersonalBest = personalBest(selectedPlayerResults, "hitPercent", "higherIsBetter");
   const jdcScore = Number(scoreInput);
   const shanghaiCount = Number(shanghaiInput);
   const canSaveJdc =
@@ -100,6 +124,8 @@ export default function TrainingPage() {
     shanghaiCount >= 0;
   const catch40Summary = calculateCatch40Summary(catch40Targets);
   const canSaveCatch40 = activeExerciseId === CATCH_40_EXERCISE_ID && !!activeExercise && !!selectedPlayer;
+  const bobs27Summary = calculateBobs27Summary(bobs27Doubles);
+  const canSaveBobs27 = activeExerciseId === BOBS_27_EXERCISE_ID && !!activeExercise && !!selectedPlayer;
 
   function refreshResults() {
     setResults(getTrainingResultsForClub(currentClubId));
@@ -109,6 +135,7 @@ export default function TrainingPage() {
     setActiveExerciseId(exerciseId);
     setLastSavedResult(null);
     setShowCatch40Details(false);
+    setShowBobs27Details(false);
   }
 
   function handleSaveJdc() {
@@ -161,6 +188,33 @@ export default function TrainingPage() {
     setShowCatch40Details(false);
   }
 
+  function handleSaveBobs27() {
+    if (!activeExercise || !selectedPlayer || !canSaveBobs27) return;
+
+    const result: TrainingResult = {
+      id: `training-${BOBS_27_EXERCISE_ID}-${selectedPlayer.id}-${Date.now()}`,
+      clubId: currentClubId,
+      playerId: selectedPlayer.id,
+      exerciseId: activeExercise.id,
+      completedAt: new Date().toISOString(),
+      metrics: {
+        score: bobs27Summary.score,
+        hits: bobs27Summary.hits,
+        attempts: bobs27Summary.attempts,
+        hitPercent: bobs27Summary.hitPercent,
+      },
+      details: {
+        doubles: bobs27Doubles.map((double) => ({ ...double })),
+      },
+    };
+
+    saveTrainingResult(result);
+    refreshResults();
+    setLastSavedResult(result);
+    setBobs27Doubles(createInitialBobs27Doubles());
+    setShowBobs27Details(false);
+  }
+
   return (
     <main className="min-h-screen bg-gray-950 text-white">
       <Header />
@@ -174,7 +228,7 @@ export default function TrainingPage() {
           <p className="mt-2 text-base text-gray-400">{currentClub.name} · individuel træning</p>
         </div>
 
-        <div className="mb-5 grid gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2 sm:grid-cols-2">
+        <div className="mb-5 grid gap-2 rounded-2xl border border-gray-800 bg-gray-900 p-2 sm:grid-cols-3">
           <ExerciseTab
             active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
             title="JDC Challenge"
@@ -186,6 +240,12 @@ export default function TrainingPage() {
             title="Catch 40"
             description="Checkout 61-100"
             onClick={() => handleExerciseChange(CATCH_40_EXERCISE_ID)}
+          />
+          <ExerciseTab
+            active={activeExerciseId === BOBS_27_EXERCISE_ID}
+            title="Bob's 27"
+            description="Doubles D1-D20"
+            onClick={() => handleExerciseChange(BOBS_27_EXERCISE_ID)}
           />
         </div>
 
@@ -207,12 +267,19 @@ export default function TrainingPage() {
                   onShanghaiChange={setShanghaiInput}
                   onSave={handleSaveJdc}
                 />
-              ) : (
+              ) : activeExerciseId === CATCH_40_EXERCISE_ID ? (
                 <Catch40Form
                   targets={catch40Targets}
                   summary={catch40Summary}
                   onTargetsChange={setCatch40Targets}
                   onSave={handleSaveCatch40}
+                />
+              ) : (
+                <Bobs27Form
+                  doubles={bobs27Doubles}
+                  summary={bobs27Summary}
+                  onDoublesChange={setBobs27Doubles}
+                  onSave={handleSaveBobs27}
                 />
               )}
             </div>
@@ -227,7 +294,7 @@ export default function TrainingPage() {
                 scoreStats={scoreStats}
                 shanghaiStats={shanghaiStats}
               />
-            ) : (
+            ) : activeExerciseId === CATCH_40_EXERCISE_ID ? (
               <Catch40Stats
                 scorePersonalBest={scorePersonalBest}
                 checkoutPercentPersonalBest={checkoutPercentPersonalBest}
@@ -235,6 +302,14 @@ export default function TrainingPage() {
                 monthlyStats={monthlyStats}
                 scoreStats={scoreStats}
                 checkoutPercentStats={checkoutPercentStats}
+              />
+            ) : (
+              <Bobs27Stats
+                scorePersonalBest={scorePersonalBest}
+                hitPercentPersonalBest={hitPercentPersonalBest}
+                monthlyStats={monthlyStats}
+                scoreStats={scoreStats}
+                hitPercentStats={hitPercentStats}
               />
             )}
           </aside>
@@ -245,7 +320,9 @@ export default function TrainingPage() {
             result={lastSavedResult}
             exercise={activeExercise}
             showCatch40Details={showCatch40Details}
+            showBobs27Details={showBobs27Details}
             onToggleCatch40Details={() => setShowCatch40Details((value) => !value)}
+            onToggleBobs27Details={() => setShowBobs27Details((value) => !value)}
           />
         ) : null}
       </section>
@@ -267,6 +344,22 @@ function calculateCatch40Summary(targets: Catch40Target[]) {
   };
 }
 
+function calculateBobs27Summary(doubles: Bobs27Double[]) {
+  const hits = doubles.reduce((sum, double) => sum + double.hits, 0);
+  const attempts = doubles.reduce((sum, double) => sum + double.attempts, 0);
+  const score = doubles.reduce((sum, double) => {
+    const doubleScore = double.doubleValue * 2;
+    return sum + (double.hits > 0 ? double.hits * doubleScore : -doubleScore);
+  }, 27);
+
+  return {
+    score,
+    hits,
+    attempts,
+    hitPercent: calculateHitPercent(hits, attempts),
+  };
+}
+
 function getCatch40Details(result: TrainingResult): Catch40Target[] {
   const checkouts = result.details?.checkouts;
   if (!Array.isArray(checkouts)) return [];
@@ -281,6 +374,24 @@ function getCatch40Details(result: TrainingResult): Catch40Target[] {
       typeof target.checkoutValue === "number" &&
       typeof target.hit === "boolean" &&
       typeof target.attempts === "number"
+    );
+  });
+}
+
+function getBobs27Details(result: TrainingResult): Bobs27Double[] {
+  const doubles = result.details?.doubles;
+  if (!Array.isArray(doubles)) return [];
+
+  return doubles.filter((double): double is Bobs27Double => {
+    return (
+      typeof double === "object" &&
+      double !== null &&
+      "doubleValue" in double &&
+      "hits" in double &&
+      "attempts" in double &&
+      typeof double.doubleValue === "number" &&
+      typeof double.hits === "number" &&
+      typeof double.attempts === "number"
     );
   });
 }
@@ -442,6 +553,70 @@ function Catch40Form({
   );
 }
 
+function Bobs27Form({
+  doubles,
+  summary,
+  onDoublesChange,
+  onSave,
+}: {
+  doubles: Bobs27Double[];
+  summary: ReturnType<typeof calculateBobs27Summary>;
+  onDoublesChange: (doubles: Bobs27Double[]) => void;
+  onSave: () => void;
+}) {
+  function updateDouble(doubleValue: number, hits: number) {
+    onDoublesChange(
+      doubles.map((double) => double.doubleValue === doubleValue ? { ...double, hits } : double)
+    );
+  }
+
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-4">
+        <StatTile label="Score" value={summary.score} />
+        <StatTile label="Hits" value={summary.hits} />
+        <StatTile label="Forsøg" value={summary.attempts} />
+        <StatTile label="Træf %" value={`${summary.hitPercent}%`} />
+      </div>
+
+      <div className="max-h-[34rem] overflow-y-auto rounded-xl border border-gray-800 bg-gray-950">
+        <div className="sticky top-0 grid grid-cols-[4rem_minmax(0,1fr)] gap-2 border-b border-gray-800 bg-gray-950 px-3 py-2 text-[0.68rem] font-black uppercase tracking-wide text-gray-500">
+          <div>Double</div>
+          <div>Hits ud af 3</div>
+        </div>
+        <div className="divide-y divide-gray-800">
+          {doubles.map((double) => (
+            <div
+              key={double.doubleValue}
+              className="grid min-h-13 grid-cols-[4rem_minmax(0,1fr)] items-center gap-2 px-3 py-2"
+            >
+              <div className="text-xl font-black tabular-nums text-white">D{double.doubleValue}</div>
+              <div className="grid grid-cols-4 gap-2">
+                {[0, 1, 2, 3].map((hits) => (
+                  <button
+                    key={hits}
+                    type="button"
+                    onClick={() => updateDouble(double.doubleValue, hits)}
+                    className={`rounded-lg px-3 py-2 text-sm font-black ${
+                      double.hits === hits
+                        ? "bg-orange-500 text-gray-950"
+                        : "bg-gray-900 text-gray-400 hover:bg-gray-800"
+                    }`}
+                  >
+                    {hits}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <SaveButton disabled={false} onClick={onSave} />
+    </>
+  );
+}
+
 function NumberField({
   label,
   value,
@@ -552,6 +727,40 @@ function Catch40Stats({
   );
 }
 
+function Bobs27Stats({
+  scorePersonalBest,
+  hitPercentPersonalBest,
+  monthlyStats,
+  scoreStats,
+  hitPercentStats,
+}: {
+  scorePersonalBest: number | null;
+  hitPercentPersonalBest: number | null;
+  monthlyStats: ReturnType<typeof calculateTrainingMonthlyStats> | null;
+  scoreStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
+  hitPercentStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
+}) {
+  return (
+    <>
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+        <h2 className="text-lg font-black">Personlige rekorder</h2>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <StatTile label="Score" value={scorePersonalBest ?? "-"} />
+          <StatTile label="Træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
+        </div>
+      </section>
+
+      <MonthlyStatsPanel
+        monthlyStats={monthlyStats}
+        scoreStats={scoreStats}
+        extraStats={[
+          { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+        ]}
+      />
+    </>
+  );
+}
+
 function MonthlyStatsPanel({
   monthlyStats,
   scoreStats,
@@ -582,15 +791,21 @@ function SavedResult({
   result,
   exercise,
   showCatch40Details,
+  showBobs27Details,
   onToggleCatch40Details,
+  onToggleBobs27Details,
 }: {
   result: TrainingResult;
   exercise: TrainingExercise | null;
   showCatch40Details: boolean;
+  showBobs27Details: boolean;
   onToggleCatch40Details: () => void;
+  onToggleBobs27Details: () => void;
 }) {
   const isCatch40 = result.exerciseId === CATCH_40_EXERCISE_ID;
+  const isBobs27 = result.exerciseId === BOBS_27_EXERCISE_ID;
   const catch40Details = isCatch40 ? getCatch40Details(result) : [];
+  const bobs27Details = isBobs27 ? getBobs27Details(result) : [];
 
   return (
     <section className="mt-5 rounded-2xl border border-emerald-700/60 bg-emerald-950/40 p-5">
@@ -607,6 +822,14 @@ function SavedResult({
           >
             {showCatch40Details ? "Skjul detaljer" : "Se detaljer"}
           </button>
+        ) : isBobs27 ? (
+          <button
+            type="button"
+            onClick={onToggleBobs27Details}
+            className="w-fit rounded-xl border border-emerald-600 px-4 py-2 text-sm font-black text-emerald-200 transition hover:bg-emerald-900"
+          >
+            {showBobs27Details ? "Skjul detaljer" : "Se detaljer"}
+          </button>
         ) : null}
       </div>
 
@@ -617,6 +840,12 @@ function SavedResult({
             <div>Ramt: {numericMetric(result, "checkouts")}</div>
             <div>Lukke %: {numericMetric(result, "checkoutPercent")}%</div>
             <div>Højeste luk: {numericMetric(result, "highestCheckout") || "-"}</div>
+          </>
+        ) : isBobs27 ? (
+          <>
+            <div>Hits: {numericMetric(result, "hits")}</div>
+            <div>Forsøg: {numericMetric(result, "attempts")}</div>
+            <div>Træf %: {numericMetric(result, "hitPercent")}%</div>
           </>
         ) : (
           <div>Shanghai: {numericMetric(result, "shanghaiCount")}</div>
@@ -639,6 +868,28 @@ function SavedResult({
                 <div>{target.checkoutValue}</div>
                 <div className={target.hit ? "text-emerald-300" : "text-red-300"}>{target.hit ? "Hit" : "Miss"}</div>
                 <div className="text-right tabular-nums">{target.attempts}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {showBobs27Details ? (
+        <div className="mt-4 overflow-hidden rounded-xl border border-emerald-800/70">
+          <div className="grid grid-cols-[4rem_minmax(0,1fr)_5rem] bg-emerald-950 px-3 py-2 text-xs font-black uppercase tracking-wide text-emerald-300">
+            <div>Double</div>
+            <div>Hits</div>
+            <div className="text-right">Forsøg</div>
+          </div>
+          <div className="grid max-h-80 gap-px overflow-y-auto bg-emerald-900/40">
+            {bobs27Details.map((double) => (
+              <div
+                key={double.doubleValue}
+                className="grid grid-cols-[4rem_minmax(0,1fr)_5rem] bg-gray-950/80 px-3 py-2 text-sm font-bold"
+              >
+                <div>D{double.doubleValue}</div>
+                <div>{double.hits}</div>
+                <div className="text-right tabular-nums">{double.attempts}</div>
               </div>
             ))}
           </div>
