@@ -8,7 +8,7 @@ function canUseStorage() {
   return typeof window !== "undefined" && !!window.localStorage;
 }
 
-function withClubId(result: TrainingResult): TrainingResult {
+function withLegacyClubId(result: TrainingResult): TrainingResult {
   return {
     ...result,
     clubId: result.clubId ?? DEMO_CLUB_ID,
@@ -21,24 +21,25 @@ export function getTrainingResults(): TrainingResult[] {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map(withClubId) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
 export function getTrainingResultsForClub(clubId = getCurrentClubId()): TrainingResult[] {
-  return getTrainingResults().filter((result) => result.clubId === clubId);
+  return getTrainingResults()
+    .map(withLegacyClubId)
+    .filter((result) => result.clubId === clubId);
 }
 
-export function getTrainingResultsForPlayer(playerId: string, clubId = getCurrentClubId()): TrainingResult[] {
-  return getTrainingResultsForClub(clubId).filter((result) => result.playerId === playerId);
+export function getTrainingResultsForPlayer(playerId: string): TrainingResult[] {
+  return getTrainingResults().filter((result) => result.playerId === playerId);
 }
 
 export function saveTrainingResult(result: TrainingResult): TrainingResult[] {
-  const normalizedResult = withClubId(result);
-  const results = getTrainingResults().filter((item) => item.id !== normalizedResult.id);
-  const next = [normalizedResult, ...results];
+  const results = getTrainingResults().filter((item) => item.id !== result.id);
+  const next = [result, ...results];
 
   if (canUseStorage()) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));

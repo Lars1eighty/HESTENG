@@ -18,7 +18,7 @@ export type TrainingMonthlyMetricStats = {
 };
 
 export type TrainingMonthlyStats = {
-  clubId: string;
+  clubId?: string;
   playerId: string;
   exerciseId: string;
   variant?: string;
@@ -60,7 +60,7 @@ function isInMonth(completedAt: string, month: MonthWindow) {
 
 function filterResults(
   results: TrainingResult[],
-  clubId: string,
+  clubId: string | undefined,
   playerId: string,
   exerciseId: string,
   variant: string | undefined,
@@ -68,7 +68,7 @@ function filterResults(
 ) {
   return results.filter((result) => {
     return (
-      result.clubId === clubId &&
+      (clubId === undefined || result.clubId === clubId) &&
       result.playerId === playerId &&
       result.exerciseId === exerciseId &&
       (variant === undefined || result.variant === variant) &&
@@ -102,7 +102,7 @@ export function calculateTrainingMonthlyStats(
   results: TrainingResult[],
   exercise: TrainingExercise,
   options: {
-    clubId: string;
+    clubId?: string;
     playerId: string;
     variant?: string;
     month: string;

@@ -1,19 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
 import { useClub } from "@/context/ClubContext";
+import { useCurrentUser } from "@/context/CurrentUserContext";
 import {
   BOBS_27_EXERCISE_ID,
   CATCH_40_EXERCISE_ID,
   JDC_CHALLENGE_EXERCISE_ID,
   getTrainingExercise,
 } from "@/data/trainingExercises";
-import { getPlayerRegistry } from "@/lib/playerRegistry";
 import { calculateTrainingMonthlyStats } from "@/lib/trainingMonthlyStatsEngine";
-import { getTrainingResultsForClub, saveTrainingResult } from "@/lib/trainingResultStore";
+import { getTrainingResultsForPlayer, saveTrainingResult } from "@/lib/trainingResultStore";
 import type { TrainingExercise, TrainingMetricDirection, TrainingResult } from "@/lib/trainingTypes";
 
 type ExerciseId = typeof JDC_CHALLENGE_EXERCISE_ID | typeof CATCH_40_EXERCISE_ID | typeof BOBS_27_EXERCISE_ID;
@@ -77,28 +77,25 @@ function calculateHitPercent(hits: number, attempts: number) {
 
 export default function TrainingPage() {
   const { currentClubId, currentClub } = useClub();
-  const players = useMemo(() => getPlayerRegistry(currentClubId), [currentClubId]);
+  const { currentPlayer, currentPlayerId } = useCurrentUser();
   const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId>(JDC_CHALLENGE_EXERCISE_ID);
   const activeExercise = getTrainingExercise(activeExerciseId);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id ?? "");
   const [scoreInput, setScoreInput] = useState("");
   const [shanghaiInput, setShanghaiInput] = useState("");
   const [catch40Targets, setCatch40Targets] = useState<Catch40Target[]>(createInitialCatch40Targets);
   const [bobs27Doubles, setBobs27Doubles] = useState<Bobs27Double[]>(createInitialBobs27Doubles);
   const [showCatch40Details, setShowCatch40Details] = useState(false);
   const [showBobs27Details, setShowBobs27Details] = useState(false);
-  const [results, setResults] = useState<TrainingResult[]>(() => getTrainingResultsForClub(currentClubId));
+  const [results, setResults] = useState<TrainingResult[]>(() => getTrainingResultsForPlayer(currentPlayerId));
   const [lastSavedResult, setLastSavedResult] = useState<TrainingResult | null>(null);
 
-  const selectedPlayer = players.find((player) => player.id === selectedPlayerId) ?? players[0] ?? null;
   const selectedPlayerResults = results.filter(
-    (result) => result.playerId === selectedPlayer?.id && result.exerciseId === activeExerciseId
+    (result) => result.playerId === currentPlayerId && result.exerciseId === activeExerciseId
   );
 
-  const monthlyStats = activeExercise && selectedPlayer
+  const monthlyStats = activeExercise
     ? calculateTrainingMonthlyStats(results, activeExercise, {
-        clubId: currentClubId,
-        playerId: selectedPlayer.id,
+        playerId: currentPlayerId,
         month: currentMonthKey(),
       })
     : null;
@@ -117,18 +114,17 @@ export default function TrainingPage() {
   const canSaveJdc =
     activeExerciseId === JDC_CHALLENGE_EXERCISE_ID &&
     !!activeExercise &&
-    !!selectedPlayer &&
     Number.isInteger(jdcScore) &&
     jdcScore >= 0 &&
     Number.isInteger(shanghaiCount) &&
     shanghaiCount >= 0;
   const catch40Summary = calculateCatch40Summary(catch40Targets);
-  const canSaveCatch40 = activeExerciseId === CATCH_40_EXERCISE_ID && !!activeExercise && !!selectedPlayer;
+  const canSaveCatch40 = activeExerciseId === CATCH_40_EXERCISE_ID && !!activeExercise;
   const bobs27Summary = calculateBobs27Summary(bobs27Doubles);
-  const canSaveBobs27 = activeExerciseId === BOBS_27_EXERCISE_ID && !!activeExercise && !!selectedPlayer;
+  const canSaveBobs27 = activeExerciseId === BOBS_27_EXERCISE_ID && !!activeExercise;
 
   function refreshResults() {
-    setResults(getTrainingResultsForClub(currentClubId));
+    setResults(getTrainingResultsForPlayer(currentPlayerId));
   }
 
   function handleExerciseChange(exerciseId: ExerciseId) {
@@ -139,12 +135,12 @@ export default function TrainingPage() {
   }
 
   function handleSaveJdc() {
-    if (!activeExercise || !selectedPlayer || !canSaveJdc) return;
+    if (!activeExercise || !canSaveJdc) return;
 
     const result: TrainingResult = {
-      id: `training-${JDC_CHALLENGE_EXERCISE_ID}-${selectedPlayer.id}-${Date.now()}`,
+      id: `training-${JDC_CHALLENGE_EXERCISE_ID}-${currentPlayerId}-${Date.now()}`,
       clubId: currentClubId,
-      playerId: selectedPlayer.id,
+      playerId: currentPlayerId,
       exerciseId: activeExercise.id,
       completedAt: new Date().toISOString(),
       metrics: {
@@ -161,12 +157,12 @@ export default function TrainingPage() {
   }
 
   function handleSaveCatch40() {
-    if (!activeExercise || !selectedPlayer || !canSaveCatch40) return;
+    if (!activeExercise || !canSaveCatch40) return;
 
     const result: TrainingResult = {
-      id: `training-${CATCH_40_EXERCISE_ID}-${selectedPlayer.id}-${Date.now()}`,
+      id: `training-${CATCH_40_EXERCISE_ID}-${currentPlayerId}-${Date.now()}`,
       clubId: currentClubId,
-      playerId: selectedPlayer.id,
+      playerId: currentPlayerId,
       exerciseId: activeExercise.id,
       completedAt: new Date().toISOString(),
       metrics: {
@@ -189,12 +185,12 @@ export default function TrainingPage() {
   }
 
   function handleSaveBobs27() {
-    if (!activeExercise || !selectedPlayer || !canSaveBobs27) return;
+    if (!activeExercise || !canSaveBobs27) return;
 
     const result: TrainingResult = {
-      id: `training-${BOBS_27_EXERCISE_ID}-${selectedPlayer.id}-${Date.now()}`,
+      id: `training-${BOBS_27_EXERCISE_ID}-${currentPlayerId}-${Date.now()}`,
       clubId: currentClubId,
-      playerId: selectedPlayer.id,
+      playerId: currentPlayerId,
       exerciseId: activeExercise.id,
       completedAt: new Date().toISOString(),
       metrics: {
@@ -252,11 +248,10 @@ export default function TrainingPage() {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
             <div className="grid gap-4">
-              <PlayerSelect
-                players={players}
-                selectedPlayerId={selectedPlayer?.id ?? ""}
-                onChange={setSelectedPlayerId}
-              />
+              <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+                <div className="text-xs font-black uppercase tracking-wide text-gray-500">Træner som</div>
+                <div className="mt-1 text-lg font-black text-white">{currentPlayer.name}</div>
+              </div>
 
               {activeExerciseId === JDC_CHALLENGE_EXERCISE_ID ? (
                 <JdcForm
@@ -418,33 +413,6 @@ function ExerciseTab({
       <div className="text-base font-black">{title}</div>
       <div className={`text-sm font-semibold ${active ? "text-gray-900" : "text-gray-500"}`}>{description}</div>
     </button>
-  );
-}
-
-function PlayerSelect({
-  players,
-  selectedPlayerId,
-  onChange,
-}: {
-  players: { id: string; name: string }[];
-  selectedPlayerId: string;
-  onChange: (playerId: string) => void;
-}) {
-  return (
-    <label className="grid gap-2">
-      <span className="text-xs font-black uppercase tracking-wide text-gray-500">Spiller</span>
-      <select
-        value={selectedPlayerId}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-13 rounded-xl border border-gray-700 bg-gray-950 px-4 text-base font-bold text-white outline-none transition focus:border-orange-500"
-      >
-        {players.map((player) => (
-          <option key={player.id} value={player.id}>
-            {player.name}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 

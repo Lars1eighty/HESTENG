@@ -41,7 +41,7 @@ export type TrainingResultDetails = Record<string, unknown>;
 
 export type TrainingResult = {
   id: string;
-  clubId: string;
+  clubId?: string;
   playerId: string;
   exerciseId: string;
   variant?: string;
