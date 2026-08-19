@@ -6,6 +6,7 @@ export type PlayerProfile = {
   id: PlayerId;
   name: string;
   type: PlayerProfileType;
+  requiresAccessibleBoard?: boolean;
   guestSlot?: "top" | "mid" | "bottom";
 };
 

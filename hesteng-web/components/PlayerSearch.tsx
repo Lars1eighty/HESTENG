@@ -3,21 +3,22 @@
 import { useMemo, useState } from "react";
 import { useClub } from "@/context/ClubContext";
 import { useKlubaften } from "@/context/KlubaftenContext";
-import { getSelectablePlayerNames } from "@/lib/playerRegistry";
+import { getPlayerRegistry } from "@/lib/playerRegistry";
 
 export default function PlayerSearch() {
   const [search, setSearch] = useState("");
   const { currentClubId } = useClub();
   const { selectedPlayers, setSelectedPlayers } = useKlubaften();
-  const players = useMemo(() => getSelectablePlayerNames(currentClubId), [currentClubId]);
+  const players = useMemo(() => getPlayerRegistry(currentClubId), [currentClubId]);
+  const playerByName = useMemo(() => new Map(players.map((player) => [player.name, player])), [players]);
 
   const filteredPlayers = useMemo(() => {
     if (!search.trim()) return [];
 
     return players.filter(
       (player) =>
-        player.toLowerCase().includes(search.toLowerCase()) &&
-        !selectedPlayers.includes(player)
+        player.name.toLowerCase().includes(search.toLowerCase()) &&
+        !selectedPlayers.includes(player.name)
     );
   }, [players, search, selectedPlayers]);
 
@@ -45,11 +46,16 @@ export default function PlayerSearch() {
         <div className="mt-3 rounded-xl border border-gray-700 bg-gray-800">
           {filteredPlayers.map((player) => (
             <button
-              key={player}
-              onClick={() => addPlayer(player)}
-              className="block w-full px-4 py-3 text-left hover:bg-gray-700"
+              key={player.id}
+              onClick={() => addPlayer(player.name)}
+              className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-700"
             >
-              {player}
+              <span>{player.name}</span>
+              {player.requiresAccessibleBoard ? (
+                <span className="shrink-0 rounded-full border border-orange-500/50 bg-orange-500/10 px-2 py-1 text-[0.65rem] font-black uppercase tracking-wide text-orange-300">
+                  Handicapbane
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
@@ -66,12 +72,22 @@ export default function PlayerSearch() {
           </div>
         ) : (
           <div className="space-y-2">
-            {selectedPlayers.map((player) => (
+            {selectedPlayers.map((player) => {
+              const profile = playerByName.get(player);
+
+              return (
               <div
                 key={player}
                 className="flex items-center justify-between rounded-lg bg-gray-800 px-4 py-3"
               >
-                <span>{player}</span>
+                <div className="min-w-0">
+                  <div className="truncate">{player}</div>
+                  {profile?.requiresAccessibleBoard ? (
+                    <span className="mt-1 inline-flex rounded-full border border-orange-500/50 bg-orange-500/10 px-2 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-orange-300">
+                      Handicapbane
+                    </span>
+                  ) : null}
+                </div>
 
                 <button
                   onClick={() => removePlayer(player)}
@@ -80,7 +96,8 @@ export default function PlayerSearch() {
                   ✕
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

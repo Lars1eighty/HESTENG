@@ -5,14 +5,21 @@ import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useClub } from "@/context/ClubContext";
 import { useKlubaften } from "@/context/KlubaftenContext";
+import { DEFAULT_ELO, getEloRatings } from "@/lib/eloRatingEngine";
+import { normalizeName } from "@/lib/playerIdentity";
+import { getPlayerRegistry } from "@/lib/playerRegistry";
 import { createClubNightPools } from "@/lib/thuPoolEngine";
 
 export default function PuljerPage() {
   const params = useParams<{ clubNightId?: string }>();
   const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
+  const { currentClubId } = useClub();
   const { selectedPlayers, pools, setPools, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
+  const playerRegistry = getPlayerRegistry(currentClubId);
+  const eloRatings = getEloRatings(currentClubId);
 
   useEffect(() => {
     if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
@@ -20,9 +27,22 @@ export default function PuljerPage() {
 
   useEffect(() => {
     if (selectedPlayers.length >= 10) {
-      setPools(createClubNightPools(selectedPlayers));
+      setPools(createClubNightPools(selectedPlayers, currentClubId));
     }
-  }, [selectedPlayers, setPools]);
+  }, [currentClubId, selectedPlayers, setPools]);
+
+  function getPlayerInfo(playerName: string) {
+    const profile = playerRegistry.find((player) => player.name === playerName);
+    const rating = eloRatings.find((item) => (
+      (profile?.id && item.playerId === profile.id) ||
+      normalizeName(item.player) === normalizeName(playerName)
+    ));
+
+    return {
+      elo: rating?.elo ?? DEFAULT_ELO,
+      requiresAccessibleBoard: profile?.requiresAccessibleBoard ?? false,
+    };
+  }
 
   if (selectedPlayers.length < 10) {
     return (
@@ -66,11 +86,23 @@ export default function PuljerPage() {
                 </span>
               </div>
               <div className="space-y-2">
-                {pool.players.map((player) => (
-                  <div key={player} className="rounded-lg bg-gray-800 px-4 py-3">
-                    {player}
-                  </div>
-                ))}
+                {pool.players.map((player) => {
+                  const playerInfo = getPlayerInfo(player);
+
+                  return (
+                    <div key={player} className="flex items-center justify-between gap-3 rounded-lg bg-gray-800 px-4 py-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold">{player}</div>
+                        {playerInfo.requiresAccessibleBoard ? (
+                          <span className="mt-1 inline-flex rounded-full border border-orange-500/50 bg-orange-500/10 px-2 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-orange-300">
+                            Handicapbane
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="shrink-0 text-right text-lg font-black tabular-nums text-orange-400">{playerInfo.elo}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
