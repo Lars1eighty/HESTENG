@@ -12,7 +12,9 @@ export function getNextMatchesByBoard(matches: ClubMatch[]): ClubMatch[] {
     if (match.status === "finished") continue;
 
     const current = nextByBoard.get(match.board);
-    if (!current || match.id.localeCompare(current.id, undefined, { numeric: true }) < 0) {
+    const matchOrder = match.order ?? Number.MAX_SAFE_INTEGER;
+    const currentOrder = current?.order ?? Number.MAX_SAFE_INTEGER;
+    if (!current || matchOrder < currentOrder || (matchOrder === currentOrder && match.id.localeCompare(current.id, undefined, { numeric: true }) < 0)) {
       nextByBoard.set(match.board, match);
     }
   }

@@ -80,6 +80,7 @@ export default function KampePage() {
                 <div className="text-sm text-gray-500">Bane</div>
                 <div className="mt-1 text-2xl font-bold">{board}</div>
                 <div className="mt-3 text-sm text-gray-300">{next ? `${next.player1} – ${next.player2}` : "Ledig"}</div>
+                {next?.requiresAccessibleBoardForMatch && <div className="mt-2 text-xs font-bold uppercase tracking-wide text-orange-300">Handicapbane</div>}
               </div>
             );
           })}
@@ -98,9 +99,10 @@ export default function KampePage() {
                   {poolMatches.map((match) => (
                     <Link key={match.id} href={clubNightId ? `/klubaften/${clubNightId}/kamp/${match.id}` : `/klubaften/kamp/${match.id}`} className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 transition hover:border-gray-600 hover:bg-gray-800">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-sm text-gray-400">{match.pool} · Runde {match.round} · Bane {match.board}</div>
+                        <div className="text-sm text-gray-400">#{match.order ?? "?"} · {match.pool} · Runde {match.round} · Bane {match.board}</div>
                         <span className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClasses(match.status)}`}>{getStatusLabel(match.status)}</span>
                       </div>
+                      {match.requiresAccessibleBoardForMatch && <div className="mt-3 inline-flex rounded-full border border-orange-700 bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-orange-300">Handicapbane</div>}
                       <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
                         <div className="truncate font-semibold">{match.player1}</div>
                         <div className="text-gray-600">vs.</div>
