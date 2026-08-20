@@ -21,6 +21,16 @@ export type PlayerTimingProfile = TimingProfile & {
   canonicalName: string;
 };
 
+type TimedMatchRecord = DartConnectTimingRecord & {
+  source: "hesteng" | "dartconnect";
+};
+
+type PlayerSourceTimingProfile = TimingProfile & {
+  playerId: string;
+  canonicalName: string;
+  source: "hesteng" | "dartconnect";
+};
+
 export type EloBucket = "<1000" | "1000-1099" | "1100-1199" | "1200-1299" | "1300-1399" | "1400+";
 
 export type EloMatchupTimingProfile = TimingProfile & {
@@ -66,8 +76,15 @@ export type EstimateMatchDurationResult = {
   source: "players" | "player+elo-matchup" | "elo-matchup" | "global" | "neutral";
 };
 
+export type MatchDurationEstimate = {
+  estimatedSeconds: number;
+  source: "hesteng" | "mixed" | "dartconnect" | "global";
+  confidence: "high" | "medium" | "low";
+};
+
 const ELO_BUCKET_ORDER: EloBucket[] = ["<1000", "1000-1099", "1100-1199", "1200-1299", "1300-1399", "1400+"];
 const NEUTRAL_SECONDS_PER_LEG = 300;
+const HESTENG_TIMING_WEIGHT = 2;
 
 function median(values: number[]): number {
   if (values.length === 0) return 0;
@@ -96,6 +113,31 @@ function timingIsOutlier(record: DartConnectTimingRecord): boolean {
 function findPlayerByName(players: PlayerProfile[], name: string): PlayerProfile | null {
   const normalized = normalizeName(name);
   return players.find((player) => normalizeName(player.name) === normalized) ?? null;
+}
+
+function completedMatchToTimingRecord(match: CompletedMatch): TimedMatchRecord | null {
+  const durationSeconds = Number(match.durationSeconds);
+  const legsPlayed = Number(match.legsPlayed ?? match.score1 + match.score2);
+  const avgSecondsPerLeg = Number(match.avgSecondsPerLeg ?? (durationSeconds > 0 && legsPlayed > 0 ? durationSeconds / legsPlayed : 0));
+
+  if (!Number.isFinite(durationSeconds) || !Number.isFinite(legsPlayed) || !Number.isFinite(avgSecondsPerLeg)) return null;
+  if (durationSeconds <= 0 || legsPlayed <= 0 || avgSecondsPerLeg <= 0) return null;
+
+  return {
+    matchId: match.id,
+    durationSeconds,
+    legsPlayed,
+    avgSecondsPerLeg: Number(avgSecondsPerLeg.toFixed(2)),
+    source: "hesteng",
+  };
+}
+
+function getHestengTimedMatches(clubId: string): Array<{ match: CompletedMatch; timing: TimedMatchRecord }> {
+  return getCompletedMatchesForClub(clubId).flatMap((match) => {
+    if (match.timingSource !== "hesteng-scorer") return [];
+    const timing = completedMatchToTimingRecord(match);
+    return timing ? [{ match, timing }] : [];
+  });
 }
 
 function getEloBucket(elo: number): EloBucket {
@@ -128,6 +170,75 @@ export function calculateTimingProfile(records: DartConnectTimingRecord[]): Timi
     avgSecondsPerLeg: average(validRecords.map((record) => record.avgSecondsPerLeg)),
     medianSecondsPerLeg: median(validRecords.map((record) => record.avgSecondsPerLeg)),
   };
+}
+
+function addPlayerRecord(
+  recordsByPlayer: Map<string, { player: PlayerProfile; records: TimedMatchRecord[] }>,
+  player: PlayerProfile,
+  timing: TimedMatchRecord
+) {
+  const current = recordsByPlayer.get(player.id) ?? { player, records: [] };
+  current.records.push(timing);
+  recordsByPlayer.set(player.id, current);
+}
+
+function calculateSourcePlayerTimingProfiles(options: {
+  clubId?: string;
+  source: "hesteng" | "dartconnect";
+  records?: DartConnectTimingRecord[];
+  matches?: CompletedMatch[];
+  includeOutliers?: boolean;
+}): PlayerSourceTimingProfile[] {
+  const clubId = options.clubId ?? getCurrentClubId();
+  const recordsByPlayer = new Map<string, { player: PlayerProfile; records: TimedMatchRecord[] }>();
+
+  if (options.source === "hesteng") {
+    getHestengTimedMatches(clubId)
+      .filter((linked) => options.includeOutliers || !timingIsOutlier(linked.timing))
+      .forEach(({ match, timing }) => {
+        const players = getPlayerRegistry(clubId);
+        const player1 = findPlayerByName(players, match.player1);
+        const player2 = findPlayerByName(players, match.player2);
+        if (!player1 || !player2) return;
+        addPlayerRecord(recordsByPlayer, player1, timing);
+        addPlayerRecord(recordsByPlayer, player2, timing);
+      });
+  } else {
+    linkTimingRecordsToMatches(
+      options.records ?? getDartConnectTimingRecords(),
+      options.matches ?? getCompletedMatchesForClub(clubId),
+      clubId
+    )
+      .filter((linked) => linked.match.timingSource !== "hesteng-scorer")
+      .filter((linked) => options.includeOutliers || !linked.isOutlier)
+      .forEach((linked) => {
+        const timing = { ...linked.timing, source: "dartconnect" as const };
+        addPlayerRecord(recordsByPlayer, linked.player1, timing);
+        addPlayerRecord(recordsByPlayer, linked.player2, timing);
+      });
+  }
+
+  return [...recordsByPlayer.values()]
+    .map(({ player, records }) => ({
+      playerId: player.id,
+      canonicalName: player.name,
+      source: options.source,
+      ...calculateTimingProfile(records),
+    }))
+    .sort((a, b) => b.matchesTimed - a.matchesTimed || a.canonicalName.localeCompare(b.canonicalName));
+}
+
+function getWeightedSecondsPerLeg(hestengProfile?: PlayerSourceTimingProfile, dartConnectProfile?: PlayerSourceTimingProfile): number {
+  const hestengWeight = (hestengProfile?.matchesTimed ?? 0) * HESTENG_TIMING_WEIGHT;
+  const dartConnectWeight = dartConnectProfile?.matchesTimed ?? 0;
+  const totalWeight = hestengWeight + dartConnectWeight;
+
+  if (totalWeight <= 0) return 0;
+
+  return Number(((
+    (hestengProfile?.medianSecondsPerLeg ?? 0) * hestengWeight +
+    (dartConnectProfile?.medianSecondsPerLeg ?? 0) * dartConnectWeight
+  ) / totalWeight).toFixed(2));
 }
 
 export function linkTimingRecordsToMatches(
@@ -165,27 +276,37 @@ export function calculatePlayerTimingProfiles(options: {
   includeOutliers?: boolean;
 } = {}): PlayerTimingProfile[] {
   const clubId = options.clubId ?? getCurrentClubId();
-  const linkedMatches = linkTimingRecordsToMatches(
-    options.records ?? getDartConnectTimingRecords(),
-    options.matches ?? getCompletedMatchesForClub(clubId),
-    clubId
-  ).filter((linked) => options.includeOutliers || !linked.isOutlier);
-  const recordsByPlayer = new Map<string, { player: PlayerProfile; records: DartConnectTimingRecord[] }>();
+  const players = getPlayerRegistry(clubId);
+  const hestengProfiles = calculateSourcePlayerTimingProfiles({ ...options, clubId, source: "hesteng" });
+  const dartConnectProfiles = calculateSourcePlayerTimingProfiles({ ...options, clubId, source: "dartconnect" });
 
-  linkedMatches.forEach((linked) => {
-    [linked.player1, linked.player2].forEach((player) => {
-      const current = recordsByPlayer.get(player.id) ?? { player, records: [] };
-      current.records.push(linked.timing);
-      recordsByPlayer.set(player.id, current);
-    });
-  });
+  return players
+    .map((player) => {
+      const hestengProfile = hestengProfiles.find((profile) => profile.playerId === player.id);
+      const dartConnectProfile = dartConnectProfiles.find((profile) => profile.playerId === player.id);
+      const matchesTimed = (hestengProfile?.matchesTimed ?? 0) + (dartConnectProfile?.matchesTimed ?? 0);
+      const medianSecondsPerLeg = getWeightedSecondsPerLeg(hestengProfile, dartConnectProfile);
+      const avgSecondsPerLeg = medianSecondsPerLeg;
+      const avgMatchDurationSeconds = average([
+        hestengProfile?.avgMatchDurationSeconds ?? 0,
+        dartConnectProfile?.avgMatchDurationSeconds ?? 0,
+      ].filter((value) => value > 0));
+      const medianMatchDurationSeconds = average([
+        hestengProfile?.medianMatchDurationSeconds ?? 0,
+        dartConnectProfile?.medianMatchDurationSeconds ?? 0,
+      ].filter((value) => value > 0));
 
-  return [...recordsByPlayer.values()]
-    .map(({ player, records }) => ({
-      playerId: player.id,
-      canonicalName: player.name,
-      ...calculateTimingProfile(records),
-    }))
+      return {
+        playerId: player.id,
+        canonicalName: player.name,
+        matchesTimed,
+        avgMatchDurationSeconds,
+        medianMatchDurationSeconds,
+        avgSecondsPerLeg,
+        medianSecondsPerLeg,
+      };
+    })
+    .filter((profile) => profile.matchesTimed > 0)
     .sort((a, b) => b.matchesTimed - a.matchesTimed || a.canonicalName.localeCompare(b.canonicalName));
 }
 
@@ -312,5 +433,114 @@ export function estimateMatchDuration(input: EstimateMatchDurationInput): Estima
   return {
     estimatedSeconds: NEUTRAL_SECONDS_PER_LEG * expectedLegs,
     source: "neutral",
+  };
+}
+
+function calculateGlobalSecondsPerLeg(clubId: string): number {
+  const hestengRecords = getHestengTimedMatches(clubId).map((item) => item.timing);
+  const dartConnectRecords = linkTimingRecordsToMatches(getDartConnectTimingRecords(), getCompletedMatchesForClub(clubId), clubId)
+    .filter((linked) => linked.match.timingSource !== "hesteng-scorer")
+    .map((linked) => linked.timing);
+  const profile = calculateTimingProfile([...hestengRecords, ...dartConnectRecords].filter((record) => !timingIsOutlier(record)));
+
+  return profile.medianSecondsPerLeg || NEUTRAL_SECONDS_PER_LEG;
+}
+
+function getPlayerSourceProfiles(playerName: string, clubId: string) {
+  const player = findPlayerByName(getPlayerRegistry(clubId), playerName);
+  if (!player) return { player: null, hesteng: undefined, dartconnect: undefined };
+
+  const hesteng = calculateSourcePlayerTimingProfiles({ clubId, source: "hesteng" }).find((profile) => profile.playerId === player.id);
+  const dartconnect = calculateSourcePlayerTimingProfiles({ clubId, source: "dartconnect" }).find((profile) => profile.playerId === player.id);
+
+  return { player, hesteng, dartconnect };
+}
+
+function estimatePlayerSecondsPerLeg(playerName: string, clubId: string) {
+  const { hesteng, dartconnect } = getPlayerSourceProfiles(playerName, clubId);
+
+  if (hesteng && hesteng.matchesTimed >= MIN_TIMED_MATCHES_FOR_PLAYER_PROFILE) {
+    return {
+      secondsPerLeg: hesteng.medianSecondsPerLeg,
+      source: "hesteng" as const,
+      confidence: "high" as const,
+    };
+  }
+
+  if (hesteng && dartconnect) {
+    return {
+      secondsPerLeg: getWeightedSecondsPerLeg(hesteng, dartconnect),
+      source: "mixed" as const,
+      confidence: "medium" as const,
+    };
+  }
+
+  if (hesteng) {
+    return {
+      secondsPerLeg: hesteng.medianSecondsPerLeg,
+      source: "hesteng" as const,
+      confidence: "medium" as const,
+    };
+  }
+
+  if (dartconnect) {
+    return {
+      secondsPerLeg: dartconnect.medianSecondsPerLeg,
+      source: "dartconnect" as const,
+      confidence: dartconnect.matchesTimed >= MIN_TIMED_MATCHES_FOR_PLAYER_PROFILE ? "medium" as const : "low" as const,
+    };
+  }
+
+  return null;
+}
+
+function combineEstimateSources(sources: MatchDurationEstimate["source"][]): MatchDurationEstimate["source"] {
+  const uniqueSources = [...new Set(sources)];
+  if (uniqueSources.length === 1) return uniqueSources[0];
+  if (uniqueSources.includes("hesteng") && uniqueSources.includes("dartconnect")) return "mixed";
+  if (uniqueSources.includes("mixed")) return "mixed";
+  if (uniqueSources.includes("hesteng")) return "mixed";
+  if (uniqueSources.includes("dartconnect")) return "mixed";
+  return "global";
+}
+
+function combineConfidence(confidences: MatchDurationEstimate["confidence"][]): MatchDurationEstimate["confidence"] {
+  if (confidences.every((confidence) => confidence === "high")) return "high";
+  if (confidences.some((confidence) => confidence === "low")) return "low";
+  return "medium";
+}
+
+export function estimateMatchDurationByPlayers(
+  player1: string,
+  player2: string,
+  bestOfLegs: number,
+  clubId = getCurrentClubId()
+): MatchDurationEstimate {
+  const player1Estimate = estimatePlayerSecondsPerLeg(player1, clubId);
+  const player2Estimate = estimatePlayerSecondsPerLeg(player2, clubId);
+  const expectedLegs = Math.max(1, bestOfLegs);
+
+  if (player1Estimate && player2Estimate) {
+    return {
+      estimatedSeconds: Math.round(average([player1Estimate.secondsPerLeg, player2Estimate.secondsPerLeg]) * expectedLegs),
+      source: combineEstimateSources([player1Estimate.source, player2Estimate.source]),
+      confidence: combineConfidence([player1Estimate.confidence, player2Estimate.confidence]),
+    };
+  }
+
+  if (player1Estimate || player2Estimate) {
+    const playerEstimate = player1Estimate ?? player2Estimate!;
+    const globalSecondsPerLeg = calculateGlobalSecondsPerLeg(clubId);
+    return {
+      estimatedSeconds: Math.round(average([playerEstimate.secondsPerLeg, globalSecondsPerLeg]) * expectedLegs),
+      source: playerEstimate.source === "hesteng" ? "mixed" : playerEstimate.source,
+      confidence: "low",
+    };
+  }
+
+  return {
+    estimatedSeconds: Math.round(calculateGlobalSecondsPerLeg(clubId) * expectedLegs),
+    source: "global",
+    confidence: "low",
   };
 }

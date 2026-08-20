@@ -28,7 +28,12 @@ export type CompletedMatch = {
   pool: string | null;
   round: number | null;
   status: "finished";
+  startedAt?: string;
   finishedAt: string;
+  durationSeconds?: number;
+  legsPlayed?: number;
+  avgSecondsPerLeg?: number;
+  timingSource?: "hesteng-scorer" | "dartconnect-recap";
   players: [CompletedPlayerStats, CompletedPlayerStats];
 };
 

@@ -1,6 +1,7 @@
 import { Pool } from "@/context/KlubaftenContext";
 import { normalizeName } from "@/lib/playerIdentity";
 import { getPlayerRegistry } from "@/lib/playerRegistry";
+import { estimateMatchDurationByPlayers, type MatchDurationEstimate } from "@/lib/playerTimingEngine";
 
 export type ClubMatch = {
   id: string;
@@ -20,7 +21,15 @@ export type ClubMatch = {
   score2: number;
   winner?: string;
   loser?: string;
+  startedAt?: string;
   finishedAt?: string;
+  durationSeconds?: number;
+  legsPlayed?: number;
+  avgSecondsPerLeg?: number;
+  timingSource?: "hesteng-scorer" | "dartconnect-recap";
+  estimatedDurationSeconds?: number;
+  timingEstimateSource?: MatchDurationEstimate["source"];
+  timingEstimateConfidence?: MatchDurationEstimate["confidence"];
   status: "pending" | "live" | "finished";
 };
 
@@ -34,6 +43,7 @@ type PendingClubMatch = {
   player1: string;
   player2: string;
   requiresAccessibleBoardForMatch: boolean;
+  durationEstimate: MatchDurationEstimate;
 };
 
 type ScheduledClubMatch = PendingClubMatch & {
@@ -74,7 +84,7 @@ function getAccessiblePlayerNames(clubId?: string): Set<string> {
   );
 }
 
-function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>): PendingClubMatch[] {
+function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>, clubId?: string): PendingClubMatch[] {
   const pending: PendingClubMatch[] = [];
   let sequence = 1;
 
@@ -85,6 +95,8 @@ function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>)
         const player1Key = normalizeName(player1);
         const player2Key = normalizeName(player2);
 
+        const durationEstimate = estimateMatchDurationByPlayers(player1, player2, 5, clubId);
+
         pending.push({
           pool: pool.name,
           round: roundIndex + 1,
@@ -92,6 +104,7 @@ function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>)
           player1,
           player2,
           requiresAccessibleBoardForMatch: accessiblePlayerNames.has(player1Key) || accessiblePlayerNames.has(player2Key),
+          durationEstimate,
         });
       });
     });
@@ -125,6 +138,10 @@ function accessibleWaitScore(match: PendingClubMatch, accessiblePlayerNames: Set
 
 function compareBaseMatchOrder(a: PendingClubMatch, b: PendingClubMatch): number {
   return a.round - b.round || a.sequence - b.sequence || a.pool.localeCompare(b.pool) || a.player1.localeCompare(b.player1) || a.player2.localeCompare(b.player2);
+}
+
+function compareEstimatedDuration(a: PendingClubMatch, b: PendingClubMatch): number {
+  return b.durationEstimate.estimatedSeconds - a.durationEstimate.estimatedSeconds;
 }
 
 function findBestMatchIndex(
@@ -172,6 +189,7 @@ function schedulePendingMatches(pendingMatches: PendingClubMatch[], boardCount: 
         (a, b) =>
           recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
           accessibleWaitScore(b, accessiblePlayerNames, lastPlayedSlot, scheduleSlot) - accessibleWaitScore(a, accessiblePlayerNames, lastPlayedSlot, scheduleSlot) ||
+          compareEstimatedDuration(a, b) ||
           compareBaseMatchOrder(a, b)
       );
 
@@ -186,7 +204,10 @@ function schedulePendingMatches(pendingMatches: PendingClubMatch[], boardCount: 
       const matchIndex = findBestMatchIndex(
         pending,
         (match) => !match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot),
-        (a, b) => recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) || compareBaseMatchOrder(a, b)
+        (a, b) =>
+          recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
+          compareEstimatedDuration(a, b) ||
+          compareBaseMatchOrder(a, b)
       );
 
       if (matchIndex !== -1) scheduleMatch(matchIndex, board, playersInSlot);
@@ -199,7 +220,10 @@ function schedulePendingMatches(pendingMatches: PendingClubMatch[], boardCount: 
       const matchIndex = findBestMatchIndex(
         pending,
         (match) => !match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot),
-        (a, b) => recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) || compareBaseMatchOrder(a, b)
+        (a, b) =>
+          recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
+          compareEstimatedDuration(a, b) ||
+          compareBaseMatchOrder(a, b)
       );
 
       if (matchIndex !== -1) scheduleMatch(matchIndex, board, playersInSlot);
@@ -222,7 +246,7 @@ export function createClubNightMatches(
   }
 
   const accessiblePlayerNames = getAccessiblePlayerNames(clubId);
-  const pendingMatches = createPendingMatches(pools, accessiblePlayerNames);
+  const pendingMatches = createPendingMatches(pools, accessiblePlayerNames, clubId);
   const scheduledMatches = schedulePendingMatches(pendingMatches, boardCount, accessiblePlayerNames);
 
   return scheduledMatches.map((match) => ({
@@ -239,6 +263,9 @@ export function createClubNightMatches(
     boardType: getBoardType(match.board),
     requiresAccessibleBoardForMatch: match.requiresAccessibleBoardForMatch,
     bestOfLegs: 5,
+    estimatedDurationSeconds: match.durationEstimate.estimatedSeconds,
+    timingEstimateSource: match.durationEstimate.source,
+    timingEstimateConfidence: match.durationEstimate.confidence,
     score1: 0,
     score2: 0,
     status: "pending",

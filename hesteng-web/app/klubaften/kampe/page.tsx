@@ -21,6 +21,18 @@ function getStatusClasses(status: "pending" | "live" | "finished") {
   return "border-gray-700 bg-gray-800 text-gray-300";
 }
 
+function formatEstimatedMinutes(seconds?: number) {
+  if (!seconds || seconds <= 0) return null;
+  return `${Math.max(1, Math.round(seconds / 60))} min`;
+}
+
+function getTimingSourceLabel(source?: string) {
+  if (source === "hesteng") return "HESTENG";
+  if (source === "mixed") return "Blandet";
+  if (source === "dartconnect") return "DartConnect";
+  return "Global";
+}
+
 export default function KampePage() {
   const params = useParams<{ clubNightId?: string }>();
   const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
@@ -80,6 +92,9 @@ export default function KampePage() {
                 <div className="text-sm text-gray-500">Bane</div>
                 <div className="mt-1 text-2xl font-bold">{board}</div>
                 <div className="mt-3 text-sm text-gray-300">{next ? `${next.player1} – ${next.player2}` : "Ledig"}</div>
+                {next && formatEstimatedMinutes(next.estimatedDurationSeconds) && (
+                  <div className="mt-2 text-xs text-gray-500">Forventet {formatEstimatedMinutes(next.estimatedDurationSeconds)}</div>
+                )}
                 {next?.requiresAccessibleBoardForMatch && <div className="mt-2 text-xs font-bold uppercase tracking-wide text-orange-300">Handicapbane</div>}
               </div>
             );
@@ -103,6 +118,11 @@ export default function KampePage() {
                         <span className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClasses(match.status)}`}>{getStatusLabel(match.status)}</span>
                       </div>
                       {match.requiresAccessibleBoardForMatch && <div className="mt-3 inline-flex rounded-full border border-orange-700 bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-orange-300">Handicapbane</div>}
+                      {formatEstimatedMinutes(match.estimatedDurationSeconds) && (
+                        <div className="mt-3 text-xs text-gray-500">
+                          Forventet: {formatEstimatedMinutes(match.estimatedDurationSeconds)} · Kilde: {getTimingSourceLabel(match.timingEstimateSource)} · {match.timingEstimateConfidence ?? "low"}
+                        </div>
+                      )}
                       <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
                         <div className="truncate font-semibold">{match.player1}</div>
                         <div className="text-gray-600">vs.</div>

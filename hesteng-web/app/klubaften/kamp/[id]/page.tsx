@@ -43,7 +43,12 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
         score2: scopedCompletedMatch.score2,
         winner: scopedCompletedMatch.winner,
         loser,
+        startedAt: scopedCompletedMatch.startedAt,
         finishedAt: scopedCompletedMatch.finishedAt,
+        durationSeconds: scopedCompletedMatch.durationSeconds,
+        legsPlayed: scopedCompletedMatch.legsPlayed,
+        avgSecondsPerLeg: scopedCompletedMatch.avgSecondsPerLeg,
+        timingSource: scopedCompletedMatch.timingSource,
         status: "finished",
       };
     }));
@@ -77,6 +82,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
       clubId: item.clubId ?? clubNight?.clubId ?? currentClubId,
       clubNightId: item.clubNightId ?? clubNightId ?? undefined,
       bestOfLegs: selectedBestOfLegs,
+      startedAt: item.startedAt ?? new Date().toISOString(),
       status: "live",
     } : item));
   }
@@ -155,6 +161,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
             board={match.board}
             pool={match.pool}
             round={match.round}
+            startedAt={match.startedAt}
             onMatchComplete={saveMatchResult}
           />
         )}

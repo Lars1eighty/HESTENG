@@ -38,6 +38,7 @@ type Props = {
   board?: number | null;
   pool?: string | null;
   round?: number | null;
+  startedAt?: string;
   onMatchComplete?: (match: CompletedMatch) => void;
 };
 
@@ -145,7 +146,7 @@ function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
 
-export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null, onMatchComplete }: Props) {
+export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null, startedAt, onMatchComplete }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
     { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
     { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
@@ -177,6 +178,11 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
 
   const buildCompletedMatch = useCallback(() => {
     if (!matchWinner) return null;
+    const finishedAt = new Date().toISOString();
+    const safeStartedAt = startedAt ?? finishedAt;
+    const durationSeconds = Math.max(1, Math.round((new Date(finishedAt).getTime() - new Date(safeStartedAt).getTime()) / 1000));
+    const legsPlayed = players[0].legs + players[1].legs;
+    const avgSecondsPerLeg = legsPlayed > 0 ? Number((durationSeconds / legsPlayed).toFixed(2)) : durationSeconds;
     const stats = players.map((player) => ({
       name: player.name,
       legs: player.legs,
@@ -205,10 +211,15 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       pool,
       round,
       status: "finished" as const,
-      finishedAt: new Date().toISOString(),
+      startedAt: safeStartedAt,
+      finishedAt,
+      durationSeconds,
+      legsPlayed,
+      avgSecondsPerLeg,
+      timingSource: "hesteng-scorer" as const,
       players: stats,
     };
-  }, [bestOfLegs, board, clubId, clubNightId, matchId, matchWinner, players, pool, round]);
+  }, [bestOfLegs, board, clubId, clubNightId, matchId, matchWinner, players, pool, round, startedAt]);
 
   useEffect(() => {
     if (!matchWinner || saved) return;
