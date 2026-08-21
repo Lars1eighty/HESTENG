@@ -70,6 +70,25 @@ function normalizeInputItem(item: ImportInput, index: number): DartConnectBackfi
   };
 }
 
+function extractLocalTimingMatchIds(text: string): string[] {
+  const ids = new Set<string>();
+  const normalizedText = text.replace(/\r/g, "\n");
+  const urlMatches = normalizedText.matchAll(/recap\.dartconnect\.com\/matches\/([a-z0-9]{24})/gi);
+  for (const match of urlMatches) {
+    ids.add(match[1].toLowerCase());
+  }
+
+  normalizedText
+    .split(/[\n,;\t]+/)
+    .map((part) => part.trim().replace(/^["']|["']$/g, ""))
+    .forEach((part) => {
+      const match = part.match(/(?:^|\/)([a-z0-9]{24})(?:$|\?|#)/i) ?? part.match(/^([a-z0-9]{24})$/i);
+      if (match?.[1]) ids.add(match[1].toLowerCase());
+    });
+
+  return [...ids].sort();
+}
+
 function readRunnerState(): RunnerState {
   if (typeof window === "undefined") {
     return { candidates: [], cursor: 0, batchSize: 50, cumulativeStatus: emptyStatus() };
@@ -109,6 +128,7 @@ export default function DartConnectTimingAdminPage() {
   const [records, setRecords] = useState<DartConnectTimingRecord[]>(() => getDartConnectTimingRecords());
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState("");
+  const [fileImportInfo, setFileImportInfo] = useState<{ fileName: string; count: number } | null>(null);
 
   function persistRunner(next: RunnerState) {
     setRunner(next);
@@ -177,6 +197,26 @@ export default function DartConnectTimingAdminPage() {
     persistRunner({ ...runner, batchSize });
   }
 
+  async function importLocalFile(file: File | null) {
+    if (!file) return;
+    const text = await file.text();
+    const matchIds = extractLocalTimingMatchIds(text);
+    const candidates = matchIds.map((matchId) => ({
+      id: matchId,
+      body: `https://recap.dartconnect.com/matches/${matchId}`,
+    }));
+
+    persistRunner({
+      candidates,
+      cursor: 0,
+      batchSize: runner.batchSize,
+      cumulativeStatus: emptyStatus(),
+    });
+    setLastStatus(null);
+    setFileImportInfo({ fileName: file.name, count: matchIds.length });
+    setMessage(`Indlæst ${matchIds.length} unikke DartConnect matchIds fra ${file.name}.`);
+  }
+
   const remaining = Math.max(0, runner.candidates.length - runner.cursor);
   const avgLegSeconds = records.length > 0
     ? records.reduce((sum, record) => sum + record.avgSecondsPerLeg, 0) / records.length
@@ -198,7 +238,7 @@ export default function DartConnectTimingAdminPage() {
             </p>
           </div>
           <div className="rounded-lg border border-orange-400/30 bg-orange-500/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-orange-200">
-            Scheduler bruger ikke timing endnu
+            Scheduler bruger timing fallback
           </div>
         </header>
 
@@ -207,7 +247,7 @@ export default function DartConnectTimingAdminPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-bold">Recap batch</h2>
-                <p className="text-sm text-zinc-400">Indsæt recap-URLer, matchIder eller batch JSON fra eksisterende importflow.</p>
+                <p className="text-sm text-zinc-400">Importér CSV/TXT med recap-URLer eller matchIds. JSON kan stadig bruges som dev fallback.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {[50, 100].map((size) => (
@@ -221,6 +261,24 @@ export default function DartConnectTimingAdminPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-orange-400/20 bg-orange-500/10 p-3">
+              <label className="block text-sm font-bold text-orange-200" htmlFor="timing-file">Importér fil</label>
+              <input
+                id="timing-file"
+                type="file"
+                accept=".csv,.txt,text/csv,text/plain"
+                onChange={(event) => {
+                  void importLocalFile(event.target.files?.[0] ?? null);
+                  event.target.value = "";
+                }}
+                className="mt-2 block w-full text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-500 file:px-4 file:py-2 file:text-sm file:font-black file:text-black"
+              />
+              <p className="mt-2 text-xs text-zinc-400">Understøtter én recapUrl eller ét matchId pr. linje samt simple CSV-filer.</p>
+              {fileImportInfo ? (
+                <p className="mt-2 text-sm font-semibold text-orange-100">{fileImportInfo.fileName}: {fileImportInfo.count} fundne IDs</p>
+              ) : null}
             </div>
 
             <textarea
@@ -240,7 +298,7 @@ export default function DartConnectTimingAdminPage() {
                 className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-black text-black disabled:cursor-not-allowed disabled:opacity-40"
                 type="button"
               >
-                {isProcessing ? "Importerer..." : "Kør næste batch"}
+                {isProcessing ? "Importerer..." : "Start / kør næste batch"}
               </button>
               <button onClick={resetCursor} className="rounded-lg bg-white/10 px-4 py-3 text-sm font-bold text-zinc-100" type="button">
                 Nulstil cursor
@@ -277,7 +335,8 @@ export default function DartConnectTimingAdminPage() {
           ]} />
           <StatusCard title="Datakvalitet" values={[
             ["Koblet kamp", timingQuality.linkedToCompletedMatch],
-            ["Ukoblet", timingQuality.unlinkedTimingRecords],
+            ["Legacy koblet", timingQuality.linkedToLegacyMatch],
+            ["Unmatched", timingQuality.unmatchedLegacyMatchIds],
             ["Spillerkoblet", timingQuality.linkedToPlayers],
             ["Outliers", timingQuality.outliers],
           ]} />
@@ -363,6 +422,19 @@ export default function DartConnectTimingAdminPage() {
                     <span className="truncate">{item.id}</span>
                     <span className="text-orange-200">{item.reason}</span>
                   </div>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+            <h2 className="text-lg font-bold">Unresolved navne</h2>
+            <p className="mt-1 text-xs text-zinc-400">Fra legacy DC_Matches, når navn ikke matcher playerRegistry eller kendt alias.</p>
+            <div className="mt-4 max-h-60 overflow-auto rounded-lg border border-white/10">
+              {timingQuality.unresolvedLegacyNames.length === 0 ? (
+                <p className="p-4 text-sm text-zinc-400">Ingen unresolved navne.</p>
+              ) : (
+                timingQuality.unresolvedLegacyNames.map((name) => (
+                  <div key={name} className="border-b border-white/10 p-3 text-sm last:border-b-0">{name}</div>
                 ))
               )}
             </div>

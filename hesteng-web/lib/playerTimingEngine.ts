@@ -5,6 +5,7 @@ import { getCompletedMatchesForClub, type CompletedMatch } from "@/lib/matchStor
 import { getCurrentClubId } from "@/lib/currentClub";
 import { normalizeName, type PlayerProfile } from "@/lib/playerIdentity";
 import { getPlayerRegistry } from "@/lib/playerRegistry";
+import { linkTimingRecordsToDartConnectLegacyMatches } from "@/lib/dartconnectLegacyLinking";
 
 export const MIN_TIMED_MATCHES_FOR_PLAYER_PROFILE = 5;
 
@@ -47,6 +48,9 @@ export type TimingDataQuality = {
   missingPlayerIdentity: number;
   linkedHistoricalElo: number;
   missingHistoricalElo: number;
+  linkedToLegacyMatch: number;
+  unmatchedLegacyMatchIds: number;
+  unresolvedLegacyNames: string[];
   outliers: number;
   playerProfilesWithEnoughHistory: number;
   eloMatchupsWithEnoughHistory: number;
@@ -204,17 +208,32 @@ function calculateSourcePlayerTimingProfiles(options: {
         addPlayerRecord(recordsByPlayer, player2, timing);
       });
   } else {
-    linkTimingRecordsToMatches(
+    const completedLinkedMatches = linkTimingRecordsToMatches(
       options.records ?? getDartConnectTimingRecords(),
       options.matches ?? getCompletedMatchesForClub(clubId),
       clubId
-    )
+    );
+    const completedLinkedIds = new Set(completedLinkedMatches.map((linked) => linked.timing.matchId));
+
+    completedLinkedMatches
       .filter((linked) => linked.match.timingSource !== "hesteng-scorer")
       .filter((linked) => options.includeOutliers || !linked.isOutlier)
       .forEach((linked) => {
         const timing = { ...linked.timing, source: "dartconnect" as const };
         addPlayerRecord(recordsByPlayer, linked.player1, timing);
         addPlayerRecord(recordsByPlayer, linked.player2, timing);
+      });
+
+    linkTimingRecordsToDartConnectLegacyMatches(
+      options.records ?? getDartConnectTimingRecords(),
+      clubId
+    ).linkedMatches
+      .filter((linked) => !completedLinkedIds.has(linked.timing.matchId))
+      .filter((linked) => options.includeOutliers || !timingIsOutlier(linked.timing))
+      .forEach((linked) => {
+        const timing = { ...linked.timing, source: "dartconnect" as const };
+        addPlayerRecord(recordsByPlayer, { id: linked.player1.playerId, name: linked.player1.canonicalName, type: "player" }, timing);
+        addPlayerRecord(recordsByPlayer, { id: linked.player2.playerId, name: linked.player2.canonicalName, type: "player" }, timing);
       });
   }
 
@@ -360,6 +379,7 @@ export function calculateTimingDataQuality(options: {
   const matchesById = new Map(matches.map((match) => [match.id, match]));
   const players = getPlayerRegistry(clubId);
   const eloEvents = getEloEvents().filter((event) => (event.clubId ?? clubId) === clubId);
+  const legacySummary = linkTimingRecordsToDartConnectLegacyMatches(records, clubId);
   let linkedToCompletedMatch = 0;
   let linkedToPlayers = 0;
   let linkedHistoricalElo = 0;
@@ -378,15 +398,19 @@ export function calculateTimingDataQuality(options: {
 
   const playerProfiles = calculatePlayerTimingProfiles({ clubId, records, matches });
   const matchupProfiles = calculateEloMatchupTimingProfiles({ clubId, records, matches });
+  const legacyOnlyLinkedMatches = legacySummary.linkedMatches.filter((linked) => !matchesById.has(linked.timing.matchId));
 
   return {
     totalTimingRecords: records.length,
     linkedToCompletedMatch,
     unlinkedTimingRecords: records.length - linkedToCompletedMatch,
-    linkedToPlayers,
+    linkedToPlayers: linkedToPlayers + legacyOnlyLinkedMatches.length,
     missingPlayerIdentity: linkedToCompletedMatch - linkedToPlayers,
     linkedHistoricalElo,
     missingHistoricalElo: linkedToCompletedMatch - linkedHistoricalElo,
+    linkedToLegacyMatch: legacySummary.linkedMatches.length,
+    unmatchedLegacyMatchIds: legacySummary.unmatchedMatchIds.length,
+    unresolvedLegacyNames: legacySummary.unresolvedNames,
     outliers: records.filter(timingIsOutlier).length,
     playerProfilesWithEnoughHistory: playerProfiles.filter((profile) => profile.matchesTimed >= MIN_TIMED_MATCHES_FOR_PLAYER_PROFILE).length,
     eloMatchupsWithEnoughHistory: matchupProfiles.filter((profile) => profile.matchesTimed >= MIN_TIMED_MATCHES_FOR_PLAYER_PROFILE).length,
@@ -438,10 +462,15 @@ export function estimateMatchDuration(input: EstimateMatchDurationInput): Estima
 
 function calculateGlobalSecondsPerLeg(clubId: string): number {
   const hestengRecords = getHestengTimedMatches(clubId).map((item) => item.timing);
-  const dartConnectRecords = linkTimingRecordsToMatches(getDartConnectTimingRecords(), getCompletedMatchesForClub(clubId), clubId)
+  const records = getDartConnectTimingRecords();
+  const completedLinkedIds = new Set(linkTimingRecordsToMatches(records, getCompletedMatchesForClub(clubId), clubId).map((linked) => linked.timing.matchId));
+  const dartConnectRecords = linkTimingRecordsToMatches(records, getCompletedMatchesForClub(clubId), clubId)
     .filter((linked) => linked.match.timingSource !== "hesteng-scorer")
     .map((linked) => linked.timing);
-  const profile = calculateTimingProfile([...hestengRecords, ...dartConnectRecords].filter((record) => !timingIsOutlier(record)));
+  const legacyRecords = linkTimingRecordsToDartConnectLegacyMatches(records, clubId).linkedMatches
+    .filter((linked) => !completedLinkedIds.has(linked.timing.matchId))
+    .map((linked) => linked.timing);
+  const profile = calculateTimingProfile([...hestengRecords, ...dartConnectRecords, ...legacyRecords].filter((record) => !timingIsOutlier(record)));
 
   return profile.medianSecondsPerLeg || NEUTRAL_SECONDS_PER_LEG;
 }
