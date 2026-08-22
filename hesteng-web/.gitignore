@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+.hesteng-shared/
 
 # debug
 npm-debug.log*

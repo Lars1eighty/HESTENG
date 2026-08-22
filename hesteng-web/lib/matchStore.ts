@@ -38,9 +38,22 @@ export type CompletedMatch = {
 };
 
 const STORAGE_KEY = "hesteng.completedMatches";
+const SHARED_STATE_API = "/api/club-night-state";
 
 function canUseStorage() {
   return typeof window !== "undefined" && !!window.localStorage;
+}
+
+function syncCompletedMatchToSharedState(match: CompletedMatch) {
+  if (typeof window === "undefined") return;
+
+  void fetch(SHARED_STATE_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "completedMatch", completedMatch: match }),
+  }).catch(() => {
+    // Local MatchStore remains the offline fallback if the shared dev store is unavailable.
+  });
 }
 
 export function getCompletedMatches(): CompletedMatch[] {
@@ -74,7 +87,27 @@ export function saveCompletedMatch(match: CompletedMatch): CompletedMatch[] {
   if (canUseStorage()) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
+  syncCompletedMatchToSharedState(match);
   return next;
+}
+
+export function replaceCompletedMatchesFromSharedState(matches: CompletedMatch[]) {
+  if (!canUseStorage()) return;
+  const current = getCompletedMatches();
+  const byId = new Map<string, CompletedMatch>();
+
+  [...matches, ...current].forEach((match) => {
+    if (!match?.id) return;
+    const existing = byId.get(match.id);
+    if (!existing || (match.finishedAt ?? "").localeCompare(existing.finishedAt ?? "") >= 0) {
+      byId.set(match.id, match);
+    }
+  });
+
+  const next = [...byId.values()].sort((a, b) => (b.finishedAt ?? "").localeCompare(a.finishedAt ?? ""));
+  if (JSON.stringify(current) !== JSON.stringify(next)) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
 }
 
 export function getCompletedMatch(id: string): CompletedMatch | null {
