@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
@@ -15,7 +15,12 @@ import {
   trainingExercises,
 } from "@/data/trainingExercises";
 import { calculateTrainingMonthlyStats } from "@/lib/trainingMonthlyStatsEngine";
-import { getTrainingResultsForPlayer, saveTrainingResult } from "@/lib/trainingResultStore";
+import {
+  getTrainingResultsForPlayer,
+  saveTrainingResult,
+  subscribeToTrainingResults,
+  syncTrainingResultsFromSharedStore,
+} from "@/lib/trainingResultStore";
 import type { TrainingExercise, TrainingMetricDirection, TrainingResult } from "@/lib/trainingTypes";
 
 type ExerciseId =
@@ -137,6 +142,24 @@ function isPlayableExerciseId(exerciseId: string): exerciseId is ExerciseId {
   ].includes(exerciseId);
 }
 
+function getTrainingHash(view: "dashboard" | "details" | "play" | "result", exerciseId?: string) {
+  if (view === "dashboard") return "#min-traening";
+  if (!exerciseId) return "#min-traening";
+  return `#${view}=${encodeURIComponent(exerciseId)}`;
+}
+
+function parseTrainingHash(hash: string): { view: "dashboard" | "details" | "play" | "result"; exerciseId: ExerciseId | null } {
+  const cleaned = hash.replace(/^#/, "");
+  const [view, rawExerciseId] = cleaned.split("=");
+  const exerciseId = rawExerciseId ? decodeURIComponent(rawExerciseId) : "";
+
+  if ((view === "details" || view === "play" || view === "result") && isPlayableExerciseId(exerciseId)) {
+    return { view, exerciseId };
+  }
+
+  return { view: "dashboard", exerciseId: null };
+}
+
 export default function TrainingPage() {
   const { currentClubId, currentClub } = useClub();
   const { currentPlayer, currentPlayerId } = useCurrentUser();
@@ -144,11 +167,13 @@ export default function TrainingPage() {
   const activeExercise = activeExerciseId ? getTrainingExercise(activeExerciseId) : null;
   const [results, setResults] = useState<TrainingResult[]>(() => getTrainingResultsForPlayer(currentPlayerId));
   const [lastSavedResult, setLastSavedResult] = useState<TrainingResult | null>(null);
+  const [selectedDashboardExerciseId, setSelectedDashboardExerciseId] = useState<string | null>(null);
   const [jdcThrows, setJdcThrows] = useState<JdcThrow[]>([]);
   const [catch40Results, setCatch40Results] = useState<Catch40Result[]>([]);
   const [bobs27Results, setBobs27Results] = useState<Bobs27Target[]>([]);
   const [game420Results, setGame420Results] = useState<Game420Target[]>([]);
   const [showDetails, setShowDetails] = useState(false);
+  const [pendingBackTargetHash, setPendingBackTargetHash] = useState<string | null>(null);
 
   const selectedPlayerResults = results.filter(
     (result) => result.playerId === currentPlayerId && result.exerciseId === activeExerciseId
@@ -172,34 +197,151 @@ export default function TrainingPage() {
   const catch40State = calculateCatch40State(catch40Results);
   const bobs27State = calculateBobs27State(bobs27Results);
   const game420State = calculateGame420State(game420Results);
+  const hasActiveTrainingInput = !lastSavedResult && (
+    jdcThrows.length > 0 ||
+    catch40Results.length > 0 ||
+    bobs27Results.length > 0 ||
+    game420Results.length > 0
+  );
+  const currentTrainingHash = lastSavedResult && activeExerciseId
+    ? getTrainingHash("result", activeExerciseId)
+    : activeExerciseId
+      ? getTrainingHash("play", activeExerciseId)
+      : selectedDashboardExerciseId
+        ? getTrainingHash("details", selectedDashboardExerciseId)
+        : getTrainingHash("dashboard");
+  const navigationStateRef = useRef({
+    activeExerciseId,
+    lastSavedResult,
+    hasActiveTrainingInput,
+    currentTrainingHash,
+  });
+
+  navigationStateRef.current = {
+    activeExerciseId,
+    lastSavedResult,
+    hasActiveTrainingInput,
+    currentTrainingHash,
+  };
 
   function refreshResults() {
     setResults(getTrainingResultsForPlayer(currentPlayerId));
+    void syncTrainingResultsFromSharedStore(currentPlayerId).then(setResults);
   }
 
-  function handleExerciseChange(exerciseId: ExerciseId) {
-    if ((jdcThrows.length > 0 || catch40Results.length > 0 || bobs27Results.length > 0 || game420Results.length > 0) && !lastSavedResult) {
-      const confirmed = window.confirm("Afbryd den aktive træning?");
-      if (!confirmed) return;
-    }
-
-    setActiveExerciseId(exerciseId);
+  function resetGameplayState() {
     setLastSavedResult(null);
     setShowDetails(false);
     setJdcThrows([]);
     setCatch40Results([]);
     setBobs27Results([]);
     setGame420Results([]);
+  }
+
+  function applyTrainingHash(hash: string, options: { discardActiveTraining?: boolean } = {}) {
+    const target = parseTrainingHash(hash);
+    const currentState = navigationStateRef.current;
+
+    if (currentState.hasActiveTrainingInput && !options.discardActiveTraining) {
+      setPendingBackTargetHash(hash);
+      if (window.location.hash !== currentState.currentTrainingHash) {
+        window.history.pushState({ hestengTraining: true }, "", currentState.currentTrainingHash);
+      }
+      return;
+    }
+
+    if (target.view === "dashboard") {
+      setActiveExerciseId(null);
+      setSelectedDashboardExerciseId(null);
+      resetGameplayState();
+      refreshResults();
+      return;
+    }
+
+    if (target.view === "details" && target.exerciseId) {
+      setActiveExerciseId(null);
+      setSelectedDashboardExerciseId(target.exerciseId);
+      resetGameplayState();
+      refreshResults();
+      return;
+    }
+
+    if (target.exerciseId) {
+      setActiveExerciseId(target.exerciseId);
+      setSelectedDashboardExerciseId(null);
+      setShowDetails(false);
+      if (target.view === "play") {
+        resetGameplayState();
+      }
+    }
+  }
+
+  function pushTrainingHash(hash: string) {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === hash) return;
+    window.history.pushState({ hestengTraining: true }, "", hash);
+  }
+
+  function replaceTrainingHash(hash: string) {
+    if (typeof window === "undefined") return;
+    window.history.replaceState({ hestengTraining: true }, "", hash);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncResults() {
+      const nextResults = await syncTrainingResultsFromSharedStore(currentPlayerId);
+      if (!cancelled) setResults(nextResults);
+    }
+
+    void syncResults();
+    const unsubscribe = subscribeToTrainingResults(() => {
+      setResults(getTrainingResultsForPlayer(currentPlayerId));
+    });
+    const interval = window.setInterval(syncResults, 5000);
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      window.clearInterval(interval);
+    };
+  }, [currentPlayerId]);
+
+  useEffect(() => {
+    if (!window.location.hash) {
+      replaceTrainingHash(getTrainingHash("dashboard"));
+    } else {
+      window.setTimeout(() => applyTrainingHash(window.location.hash), 0);
+    }
+
+    function handlePopState() {
+      applyTrainingHash(window.location.hash || getTrainingHash("dashboard"));
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+    // The handler reads live state through navigationStateRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleExerciseChange(exerciseId: ExerciseId) {
+    if (hasActiveTrainingInput) {
+      setPendingBackTargetHash(getTrainingHash("play", exerciseId));
+      return;
+    }
+
+    setActiveExerciseId(exerciseId);
+    setSelectedDashboardExerciseId(null);
+    resetGameplayState();
+    pushTrainingHash(getTrainingHash("play", exerciseId));
   }
 
   function handleBackToDashboard() {
     setActiveExerciseId(null);
-    setLastSavedResult(null);
-    setShowDetails(false);
-    setJdcThrows([]);
-    setCatch40Results([]);
-    setBobs27Results([]);
-    setGame420Results([]);
+    setSelectedDashboardExerciseId(null);
+    resetGameplayState();
+    pushTrainingHash(getTrainingHash("dashboard"));
     refreshResults();
   }
 
@@ -220,6 +362,7 @@ export default function TrainingPage() {
     refreshResults();
     setLastSavedResult(result);
     setShowDetails(false);
+    replaceTrainingHash(getTrainingHash("result", result.exerciseId));
   }
 
   function handleJdcInput(value: JdcThrow) {
@@ -321,13 +464,27 @@ export default function TrainingPage() {
   }
 
   function handlePlayAgain() {
-    setLastSavedResult(null);
-    setShowDetails(false);
-    setJdcThrows([]);
-    setCatch40Results([]);
-    setBobs27Results([]);
-    setGame420Results([]);
+    const exerciseId = activeExerciseId;
+    resetGameplayState();
+    if (exerciseId) pushTrainingHash(getTrainingHash("play", exerciseId));
     refreshResults();
+  }
+
+  function handleDashboardDetailsToggle(exerciseId: string) {
+    const nextExerciseId = selectedDashboardExerciseId === exerciseId ? null : exerciseId;
+    setSelectedDashboardExerciseId(nextExerciseId);
+    pushTrainingHash(nextExerciseId ? getTrainingHash("details", nextExerciseId) : getTrainingHash("dashboard"));
+  }
+
+  function continueActiveTraining() {
+    setPendingBackTargetHash(null);
+  }
+
+  function confirmLeaveActiveTraining() {
+    const targetHash = pendingBackTargetHash ?? getTrainingHash("dashboard");
+    setPendingBackTargetHash(null);
+    applyTrainingHash(targetHash, { discardActiveTraining: true });
+    replaceTrainingHash(targetHash);
   }
 
   function handleBobs27Input(hits: number) {
@@ -418,6 +575,8 @@ export default function TrainingPage() {
           <TrainingDashboard
             results={results}
             currentPlayerId={currentPlayerId}
+            selectedExerciseId={selectedDashboardExerciseId}
+            onToggleExerciseDetails={handleDashboardDetailsToggle}
             onStartExercise={handleExerciseChange}
           />
         ) : (
@@ -503,6 +662,33 @@ export default function TrainingPage() {
             onAbort={handleAbort}
           />
         )}
+
+        {pendingBackTargetHash ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-2xl">
+              <h2 className="text-2xl font-black">Vil du afslutte træningen?</h2>
+              <p className="mt-2 text-sm font-semibold text-gray-400">
+                Resultatet bliver ikke gemt.
+              </p>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={continueActiveTraining}
+                  className="rounded-xl border border-gray-700 px-5 py-4 font-black text-gray-200 transition hover:border-orange-500 hover:text-white"
+                >
+                  Fortsæt træning
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmLeaveActiveTraining}
+                  className="rounded-xl bg-red-600 px-5 py-4 font-black text-white transition hover:bg-red-500"
+                >
+                  Afslut
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
     </main>
   );
@@ -511,13 +697,16 @@ export default function TrainingPage() {
 function TrainingDashboard({
   results,
   currentPlayerId,
+  selectedExerciseId,
+  onToggleExerciseDetails,
   onStartExercise,
 }: {
   results: TrainingResult[];
   currentPlayerId: string;
+  selectedExerciseId: string | null;
+  onToggleExerciseDetails: (exerciseId: string) => void;
   onStartExercise: (exerciseId: ExerciseId) => void;
 }) {
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const exercises = trainingExercises.filter((exercise) => exercise.isActive && isPlayableExerciseId(exercise.id));
   const exerciseSummaries = exercises.map((exercise) => buildExerciseSummary(exercise, results, currentPlayerId));
   const totalThisMonth = exerciseSummaries.reduce((sum, summary) => sum + summary.monthly.completedCount, 0);
@@ -557,7 +746,7 @@ function TrainingDashboard({
             key={summary.exercise.id}
             summary={summary}
             expanded={selectedExerciseId === summary.exercise.id}
-            onToggle={() => setSelectedExerciseId((current) => current === summary.exercise.id ? null : summary.exercise.id)}
+            onToggle={() => onToggleExerciseDetails(summary.exercise.id)}
             onStart={() => onStartExercise(summary.exercise.id as ExerciseId)}
           />
         ))}
