@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useKlubaften } from "@/context/KlubaftenContext";
+import { getClubNightMatchHref } from "@/lib/clubNightRoutes";
 import { getNextMatchesByBoard } from "@/lib/liveEngine";
 
 export default function LivePage() {
@@ -66,7 +67,7 @@ export default function LivePage() {
           {nextMatches.map((match) => (
             <Link
               key={match.id}
-              href={clubNightId ? `/klubaften/${clubNightId}/kamp/${match.id}` : `/klubaften/kamp/${match.id}`}
+              href={getClubNightMatchHref(match.id, clubNightId)}
               className="group block rounded-2xl border border-gray-800 bg-gray-900 p-6 transition hover:border-orange-500 hover:bg-gray-800"
             >
               <div className="mb-5 flex items-center justify-between text-sm text-gray-500">

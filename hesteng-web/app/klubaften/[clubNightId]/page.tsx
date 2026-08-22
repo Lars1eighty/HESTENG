@@ -9,6 +9,7 @@ import { calculateEveningStats } from "@/lib/eveningStatsEngine";
 import { getCompletedMatchesForClubNightInClub } from "@/lib/matchStore";
 import { calculatePoolStandings } from "@/lib/standingsEngine";
 import { calculateClubNightEloDeltasInClub, getPlayerElo } from "@/lib/eloRatingEngine";
+import { getClubNightMatchHref } from "@/lib/clubNightRoutes";
 
 const REFRESH_INTERVAL_MS = 7000;
 
@@ -143,7 +144,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
             <h2 className="mb-5 text-3xl font-black">Live nu</h2>
             <div className="space-y-4">
               {liveMatches.length ? liveMatches.map((match) => (
-                <Link key={match.id} href={`/klubaften/${clubNight.id}/kamp/${match.id}`} className="block rounded-2xl border border-orange-500/30 bg-gray-950 p-5 transition hover:border-orange-500">
+                <Link key={match.id} href={getClubNightMatchHref(match.id, clubNight.id)} className="block rounded-2xl border border-orange-500/30 bg-gray-950 p-5 transition hover:border-orange-500">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                       <div className="text-3xl font-black">{match.player1} <span className="text-gray-500">vs</span> {match.player2}</div>

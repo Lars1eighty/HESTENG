@@ -24,6 +24,7 @@ export type CompletedMatch = {
   score1: number;
   score2: number;
   bestOfLegs: number;
+  scoringMode?: "total" | "dart-by-dart";
   board: number | null;
   pool: string | null;
   round: number | null;

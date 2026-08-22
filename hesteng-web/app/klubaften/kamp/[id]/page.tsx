@@ -1,24 +1,36 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
 import MatchScorer from "@/components/MatchScorer";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { getCompletedMatchInClub, type CompletedMatch } from "@/lib/matchStore";
 import { applyEloForCompletedMatch } from "@/lib/eloRatingEngine";
+import type { ClubMatch } from "@/lib/matchEngine";
 
 const LEG_OPTIONS = [3, 5, 7, 9];
+const SCORING_MODE_OPTIONS: Array<{ value: NonNullable<ClubMatch["scoringMode"]>; label: string }> = [
+  { value: "total", label: "Samlet score" },
+  { value: "dart-by-dart", label: "Pil for pil" },
+];
 
-export default function KampScoringPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id, clubNightId: routeClubNightId } = use(params as Promise<{ id: string; clubNightId?: string }>);
+export default function KampScoringPage() {
+  const params = useParams<{ id?: string; clubNightId?: string }>();
+  const searchParams = useSearchParams();
+  const id = typeof params.id === "string" ? params.id : "";
+  const routeClubNightId = typeof params.clubNightId === "string"
+    ? params.clubNightId
+    : searchParams.get("clubNightId");
   const { currentClubId, clubNights, matches, setMatches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
   const clubNight = clubNights.find((item) => item.id === clubNightId) ?? null;
   const scopedMatches = clubNight?.matches ?? matches;
   const match = scopedMatches.find((item) => item.id === id);
   const [selectedBestOfLegs, setSelectedBestOfLegs] = useState(5);
+  const [selectedScoringMode, setSelectedScoringMode] = useState<NonNullable<ClubMatch["scoringMode"]>>("total");
 
   useEffect(() => {
     if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
@@ -39,6 +51,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
         clubId: item.clubId ?? clubNight?.clubId ?? currentClubId,
         clubNightId: item.clubNightId ?? clubNightId ?? undefined,
         bestOfLegs: scopedCompletedMatch.bestOfLegs,
+        scoringMode: scopedCompletedMatch.scoringMode ?? item.scoringMode ?? "total",
         score1: scopedCompletedMatch.score1,
         score2: scopedCompletedMatch.score2,
         winner: scopedCompletedMatch.winner,
@@ -69,6 +82,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
   }
 
   const bestOfLegs = match.bestOfLegs ?? 5;
+  const scoringMode = match.scoringMode ?? "total";
   const isReadOnly = clubNight?.status !== "active";
   const isSetupRequired = match.status === "pending" && !isReadOnly;
   const isFinished = match.status === "finished";
@@ -82,6 +96,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
       clubId: item.clubId ?? clubNight?.clubId ?? currentClubId,
       clubNightId: item.clubNightId ?? clubNightId ?? undefined,
       bestOfLegs: selectedBestOfLegs,
+      scoringMode: selectedScoringMode,
       startedAt: item.startedAt ?? new Date().toISOString(),
       status: "live",
     } : item));
@@ -148,6 +163,20 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
                 <button key={legs} onClick={() => setSelectedBestOfLegs(legs)} className={`rounded-2xl border py-6 text-3xl font-bold ${selectedBestOfLegs === legs ? "border-orange-400 bg-orange-500 text-black" : "border-gray-800 bg-gray-950 text-white hover:border-gray-600"}`}>{legs}</button>
               ))}
             </div>
+            <div className="mt-6">
+              <div className="text-sm font-semibold uppercase tracking-wide text-gray-400">Scoring</div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {SCORING_MODE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSelectedScoringMode(option.value)}
+                    className={`rounded-2xl border py-5 text-lg font-bold ${selectedScoringMode === option.value ? "border-orange-400 bg-orange-500 text-black" : "border-gray-800 bg-gray-950 text-white hover:border-gray-600"}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button onClick={startMatch} className="mt-4 w-full rounded-2xl bg-green-500 py-5 text-xl font-bold text-black">START KAMP</button>
           </div>
         ) : (
@@ -158,6 +187,7 @@ export default function KampScoringPage({ params }: { params: Promise<{ id: stri
             player1={match.player1}
             player2={match.player2}
             bestOfLegs={bestOfLegs}
+            scoringMode={scoringMode}
             board={match.board}
             pool={match.pool}
             round={match.round}

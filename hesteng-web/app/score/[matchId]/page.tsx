@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import { useKlubaften } from "@/context/KlubaftenContext";
+import { getClubNightMatchHref } from "@/lib/clubNightRoutes";
 
 export default function SharedScorePage({ params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = use(params);
@@ -15,7 +16,7 @@ export default function SharedScorePage({ params }: { params: Promise<{ matchId:
   useEffect(() => {
     if (!clubNight) return;
     setCurrentClubNightId(clubNight.id);
-    router.replace(`/klubaften/${clubNight.id}/kamp/${matchId}`);
+    router.replace(getClubNightMatchHref(matchId, clubNight.id));
   }, [clubNight, matchId, router, setCurrentClubNightId]);
 
   return (

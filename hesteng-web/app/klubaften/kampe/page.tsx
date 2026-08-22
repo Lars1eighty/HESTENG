@@ -6,6 +6,7 @@ import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useKlubaften } from "@/context/KlubaftenContext";
+import { getClubNightMatchHref } from "@/lib/clubNightRoutes";
 import { createClubNightMatches } from "@/lib/matchEngine";
 import { getNextMatchesByBoard } from "@/lib/liveEngine";
 
@@ -112,7 +113,7 @@ export default function KampePage() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   {poolMatches.map((match) => (
-                    <Link key={match.id} href={clubNightId ? `/klubaften/${clubNightId}/kamp/${match.id}` : `/klubaften/kamp/${match.id}`} className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 transition hover:border-gray-600 hover:bg-gray-800">
+                    <Link key={match.id} href={getClubNightMatchHref(match.id, clubNightId)} className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 transition hover:border-gray-600 hover:bg-gray-800">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-sm text-gray-400">#{match.order ?? "?"} · {match.pool} · Runde {match.round} · Bane {match.board}</div>
                         <span className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClasses(match.status)}`}>{getStatusLabel(match.status)}</span>

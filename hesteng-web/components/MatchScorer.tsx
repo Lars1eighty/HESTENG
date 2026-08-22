@@ -35,6 +35,7 @@ type Props = {
   player1: string;
   player2: string;
   bestOfLegs?: number;
+  scoringMode?: "total" | "dart-by-dart";
   board?: number | null;
   pool?: string | null;
   round?: number | null;
@@ -146,13 +147,12 @@ function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
 
-export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, board = null, pool = null, round = null, startedAt, onMatchComplete }: Props) {
+export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, scoringMode = "total", board = null, pool = null, round = null, startedAt, onMatchComplete }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
     { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
     { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
-  const [inputMode, setInputMode] = useState<"score" | "darts">("score");
   const [input, setInput] = useState("");
   const [dartMultiplier, setDartMultiplier] = useState<Multiplier>("S");
   const [dartThrows, setDartThrows] = useState<DartThrow[]>([]);
@@ -169,11 +169,13 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
   const current = players[currentPlayer];
   const neededLegs = Math.ceil(bestOfLegs / 2);
   const matchWinner = useMemo(() => players.find((player) => player.legs >= neededLegs), [players, neededLegs]);
+  const isDartByDartScoring = scoringMode === "dart-by-dart";
+  const activeInputMode = isDartByDartScoring ? "darts" : "score";
   const dartScore = dartThrows.reduce((total, dart) => total + dart.score, 0);
   const checkoutEntryOptions = getCheckoutEntryOptions(current.remaining);
   const hasPendingCheckoutPrompt = !!pendingEntryCheckout || !!pendingCheckout || pendingMiss || pendingBull;
   const canUseCheckoutEntry = !matchWinner && !hasPendingCheckoutPrompt && checkoutEntryOptions.length > 0;
-  const hasVisitInput = inputMode === "darts" ? dartThrows.length > 0 : !!input;
+  const hasVisitInput = activeInputMode === "darts" ? dartThrows.length > 0 : !!input;
   const showBustMiss = !matchWinner && !hasPendingCheckoutPrompt && current.remaining <= 170 && !hasVisitInput;
 
   const buildCompletedMatch = useCallback(() => {
@@ -207,6 +209,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       score1: players[0].legs,
       score2: players[1].legs,
       bestOfLegs,
+      scoringMode,
       board,
       pool,
       round,
@@ -219,7 +222,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       timingSource: "hesteng-scorer" as const,
       players: stats,
     };
-  }, [bestOfLegs, board, clubId, clubNightId, matchId, matchWinner, players, pool, round, startedAt]);
+  }, [bestOfLegs, board, clubId, clubNightId, matchId, matchWinner, players, pool, round, scoringMode, startedAt]);
 
   useEffect(() => {
     if (!matchWinner || saved) return;
@@ -239,19 +242,20 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
   }
 
   function addDigit(digit: number) {
+    if (isDartByDartScoring) return;
     if (matchWinner || hasPendingCheckoutPrompt || input.length >= 3) return;
     const nextInput = input + digit.toString();
     const nextScore = Number(nextInput);
-    if (nextScore > MAX_SCORE) return;
-    setInputMode("score");
+    const maxInput = isDartByDartScoring ? MAX_SCORE : Math.max(MAX_SCORE, current.remaining);
+    if (nextScore > maxInput) return;
     setInput(nextInput);
     setDartThrows([]);
     setMessage("");
   }
 
   function chooseScore(score: number) {
+    if (isDartByDartScoring) return;
     if (matchWinner || hasPendingCheckoutPrompt || score > MAX_SCORE) return;
-    setInputMode("score");
     setInput(score.toString());
     setDartThrows([]);
     setMessage("");
@@ -263,21 +267,12 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     setMessage("");
   }
 
-  function chooseInputMode(mode: "score" | "darts") {
-    if (hasPendingCheckoutPrompt || matchWinner) return;
-    setInputMode(mode);
-    setInput("");
-    setDartThrows([]);
-    setMessage("");
-  }
-
   function addDart(target: number) {
-    if (matchWinner || hasPendingCheckoutPrompt || dartThrows.length >= 3) return;
+    if (!isDartByDartScoring || matchWinner || hasPendingCheckoutPrompt || dartThrows.length >= 3) return;
     if (target === 25 && dartMultiplier === "T") return;
     const score = target * multiplierValue(dartMultiplier);
     const nextScore = dartScore + score;
     if (nextScore > MAX_SCORE) return;
-    setInputMode("darts");
     setInput("");
     setDartThrows((items) => [...items, { multiplier: dartMultiplier, target, score }]);
     setMessage("");
@@ -415,18 +410,12 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     setMessage("");
   }
 
-  function enterScore() {
-    if (matchWinner || hasPendingCheckoutPrompt) return;
-    if (inputMode === "score" && !input) return;
-    if (inputMode === "darts" && dartThrows.length !== 3) {
-      setMessage("Registrer tre pile før ENTER.");
+  function registerVisitScore(score: number, entryDarts: number, shouldAskEntryDartsForCheckout: boolean) {
+    if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) {
+      setMessage("Ugyldig score.");
       return;
     }
-
-    const score = inputMode === "darts" ? dartScore : Number(input);
-    if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return;
     const nextRemaining = current.remaining - score;
-    const entryDarts = checkoutEntryDarts ?? (inputMode === "darts" ? dartThrows.length : 3);
     setHistory((items) => [...items, { players: players.map((player) => ({ ...player })), currentPlayer }]);
 
     if (nextRemaining < 0 || nextRemaining === 1) {
@@ -443,14 +432,14 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         setMessage("Bust — double out.");
         return;
       }
-      if (inputMode === "score" && checkoutEntryDarts === null) {
+      if (shouldAskEntryDartsForCheckout) {
         setPendingEntryCheckout({ score });
         setCheckoutDarts("");
         setInput("");
         setDartThrows([]);
         return;
       }
-      setPendingCheckout({ score, remaining: 0, entryDarts: checkoutEntryDarts ?? (inputMode === "darts" ? dartThrows.length : 0), possibleAttempts: getPossibleCheckoutAttempts(score, checkoutEntryDarts ?? (inputMode === "darts" ? dartThrows.length : 0)) });
+      setPendingCheckout({ score, remaining: 0, entryDarts, possibleAttempts: getPossibleCheckoutAttempts(score, entryDarts) });
       setCheckoutDarts("");
       setInput("");
       setDartThrows([]);
@@ -466,6 +455,31 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     }
 
     finishVisit(score, nextRemaining, 0, entryDarts);
+  }
+
+  function enterScore() {
+    if (matchWinner || hasPendingCheckoutPrompt) return;
+    if (activeInputMode === "score" && !input) return;
+    if (activeInputMode === "darts" && dartThrows.length !== 3) {
+      setMessage("Registrer tre pile før ENTER.");
+      return;
+    }
+
+    const score = activeInputMode === "darts" ? dartScore : Number(input);
+    const entryDarts = checkoutEntryDarts ?? (activeInputMode === "darts" ? dartThrows.length : 3);
+    registerVisitScore(score, entryDarts, activeInputMode === "score" && checkoutEntryDarts === null);
+  }
+
+  function enterRemainingScore() {
+    if (matchWinner || hasPendingCheckoutPrompt || !input) return;
+    const targetRemaining = Number(input);
+    if (!Number.isInteger(targetRemaining) || targetRemaining < 0 || targetRemaining > current.remaining) {
+      setMessage("Ugyldig restscore.");
+      return;
+    }
+
+    const score = current.remaining - targetRemaining;
+    registerVisitScore(score, 3, checkoutEntryDarts === null);
   }
 
   function saveCheckoutDarts() {
@@ -605,7 +619,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
 
       <div className="grid grid-cols-[minmax(180px,0.34fr)_96px_minmax(0,1fr)] gap-2">
         <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 px-6">
-          {inputMode === "darts" ? (
+          {activeInputMode === "darts" ? (
             <>
               <div className="text-2xl font-bold tabular-nums text-white">{dartScore}</div>
               <div className="text-sm text-gray-400">{dartThrows.length ? dartThrows.map(dartLabel).join(" + ") : "VÆLG PILE"}</div>
@@ -625,18 +639,26 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => chooseInputMode("score")} disabled={hasPendingCheckoutPrompt} className={`rounded-xl border py-3 text-sm font-bold disabled:opacity-40 ${inputMode === "score" ? "border-blue-500 bg-blue-500/20 text-blue-300" : "border-gray-800 bg-gray-900 text-gray-300"}`}>SCORE</button>
-        <button onClick={() => chooseInputMode("darts")} disabled={hasPendingCheckoutPrompt} className={`rounded-xl border py-3 text-sm font-bold disabled:opacity-40 ${inputMode === "darts" ? "border-blue-500 bg-blue-500/20 text-blue-300" : "border-gray-800 bg-gray-900 text-gray-300"}`}>PIL FOR PIL</button>
+      <div className={`grid gap-2 ${isDartByDartScoring ? "grid-cols-1" : "grid-cols-2"}`}>
+        {isDartByDartScoring ? (
+          <button disabled className="rounded-xl border border-blue-500 bg-blue-500/20 py-3 text-sm font-bold text-blue-300">PIL FOR PIL</button>
+        ) : (
+          <>
+            <button disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-blue-500 bg-blue-500/20 py-3 text-sm font-bold text-blue-300 disabled:opacity-40">SCORE</button>
+            <button onClick={enterRemainingScore} disabled={hasPendingCheckoutPrompt || !input} className="rounded-xl border border-gray-800 bg-gray-900 py-3 text-sm font-bold text-gray-300 disabled:opacity-40 hover:border-blue-500 hover:bg-blue-500/20 hover:text-blue-300">SCORE TILBAGE</button>
+          </>
+        )}
       </div>
 
-      <div className="grid grid-cols-5 gap-2">
-        <div className="grid gap-2">{QUICK_LEFT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
-        <div className="col-span-3 grid gap-2">{NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => addDigit(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold disabled:opacity-40">{score}</button>)}</div>)}</div>
-        <div className="grid gap-2">{QUICK_RIGHT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
-      </div>
+      {!isDartByDartScoring && (
+        <div className="grid grid-cols-5 gap-2">
+          <div className="grid gap-2">{QUICK_LEFT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
+          <div className="col-span-3 grid gap-2">{NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => addDigit(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold disabled:opacity-40">{score}</button>)}</div>)}</div>
+          <div className="grid gap-2">{QUICK_RIGHT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
+        </div>
+      )}
 
-      {inputMode === "darts" && (
+      {activeInputMode === "darts" && (
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-3">
           <div className="grid grid-cols-3 gap-2">
             {MULTIPLIERS.map((multiplier) => (
@@ -655,7 +677,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
 
       <div className="grid grid-cols-3 gap-2">
         <button onClick={undo} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-red-900 bg-red-500/10 py-5 text-xl font-bold text-red-400 disabled:opacity-40">↶ UNDO</button>
-        <button onClick={() => (input ? addDigit(0) : chooseScore(180))} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-blue-600 bg-blue-600 py-5 text-2xl font-bold text-white disabled:opacity-40">{input ? "0" : "180"}</button>
+        <button onClick={() => (input ? addDigit(0) : chooseScore(180))} disabled={hasPendingCheckoutPrompt || isDartByDartScoring} className="rounded-xl border border-blue-600 bg-blue-600 py-5 text-2xl font-bold text-white disabled:opacity-40">{input ? "0" : "180"}</button>
         <button onClick={showBustMiss ? startBustMiss : enterScore} disabled={hasPendingCheckoutPrompt} className="rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">{showBustMiss ? "BUST / MISS" : "ENTER →"}</button>
       </div>
 

@@ -17,6 +17,7 @@ export type ClubMatch = {
   boardType: "normal" | "handicap";
   requiresAccessibleBoardForMatch: boolean;
   bestOfLegs: number;
+  scoringMode?: "total" | "dart-by-dart";
   score1: number;
   score2: number;
   winner?: string;
@@ -263,6 +264,7 @@ export function createClubNightMatches(
     boardType: getBoardType(match.board),
     requiresAccessibleBoardForMatch: match.requiresAccessibleBoardForMatch,
     bestOfLegs: 5,
+    scoringMode: "total",
     estimatedDurationSeconds: match.durationEstimate.estimatedSeconds,
     timingEstimateSource: match.durationEstimate.source,
     timingEstimateConfidence: match.durationEstimate.confidence,
