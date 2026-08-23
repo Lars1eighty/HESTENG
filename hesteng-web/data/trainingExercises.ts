@@ -8,6 +8,7 @@ export const SCORING_EXERCISE_ID = "scoring";
 export const PRIESTLEY_TRIPLES_EXERCISE_ID = "priestleys-triples";
 export const AROUND_THE_WORLD_EXERCISE_ID = "around-the-world";
 export const TARGET_TRAINING_EXERCISE_ID = "target-training";
+export const RANDOM_TARGET_EXERCISE_ID = "random-target";
 
 export const trainingExercises: TrainingExercise[] = [
   {
@@ -323,6 +324,57 @@ export const trainingExercises: TrainingExercise[] = [
       {
         key: "attempts",
         label: "Forsøg",
+        valueType: "count",
+      },
+    ],
+  },
+  {
+    id: RANDOM_TARGET_EXERCISE_ID,
+    name: "Random Target",
+    type: "random-target-training",
+    description: "Tilfældige targets pr. pil med hit/miss og fastlåst target-historik.",
+    isActive: true,
+    metrics: [
+      {
+        key: "hitPercent",
+        label: "Træf %",
+        valueType: "percent",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "hits",
+        label: "Hits",
+        valueType: "count",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "attempts",
+        label: "Forsøg",
+        valueType: "count",
+      },
+      {
+        key: "misses",
+        label: "Misses",
+        valueType: "count",
+      },
+      {
+        key: "singleHits",
+        label: "Single hits",
+        valueType: "count",
+      },
+      {
+        key: "doubleHits",
+        label: "Double hits",
+        valueType: "count",
+      },
+      {
+        key: "tripleHits",
+        label: "Triple hits",
+        valueType: "count",
+      },
+      {
+        key: "bullHits",
+        label: "Bull hits",
         valueType: "count",
       },
     ],
