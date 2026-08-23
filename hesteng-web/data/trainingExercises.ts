@@ -7,6 +7,7 @@ export const GAME_420_EXERCISE_ID = "game-420";
 export const SCORING_EXERCISE_ID = "scoring";
 export const PRIESTLEY_TRIPLES_EXERCISE_ID = "priestleys-triples";
 export const AROUND_THE_WORLD_EXERCISE_ID = "around-the-world";
+export const TARGET_TRAINING_EXERCISE_ID = "target-training";
 
 export const trainingExercises: TrainingExercise[] = [
   {
@@ -296,6 +297,32 @@ export const trainingExercises: TrainingExercise[] = [
       {
         key: "misses",
         label: "Misses",
+        valueType: "count",
+      },
+    ],
+  },
+  {
+    id: TARGET_TRAINING_EXERCISE_ID,
+    name: "Target Training",
+    type: "custom-target-training",
+    description: "Sammensæt 1-3 targets og træn hits over valgte runder.",
+    isActive: true,
+    metrics: [
+      {
+        key: "hitPercent",
+        label: "Træf %",
+        valueType: "percent",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "hits",
+        label: "Hits",
+        valueType: "count",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "attempts",
+        label: "Forsøg",
         valueType: "count",
       },
     ],
