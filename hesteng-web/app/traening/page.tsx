@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import { useClub } from "@/context/ClubContext";
 import { useCurrentUser } from "@/context/CurrentUserContext";
 import {
+  AROUND_THE_WORLD_EXERCISE_ID,
   BOBS_27_EXERCISE_ID,
   CATCH_40_EXERCISE_ID,
   GAME_420_EXERCISE_ID,
@@ -31,10 +32,13 @@ type ExerciseId =
   | typeof BOBS_27_EXERCISE_ID
   | typeof GAME_420_EXERCISE_ID
   | typeof SCORING_EXERCISE_ID
-  | typeof PRIESTLEY_TRIPLES_EXERCISE_ID;
+  | typeof PRIESTLEY_TRIPLES_EXERCISE_ID
+  | typeof AROUND_THE_WORLD_EXERCISE_ID;
 type JdcThrow = "single" | "double" | "triple" | "miss";
 type ScoringThrow = "single" | "double" | "triple" | "miss";
 type PriestleyThrow = "single" | "double" | "triple" | "miss";
+type AroundTheWorldInput = "hit" | "miss";
+type AroundTheWorldVariant = "singles" | "doubles" | "triples";
 type ScoringTarget = {
   variant: "T20" | "T19" | "BULL";
   label: string;
@@ -91,6 +95,13 @@ type PriestleyTarget = {
   scoreChange: number;
 };
 
+type AroundTheWorldTarget = {
+  target: string;
+  attemptsBeforeHit: number;
+  hit: boolean;
+  cumulativeDarts: number;
+};
+
 const JDC_STEPS: JdcStep[] = [
   ...[10, 11, 12, 13, 14, 15].map((target) => ({
     phase: "shanghai" as const,
@@ -145,6 +156,15 @@ const PRIESTLEY_TARGETS = Array.from({ length: 11 }, (_, index) => ({
 }));
 const PRIESTLEY_DARTS_PER_TARGET = 3;
 const PRIESTLEY_TOTAL_DARTS = PRIESTLEY_TARGETS.length * PRIESTLEY_DARTS_PER_TARGET;
+const AROUND_THE_WORLD_TARGETS = [
+  ...Array.from({ length: 20 }, (_, index) => String(index + 1)),
+  "BULL",
+];
+const AROUND_THE_WORLD_VARIANTS: { id: AroundTheWorldVariant; label: string; bullLabel: string }[] = [
+  { id: "singles", label: "SINGLES", bullLabel: "S-BULL" },
+  { id: "doubles", label: "DOUBLES", bullLabel: "D-BULL" },
+  { id: "triples", label: "TRIPLES", bullLabel: "D-BULL" },
+];
 
 function currentMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -176,6 +196,7 @@ function isPlayableExerciseId(exerciseId: string): exerciseId is ExerciseId {
     GAME_420_EXERCISE_ID,
     SCORING_EXERCISE_ID,
     PRIESTLEY_TRIPLES_EXERCISE_ID,
+    AROUND_THE_WORLD_EXERCISE_ID,
   ].includes(exerciseId);
 }
 
@@ -212,10 +233,16 @@ export default function TrainingPage() {
   const [scoringTarget, setScoringTarget] = useState<ScoringTarget | null>(null);
   const [scoringThrows, setScoringThrows] = useState<ScoringThrow[]>([]);
   const [priestleyThrows, setPriestleyThrows] = useState<PriestleyThrow[]>([]);
+  const [aroundTheWorldVariant, setAroundTheWorldVariant] = useState<AroundTheWorldVariant | null>(null);
+  const [aroundTheWorldInputs, setAroundTheWorldInputs] = useState<AroundTheWorldInput[]>([]);
   const [showDetails, setShowDetails] = useState(false);
   const [pendingBackTargetHash, setPendingBackTargetHash] = useState<string | null>(null);
 
-  const activeVariant = activeExerciseId === SCORING_EXERCISE_ID ? scoringTarget?.variant : undefined;
+  const activeVariant = activeExerciseId === SCORING_EXERCISE_ID
+    ? scoringTarget?.variant
+    : activeExerciseId === AROUND_THE_WORLD_EXERCISE_ID
+      ? aroundTheWorldVariant ?? undefined
+      : undefined;
   const selectedPlayerResults = results.filter((result) => (
     result.playerId === currentPlayerId &&
     result.exerciseId === activeExerciseId &&
@@ -239,19 +266,22 @@ export default function TrainingPage() {
   const hitPercentPersonalBest = personalBest(selectedPlayerResults, "hitPercent", "higherIsBetter");
   const remaining420PersonalBest = personalBest(selectedPlayerResults, "remaining420", "lowerIsBetter");
   const triplesPersonalBest = personalBest(selectedPlayerResults, "triples", "higherIsBetter");
+  const dartsUsedPersonalBest = personalBest(selectedPlayerResults, "dartsUsed", "lowerIsBetter");
   const jdcState = calculateJdcState(jdcThrows);
   const catch40State = calculateCatch40State(catch40Results);
   const bobs27State = calculateBobs27State(bobs27Results);
   const game420State = calculateGame420State(game420Results);
   const scoringState = calculateScoringState(scoringThrows, scoringTarget);
   const priestleyState = calculatePriestleyState(priestleyThrows);
+  const aroundTheWorldState = calculateAroundTheWorldState(aroundTheWorldInputs, aroundTheWorldVariant);
   const hasActiveTrainingInput = !lastSavedResult && (
     jdcThrows.length > 0 ||
     catch40Results.length > 0 ||
     bobs27Results.length > 0 ||
     game420Results.length > 0 ||
     scoringThrows.length > 0 ||
-    priestleyThrows.length > 0
+    priestleyThrows.length > 0 ||
+    aroundTheWorldInputs.length > 0
   );
   const currentTrainingHash = lastSavedResult && activeExerciseId
     ? getTrainingHash("result", activeExerciseId)
@@ -288,12 +318,16 @@ export default function TrainingPage() {
     setGame420Results([]);
     setScoringThrows([]);
     setPriestleyThrows([]);
+    setAroundTheWorldInputs([]);
   }
 
   function resetExerciseSessionState(exerciseId: ExerciseId) {
     resetGameplayState();
     if (exerciseId !== SCORING_EXERCISE_ID) {
       setScoringTarget(null);
+    }
+    if (exerciseId !== AROUND_THE_WORLD_EXERCISE_ID) {
+      setAroundTheWorldVariant(null);
     }
   }
 
@@ -411,7 +445,11 @@ export default function TrainingPage() {
       clubId: currentClubId,
       playerId: currentPlayerId,
       exerciseId,
-      variant: exerciseId === SCORING_EXERCISE_ID ? scoringTarget?.variant : undefined,
+      variant: exerciseId === SCORING_EXERCISE_ID
+        ? scoringTarget?.variant
+        : exerciseId === AROUND_THE_WORLD_EXERCISE_ID
+          ? aroundTheWorldVariant ?? undefined
+          : undefined,
       completedAt: new Date().toISOString(),
       metrics,
       details,
@@ -514,6 +552,10 @@ export default function TrainingPage() {
     if (activeExerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID) {
       setPriestleyThrows((items) => items.slice(0, -1));
     }
+
+    if (activeExerciseId === AROUND_THE_WORLD_EXERCISE_ID) {
+      setAroundTheWorldInputs((items) => items.slice(0, -1));
+    }
   }
 
   function handleAbort() {
@@ -522,7 +564,7 @@ export default function TrainingPage() {
       return;
     }
 
-    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length && !game420Results.length && !scoringThrows.length && !priestleyThrows.length) return;
+    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length && !game420Results.length && !scoringThrows.length && !priestleyThrows.length && !aroundTheWorldInputs.length) return;
     const confirmed = window.confirm("Afbryd træningen? Resultatet gemmes ikke.");
     if (!confirmed) return;
     setJdcThrows([]);
@@ -531,6 +573,7 @@ export default function TrainingPage() {
     setGame420Results([]);
     setScoringThrows([]);
     setPriestleyThrows([]);
+    setAroundTheWorldInputs([]);
     setShowDetails(false);
   }
 
@@ -602,6 +645,36 @@ export default function TrainingPage() {
           targets: nextState.details,
           throws: nextThrows,
           totalDarts: PRIESTLEY_TOTAL_DARTS,
+        }
+      ));
+    }
+  }
+
+  function handleAroundTheWorldVariantSelect(variant: AroundTheWorldVariant) {
+    if (lastSavedResult || aroundTheWorldInputs.length > 0) return;
+    setAroundTheWorldVariant(variant);
+  }
+
+  function handleAroundTheWorldInput(value: AroundTheWorldInput) {
+    if (!aroundTheWorldVariant || lastSavedResult || aroundTheWorldState.isComplete) return;
+    const nextInputs = [...aroundTheWorldInputs, value];
+    setAroundTheWorldInputs(nextInputs);
+
+    const nextState = calculateAroundTheWorldState(nextInputs, aroundTheWorldVariant);
+    if (nextState.isComplete) {
+      saveFinishedResult(buildTrainingResult(
+        AROUND_THE_WORLD_EXERCISE_ID,
+        {
+          dartsUsed: nextState.dartsUsed,
+          hits: nextState.hits,
+          attempts: nextState.attempts,
+          hitPercent: nextState.hitPercent,
+          misses: nextState.misses,
+        },
+        {
+          variant: aroundTheWorldVariant,
+          targets: nextState.details,
+          inputs: nextInputs,
         }
       ));
     }
@@ -717,7 +790,7 @@ export default function TrainingPage() {
             onStartExercise={handleExerciseChange}
           />
         ) : (
-          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-gray-800 bg-gray-900 p-1 sm:mb-5 sm:grid-cols-3 lg:grid-cols-6 sm:gap-2 sm:p-2">
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-gray-800 bg-gray-900 p-1 sm:mb-5 sm:grid-cols-3 lg:grid-cols-7 sm:gap-2 sm:p-2">
             <ExerciseTab
               active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
               title="JDC Challenge"
@@ -753,6 +826,12 @@ export default function TrainingPage() {
               title="Priestley's Triples"
               description="T10-T20"
               onClick={() => handleExerciseChange(PRIESTLEY_TRIPLES_EXERCISE_ID)}
+            />
+            <ExerciseTab
+              active={activeExerciseId === AROUND_THE_WORLD_EXERCISE_ID}
+              title="Around the World"
+              description="1-20-Bull"
+              onClick={() => handleExerciseChange(AROUND_THE_WORLD_EXERCISE_ID)}
             />
           </div>
         )}
@@ -820,6 +899,17 @@ export default function TrainingPage() {
             triplesPersonalBest={triplesPersonalBest}
             hitPercentPersonalBest={hitPercentPersonalBest}
             onInput={handlePriestleyInput}
+            onUndo={handleUndo}
+            onAbort={handleAbort}
+          />
+        ) : activeExerciseId === AROUND_THE_WORLD_EXERCISE_ID ? (
+          <AroundTheWorldGameplay
+            variant={aroundTheWorldVariant}
+            state={aroundTheWorldState}
+            dartsUsedPersonalBest={dartsUsedPersonalBest}
+            hitPercentPersonalBest={hitPercentPersonalBest}
+            onSelectVariant={handleAroundTheWorldVariantSelect}
+            onInput={handleAroundTheWorldInput}
             onUndo={handleUndo}
             onAbort={handleAbort}
           />
@@ -964,12 +1054,13 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
 }
 
 function getSummaryVariant(exerciseId: string, results: TrainingResult[], currentPlayerId: string) {
-  if (exerciseId !== SCORING_EXERCISE_ID) return undefined;
-  const latestScoringResult = results
+  if (exerciseId !== SCORING_EXERCISE_ID && exerciseId !== AROUND_THE_WORLD_EXERCISE_ID) return undefined;
+  const latestVariantResult = results
     .filter((result) => result.playerId === currentPlayerId && result.exerciseId === exerciseId && result.variant)
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
 
-  return latestScoringResult?.variant ?? SCORING_TARGETS[0].variant;
+  if (latestVariantResult?.variant) return latestVariantResult.variant;
+  return exerciseId === SCORING_EXERCISE_ID ? SCORING_TARGETS[0].variant : AROUND_THE_WORLD_VARIANTS[0].id;
 }
 
 function getPrimaryMetric(exercise: TrainingExercise) {
@@ -1201,7 +1292,18 @@ function getSecondaryMetrics(result: TrainingResult) {
     return `Triples ${numericMetric(result, "triples") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
   }
 
+  if (result.exerciseId === AROUND_THE_WORLD_EXERCISE_ID) {
+    return `${formatAroundTheWorldVariant(result.variant)} · ${numericMetric(result, "dartsUsed") ?? "-"} pile · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
+  }
+
   return `Hits ${numericMetric(result, "hits") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
+}
+
+function formatAroundTheWorldVariant(variant: string | undefined) {
+  if (variant === "singles") return "Singles";
+  if (variant === "doubles") return "Doubles";
+  if (variant === "triples") return "Triples";
+  return "Variant";
 }
 
 function calculateJdcState(throws: JdcThrow[]) {
@@ -1411,6 +1513,59 @@ function calculatePriestleyState(throws: PriestleyThrow[]) {
   };
 }
 
+function getAroundTheWorldTargetLabel(target: string, variant: AroundTheWorldVariant | null) {
+  if (target !== "BULL") {
+    if (variant === "doubles") return `D${target}`;
+    if (variant === "triples") return `T${target}`;
+    return `S${target}`;
+  }
+
+  return AROUND_THE_WORLD_VARIANTS.find((item) => item.id === variant)?.bullLabel ?? "BULL";
+}
+
+function calculateAroundTheWorldState(inputs: AroundTheWorldInput[], variant: AroundTheWorldVariant | null) {
+  let targetIndex = 0;
+  const details: AroundTheWorldTarget[] = [];
+  let attemptsOnCurrentTarget = 0;
+
+  for (const input of inputs) {
+    if (targetIndex >= AROUND_THE_WORLD_TARGETS.length) break;
+    attemptsOnCurrentTarget += 1;
+
+    if (input === "hit") {
+      const target = AROUND_THE_WORLD_TARGETS[targetIndex];
+      details.push({
+        target: getAroundTheWorldTargetLabel(target, variant),
+        attemptsBeforeHit: attemptsOnCurrentTarget,
+        hit: true,
+        cumulativeDarts: details.reduce((sum, detail) => sum + detail.attemptsBeforeHit, 0) + attemptsOnCurrentTarget,
+      });
+      targetIndex += 1;
+      attemptsOnCurrentTarget = 0;
+    }
+  }
+
+  const attempts = inputs.length;
+  const hits = details.length;
+  const misses = attempts - hits;
+  const currentTarget = AROUND_THE_WORLD_TARGETS[targetIndex] ?? null;
+
+  return {
+    dartsUsed: attempts,
+    hits,
+    attempts,
+    misses,
+    hitPercent: percent(hits, attempts),
+    completedTargets: hits,
+    remainingTargets: AROUND_THE_WORLD_TARGETS.length - hits,
+    currentTarget,
+    currentTargetLabel: currentTarget ? getAroundTheWorldTargetLabel(currentTarget, variant) : "Færdig",
+    attemptsOnCurrentTarget,
+    details,
+    isComplete: hits >= AROUND_THE_WORLD_TARGETS.length,
+  };
+}
+
 function getCatch40Details(result: TrainingResult): Catch40Result[] {
   const checkouts = result.details?.checkouts;
   if (!Array.isArray(checkouts)) return [];
@@ -1455,6 +1610,26 @@ function getPriestleyDetails(result: TrainingResult): PriestleyTarget[] {
       typeof target.misses === "number" &&
       typeof target.attempts === "number" &&
       typeof target.scoreChange === "number"
+    );
+  });
+}
+
+function getAroundTheWorldDetails(result: TrainingResult): AroundTheWorldTarget[] {
+  const targets = result.details?.targets;
+  if (!Array.isArray(targets)) return [];
+
+  return targets.filter((target): target is AroundTheWorldTarget => {
+    return (
+      typeof target === "object" &&
+      target !== null &&
+      "target" in target &&
+      "attemptsBeforeHit" in target &&
+      "hit" in target &&
+      "cumulativeDarts" in target &&
+      typeof target.target === "string" &&
+      typeof target.attemptsBeforeHit === "number" &&
+      typeof target.hit === "boolean" &&
+      typeof target.cumulativeDarts === "number"
     );
   });
 }
@@ -1946,6 +2121,76 @@ function PriestleyGameplay({
   );
 }
 
+function AroundTheWorldGameplay({
+  variant,
+  state,
+  dartsUsedPersonalBest,
+  hitPercentPersonalBest,
+  onSelectVariant,
+  onInput,
+  onUndo,
+  onAbort,
+}: {
+  variant: AroundTheWorldVariant | null;
+  state: ReturnType<typeof calculateAroundTheWorldState>;
+  dartsUsedPersonalBest: number | null;
+  hitPercentPersonalBest: number | null;
+  onSelectVariant: (variant: AroundTheWorldVariant) => void;
+  onInput: (value: AroundTheWorldInput) => void;
+  onUndo: () => void;
+  onAbort: () => void;
+}) {
+  if (!variant) {
+    return (
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+        <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Around the World</div>
+        <h2 className="mt-2 text-3xl font-black">Vælg variant</h2>
+        <p className="mt-1 text-sm font-semibold text-gray-500">1-20 og Bull · færrest pile er bedst</p>
+        <div className="mt-5 grid gap-2 sm:grid-cols-3 sm:gap-3">
+          {AROUND_THE_WORLD_VARIANTS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onSelectVariant(option.id)}
+              className="min-h-20 rounded-2xl border border-gray-800 bg-gray-950 px-3 py-4 text-2xl font-black text-white transition hover:border-orange-500 hover:text-orange-300 active:scale-[0.98] sm:min-h-28 sm:text-4xl"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <GameplayShell
+      eyebrow={`Around the World - ${formatAroundTheWorldVariant(variant)}`}
+      target={state.currentTargetLabel}
+      meta={`${state.completedTargets}/${AROUND_THE_WORLD_TARGETS.length} targets · ${state.dartsUsed} pile brugt`}
+      stats={[
+        { label: "Pile", value: state.dartsUsed },
+        { label: "Hits", value: `${state.hits}/${state.attempts}` },
+        { label: "Træf %", value: `${state.hitPercent}%` },
+        { label: "PR", value: dartsUsedPersonalBest !== null ? `${dartsUsedPersonalBest} pile` : "-" },
+      ]}
+      onUndo={onUndo}
+      onAbort={onAbort}
+      canUndo={state.attempts > 0}
+    >
+      <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 sm:grid-cols-4 xl:px-4">
+        <CompactStat label="Variant" value={formatAroundTheWorldVariant(variant)} />
+        <CompactStat label="Misses" value={state.misses} />
+        <CompactStat label="På target" value={state.attemptsOnCurrentTarget} />
+        <CompactStat label="PR træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <TouchButton label="HIT" tone="green" onClick={() => onInput("hit")} />
+        <TouchButton label="MISS" tone="red" onClick={() => onInput("miss")} />
+      </div>
+    </GameplayShell>
+  );
+}
+
 function ResultScreen({
   result,
   exercise,
@@ -1987,8 +2232,11 @@ function ResultScreen({
   const isGame420 = result.exerciseId === GAME_420_EXERCISE_ID;
   const isScoring = result.exerciseId === SCORING_EXERCISE_ID;
   const isPriestley = result.exerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID;
+  const isAroundTheWorld = result.exerciseId === AROUND_THE_WORLD_EXERCISE_ID;
   const resultTitle = isScoring && result.variant
     ? `${exercise?.name ?? "Scoring"} - ${result.variant}`
+    : isAroundTheWorld
+      ? `${exercise?.name ?? "Around the World"} - ${formatAroundTheWorldVariant(result.variant)}`
     : exercise?.name ?? "Træning";
 
   return (
@@ -1997,7 +2245,7 @@ function ResultScreen({
         <p className="text-sm font-black uppercase tracking-wide text-emerald-300">Gennemført</p>
         <h2 className="mt-1 text-3xl font-black">{resultTitle}</h2>
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-          <StatTile label="Score" value={numericMetric(result, "score") ?? "-"} />
+          <StatTile label={isAroundTheWorld ? "Pile brugt" : "Score"} value={isAroundTheWorld ? numericMetric(result, "dartsUsed") ?? "-" : numericMetric(result, "score") ?? "-"} />
           {isJdc ? (
             <>
               <StatTile label="Shanghai" value={numericMetric(result, "shanghaiCount") ?? 0} />
@@ -2034,6 +2282,12 @@ function ResultScreen({
               <StatTile label="Træf %" value={`${numericMetric(result, "hitPercent") ?? 0}%`} />
               <StatTile label="Misses" value={numericMetric(result, "misses") ?? 0} />
             </>
+          ) : isAroundTheWorld ? (
+            <>
+              <StatTile label="Hits / forsøg" value={`${numericMetric(result, "hits") ?? 0}/${numericMetric(result, "attempts") ?? 0}`} />
+              <StatTile label="Træf %" value={`${numericMetric(result, "hitPercent") ?? 0}%`} />
+              <StatTile label="Misses" value={numericMetric(result, "misses") ?? 0} />
+            </>
           ) : null}
         </div>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
@@ -2051,7 +2305,7 @@ function ResultScreen({
           >
             Tilbage til træning
           </button>
-          {(isCatch40 || isBobs27 || isGame420 || isScoring || isPriestley) ? (
+          {(isCatch40 || isBobs27 || isGame420 || isScoring || isPriestley || isAroundTheWorld) ? (
             <button
               type="button"
               onClick={onToggleDetails}
@@ -2100,6 +2354,12 @@ function ResultScreen({
                           { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
                           { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
                         ]
+                      : isAroundTheWorld
+                        ? [
+                            { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+                            { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
+                            { label: "Misses snit", value: monthlyStats?.metrics.find((metric) => metric.key === "misses")?.currentAverage ?? "-" },
+                          ]
                 : [
                     { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
                     { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
@@ -2112,6 +2372,7 @@ function ResultScreen({
       {showDetails && isGame420 ? <Game420DetailsTable details={getGame420Details(result)} /> : null}
       {showDetails && isScoring ? <ScoringDetailsTable details={getScoringDetails(result)} /> : null}
       {showDetails && isPriestley ? <PriestleyDetailsTable details={getPriestleyDetails(result)} /> : null}
+      {showDetails && isAroundTheWorld ? <AroundTheWorldDetailsTable details={getAroundTheWorldDetails(result)} /> : null}
     </div>
   );
 }
@@ -2244,6 +2505,22 @@ function PriestleyDetailsTable({ details }: { details: PriestleyTarget[] }) {
           <div>{target.singles}/{target.doubles}/{target.triples}</div>
           <div className={target.misses > 0 ? "text-red-300" : "text-gray-400"}>{target.misses}</div>
           <div className={target.scoreChange > 0 ? "text-emerald-300" : "text-gray-500"}>{target.scoreChange}</div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function AroundTheWorldDetailsTable({ details }: { details: AroundTheWorldTarget[] }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+      <TableHeader columns={["Target", "Pile før hit", "Hit", "Total"]} />
+      {details.map((target) => (
+        <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-3 py-3 text-sm font-bold sm:px-4">
+          <div>{target.target}</div>
+          <div>{target.attemptsBeforeHit}</div>
+          <div className={target.hit ? "text-emerald-300" : "text-red-300"}>{target.hit ? "Ja" : "Nej"}</div>
+          <div>{target.cumulativeDarts}</div>
         </div>
       ))}
     </section>

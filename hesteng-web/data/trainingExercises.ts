@@ -6,6 +6,7 @@ export const BOBS_27_EXERCISE_ID = "bobs-27";
 export const GAME_420_EXERCISE_ID = "game-420";
 export const SCORING_EXERCISE_ID = "scoring";
 export const PRIESTLEY_TRIPLES_EXERCISE_ID = "priestleys-triples";
+export const AROUND_THE_WORLD_EXERCISE_ID = "around-the-world";
 
 export const trainingExercises: TrainingExercise[] = [
   {
@@ -255,6 +256,42 @@ export const trainingExercises: TrainingExercise[] = [
         key: "doubles",
         label: "Doubles",
         valueType: "count",
+      },
+      {
+        key: "misses",
+        label: "Misses",
+        valueType: "count",
+      },
+    ],
+  },
+  {
+    id: AROUND_THE_WORLD_EXERCISE_ID,
+    name: "Around the World",
+    type: "accuracy-training",
+    description: "Ram 1-20 og Bull i rækkefølge. Variant afgør segmentet.",
+    isActive: true,
+    metrics: [
+      {
+        key: "dartsUsed",
+        label: "Pile brugt",
+        valueType: "count",
+        personalBest: "lowerIsBetter",
+      },
+      {
+        key: "hits",
+        label: "Hits",
+        valueType: "count",
+      },
+      {
+        key: "attempts",
+        label: "Forsøg",
+        valueType: "count",
+      },
+      {
+        key: "hitPercent",
+        label: "Træf %",
+        valueType: "percent",
+        personalBest: "higherIsBetter",
       },
       {
         key: "misses",
