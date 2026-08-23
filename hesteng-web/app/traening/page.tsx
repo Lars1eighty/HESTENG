@@ -11,6 +11,8 @@ import {
   CATCH_40_EXERCISE_ID,
   GAME_420_EXERCISE_ID,
   JDC_CHALLENGE_EXERCISE_ID,
+  PRIESTLEY_TRIPLES_EXERCISE_ID,
+  SCORING_EXERCISE_ID,
   getTrainingExercise,
   trainingExercises,
 } from "@/data/trainingExercises";
@@ -27,8 +29,18 @@ type ExerciseId =
   | typeof JDC_CHALLENGE_EXERCISE_ID
   | typeof CATCH_40_EXERCISE_ID
   | typeof BOBS_27_EXERCISE_ID
-  | typeof GAME_420_EXERCISE_ID;
+  | typeof GAME_420_EXERCISE_ID
+  | typeof SCORING_EXERCISE_ID
+  | typeof PRIESTLEY_TRIPLES_EXERCISE_ID;
 type JdcThrow = "single" | "double" | "triple" | "miss";
+type ScoringThrow = "single" | "double" | "triple" | "miss";
+type PriestleyThrow = "single" | "double" | "triple" | "miss";
+type ScoringTarget = {
+  variant: "T20" | "T19" | "BULL";
+  label: string;
+  value: 20 | 19 | 25;
+  allowTriple: boolean;
+};
 
 type JdcStep = {
   phase: "shanghai" | "double";
@@ -64,6 +76,17 @@ type Game420Target = {
   target: string;
   value: number;
   hits: number;
+  attempts: number;
+  scoreChange: number;
+};
+
+type PriestleyTarget = {
+  target: string;
+  value: number;
+  singles: number;
+  doubles: number;
+  triples: number;
+  misses: number;
   attempts: number;
   scoreChange: number;
 };
@@ -110,6 +133,18 @@ const GAME_420_TARGETS = [
     value: 50,
   },
 ];
+const SCORING_DARTS = 100;
+const SCORING_TARGETS: ScoringTarget[] = [
+  { variant: "T20", label: "20", value: 20, allowTriple: true },
+  { variant: "T19", label: "19", value: 19, allowTriple: true },
+  { variant: "BULL", label: "BULL", value: 25, allowTriple: false },
+];
+const PRIESTLEY_TARGETS = Array.from({ length: 11 }, (_, index) => ({
+  target: `T${index + 10}`,
+  value: index + 10,
+}));
+const PRIESTLEY_DARTS_PER_TARGET = 3;
+const PRIESTLEY_TOTAL_DARTS = PRIESTLEY_TARGETS.length * PRIESTLEY_DARTS_PER_TARGET;
 
 function currentMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -139,6 +174,8 @@ function isPlayableExerciseId(exerciseId: string): exerciseId is ExerciseId {
     CATCH_40_EXERCISE_ID,
     BOBS_27_EXERCISE_ID,
     GAME_420_EXERCISE_ID,
+    SCORING_EXERCISE_ID,
+    PRIESTLEY_TRIPLES_EXERCISE_ID,
   ].includes(exerciseId);
 }
 
@@ -165,22 +202,29 @@ export default function TrainingPage() {
   const { currentPlayer, currentPlayerId } = useCurrentUser();
   const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId | null>(null);
   const activeExercise = activeExerciseId ? getTrainingExercise(activeExerciseId) : null;
-  const [results, setResults] = useState<TrainingResult[]>(() => getTrainingResultsForPlayer(currentPlayerId));
+  const [results, setResults] = useState<TrainingResult[]>([]);
   const [lastSavedResult, setLastSavedResult] = useState<TrainingResult | null>(null);
   const [selectedDashboardExerciseId, setSelectedDashboardExerciseId] = useState<string | null>(null);
   const [jdcThrows, setJdcThrows] = useState<JdcThrow[]>([]);
   const [catch40Results, setCatch40Results] = useState<Catch40Result[]>([]);
   const [bobs27Results, setBobs27Results] = useState<Bobs27Target[]>([]);
   const [game420Results, setGame420Results] = useState<Game420Target[]>([]);
+  const [scoringTarget, setScoringTarget] = useState<ScoringTarget | null>(null);
+  const [scoringThrows, setScoringThrows] = useState<ScoringThrow[]>([]);
+  const [priestleyThrows, setPriestleyThrows] = useState<PriestleyThrow[]>([]);
   const [showDetails, setShowDetails] = useState(false);
   const [pendingBackTargetHash, setPendingBackTargetHash] = useState<string | null>(null);
 
-  const selectedPlayerResults = results.filter(
-    (result) => result.playerId === currentPlayerId && result.exerciseId === activeExerciseId
-  );
+  const activeVariant = activeExerciseId === SCORING_EXERCISE_ID ? scoringTarget?.variant : undefined;
+  const selectedPlayerResults = results.filter((result) => (
+    result.playerId === currentPlayerId &&
+    result.exerciseId === activeExerciseId &&
+    (activeVariant === undefined || result.variant === activeVariant)
+  ));
   const monthlyStats = activeExercise
     ? calculateTrainingMonthlyStats(results, activeExercise, {
         playerId: currentPlayerId,
+        variant: activeVariant,
         month: currentMonthKey(),
       })
     : null;
@@ -188,20 +232,26 @@ export default function TrainingPage() {
   const shanghaiStats = monthlyStats?.metrics.find((metric) => metric.key === "shanghaiCount") ?? null;
   const checkoutPercentStats = monthlyStats?.metrics.find((metric) => metric.key === "checkoutPercent") ?? null;
   const hitPercentStats = monthlyStats?.metrics.find((metric) => metric.key === "hitPercent") ?? null;
+  const triplesStats = monthlyStats?.metrics.find((metric) => metric.key === "triples") ?? null;
   const scorePersonalBest = personalBest(selectedPlayerResults, "score", "higherIsBetter");
   const checkoutPercentPersonalBest = personalBest(selectedPlayerResults, "checkoutPercent", "higherIsBetter");
   const highestCheckoutPersonalBest = personalBest(selectedPlayerResults, "highestCheckout", "higherIsBetter");
   const hitPercentPersonalBest = personalBest(selectedPlayerResults, "hitPercent", "higherIsBetter");
   const remaining420PersonalBest = personalBest(selectedPlayerResults, "remaining420", "lowerIsBetter");
+  const triplesPersonalBest = personalBest(selectedPlayerResults, "triples", "higherIsBetter");
   const jdcState = calculateJdcState(jdcThrows);
   const catch40State = calculateCatch40State(catch40Results);
   const bobs27State = calculateBobs27State(bobs27Results);
   const game420State = calculateGame420State(game420Results);
+  const scoringState = calculateScoringState(scoringThrows, scoringTarget);
+  const priestleyState = calculatePriestleyState(priestleyThrows);
   const hasActiveTrainingInput = !lastSavedResult && (
     jdcThrows.length > 0 ||
     catch40Results.length > 0 ||
     bobs27Results.length > 0 ||
-    game420Results.length > 0
+    game420Results.length > 0 ||
+    scoringThrows.length > 0 ||
+    priestleyThrows.length > 0
   );
   const currentTrainingHash = lastSavedResult && activeExerciseId
     ? getTrainingHash("result", activeExerciseId)
@@ -236,6 +286,15 @@ export default function TrainingPage() {
     setCatch40Results([]);
     setBobs27Results([]);
     setGame420Results([]);
+    setScoringThrows([]);
+    setPriestleyThrows([]);
+  }
+
+  function resetExerciseSessionState(exerciseId: ExerciseId) {
+    resetGameplayState();
+    if (exerciseId !== SCORING_EXERCISE_ID) {
+      setScoringTarget(null);
+    }
   }
 
   function applyTrainingHash(hash: string, options: { discardActiveTraining?: boolean } = {}) {
@@ -333,7 +392,7 @@ export default function TrainingPage() {
 
     setActiveExerciseId(exerciseId);
     setSelectedDashboardExerciseId(null);
-    resetGameplayState();
+    resetExerciseSessionState(exerciseId);
     pushTrainingHash(getTrainingHash("play", exerciseId));
   }
 
@@ -341,6 +400,7 @@ export default function TrainingPage() {
     setActiveExerciseId(null);
     setSelectedDashboardExerciseId(null);
     resetGameplayState();
+    setScoringTarget(null);
     pushTrainingHash(getTrainingHash("dashboard"));
     refreshResults();
   }
@@ -351,6 +411,7 @@ export default function TrainingPage() {
       clubId: currentClubId,
       playerId: currentPlayerId,
       exerciseId,
+      variant: exerciseId === SCORING_EXERCISE_ID ? scoringTarget?.variant : undefined,
       completedAt: new Date().toISOString(),
       metrics,
       details,
@@ -445,6 +506,14 @@ export default function TrainingPage() {
     if (activeExerciseId === GAME_420_EXERCISE_ID) {
       setGame420Results((items) => items.slice(0, -1));
     }
+
+    if (activeExerciseId === SCORING_EXERCISE_ID) {
+      setScoringThrows((items) => items.slice(0, -1));
+    }
+
+    if (activeExerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID) {
+      setPriestleyThrows((items) => items.slice(0, -1));
+    }
   }
 
   function handleAbort() {
@@ -453,13 +522,15 @@ export default function TrainingPage() {
       return;
     }
 
-    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length && !game420Results.length) return;
+    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length && !game420Results.length && !scoringThrows.length && !priestleyThrows.length) return;
     const confirmed = window.confirm("Afbryd træningen? Resultatet gemmes ikke.");
     if (!confirmed) return;
     setJdcThrows([]);
     setCatch40Results([]);
     setBobs27Results([]);
     setGame420Results([]);
+    setScoringThrows([]);
+    setPriestleyThrows([]);
     setShowDetails(false);
   }
 
@@ -468,6 +539,72 @@ export default function TrainingPage() {
     resetGameplayState();
     if (exerciseId) pushTrainingHash(getTrainingHash("play", exerciseId));
     refreshResults();
+  }
+
+  function handleScoringTargetSelect(target: ScoringTarget) {
+    if (lastSavedResult || scoringThrows.length > 0) return;
+    setScoringTarget(target);
+  }
+
+  function handleScoringInput(value: ScoringThrow) {
+    if (!scoringTarget || lastSavedResult || scoringState.isComplete) return;
+    if (value === "triple" && !scoringTarget.allowTriple) return;
+    const nextThrows = [...scoringThrows, value];
+    setScoringThrows(nextThrows);
+
+    const nextState = calculateScoringState(nextThrows, scoringTarget);
+    if (nextState.isComplete) {
+      saveFinishedResult(buildTrainingResult(
+        SCORING_EXERCISE_ID,
+        {
+          score: nextState.score,
+          singles: nextState.singles,
+          doubles: nextState.doubles,
+          triples: nextState.triples,
+          misses: nextState.misses,
+          hits: nextState.hits,
+          attempts: nextState.attempts,
+          hitPercent: nextState.hitPercent,
+          first50Score: nextState.first50Score,
+          second50Score: nextState.second50Score,
+        },
+        {
+          target: scoringTarget.variant,
+          targetValue: scoringTarget.value,
+          throws: nextThrows,
+          first50Score: nextState.first50Score,
+          second50Score: nextState.second50Score,
+        }
+      ));
+    }
+  }
+
+  function handlePriestleyInput(value: PriestleyThrow) {
+    if (lastSavedResult || priestleyState.isComplete) return;
+    const nextThrows = [...priestleyThrows, value];
+    setPriestleyThrows(nextThrows);
+
+    const nextState = calculatePriestleyState(nextThrows);
+    if (nextState.isComplete) {
+      saveFinishedResult(buildTrainingResult(
+        PRIESTLEY_TRIPLES_EXERCISE_ID,
+        {
+          score: nextState.score,
+          hits: nextState.hits,
+          attempts: nextState.attempts,
+          hitPercent: nextState.hitPercent,
+          triples: nextState.triples,
+          singles: nextState.singles,
+          doubles: nextState.doubles,
+          misses: nextState.misses,
+        },
+        {
+          targets: nextState.details,
+          throws: nextThrows,
+          totalDarts: PRIESTLEY_TOTAL_DARTS,
+        }
+      ));
+    }
   }
 
   function handleDashboardDetailsToggle(exerciseId: string) {
@@ -580,7 +717,7 @@ export default function TrainingPage() {
             onStartExercise={handleExerciseChange}
           />
         ) : (
-          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-gray-800 bg-gray-900 p-1 sm:mb-5 sm:grid-cols-4 sm:gap-2 sm:p-2">
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-gray-800 bg-gray-900 p-1 sm:mb-5 sm:grid-cols-3 lg:grid-cols-6 sm:gap-2 sm:p-2">
             <ExerciseTab
               active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
               title="JDC Challenge"
@@ -605,6 +742,18 @@ export default function TrainingPage() {
               description="420 remaining"
               onClick={() => handleExerciseChange(GAME_420_EXERCISE_ID)}
             />
+            <ExerciseTab
+              active={activeExerciseId === SCORING_EXERCISE_ID}
+              title="Scoring"
+              description="100 pile"
+              onClick={() => handleExerciseChange(SCORING_EXERCISE_ID)}
+            />
+            <ExerciseTab
+              active={activeExerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID}
+              title="Priestley's Triples"
+              description="T10-T20"
+              onClick={() => handleExerciseChange(PRIESTLEY_TRIPLES_EXERCISE_ID)}
+            />
           </div>
         )}
 
@@ -621,6 +770,7 @@ export default function TrainingPage() {
             shanghaiStats={shanghaiStats}
             checkoutPercentStats={checkoutPercentStats}
             hitPercentStats={hitPercentStats}
+            triplesStats={triplesStats}
             showDetails={showDetails}
             onToggleDetails={() => setShowDetails((value) => !value)}
             onPlayAgain={handlePlayAgain}
@@ -649,6 +799,27 @@ export default function TrainingPage() {
             remaining420PersonalBest={remaining420PersonalBest}
             hitPercentPersonalBest={hitPercentPersonalBest}
             onInput={handleGame420Input}
+            onUndo={handleUndo}
+            onAbort={handleAbort}
+          />
+        ) : activeExerciseId === SCORING_EXERCISE_ID ? (
+          <ScoringGameplay
+            target={scoringTarget}
+            state={scoringState}
+            scorePersonalBest={scorePersonalBest}
+            hitPercentPersonalBest={hitPercentPersonalBest}
+            onSelectTarget={handleScoringTargetSelect}
+            onInput={handleScoringInput}
+            onUndo={handleUndo}
+            onAbort={handleAbort}
+          />
+        ) : activeExerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID ? (
+          <PriestleyGameplay
+            state={priestleyState}
+            scorePersonalBest={scorePersonalBest}
+            triplesPersonalBest={triplesPersonalBest}
+            hitPercentPersonalBest={hitPercentPersonalBest}
+            onInput={handlePriestleyInput}
             onUndo={handleUndo}
             onAbort={handleAbort}
           />
@@ -756,12 +927,18 @@ function TrainingDashboard({
 }
 
 function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResult[], currentPlayerId: string) {
+  const summaryVariant = getSummaryVariant(exercise.id, results, currentPlayerId);
   const exerciseResults = results
-    .filter((result) => result.playerId === currentPlayerId && result.exerciseId === exercise.id)
+    .filter((result) => (
+      result.playerId === currentPlayerId &&
+      result.exerciseId === exercise.id &&
+      (summaryVariant === undefined || result.variant === summaryVariant)
+    ))
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
   const primaryMetric = getPrimaryMetric(exercise);
   const monthly = calculateTrainingMonthlyStats(results, exercise, {
     playerId: currentPlayerId,
+    variant: summaryVariant,
     month: currentMonthKey(),
   });
   const primaryStats = primaryMetric
@@ -775,6 +952,7 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
 
   return {
     exercise,
+    variant: summaryVariant,
     results: exerciseResults,
     primaryMetric,
     primaryStats,
@@ -783,6 +961,15 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
     monthly,
     focus,
   };
+}
+
+function getSummaryVariant(exerciseId: string, results: TrainingResult[], currentPlayerId: string) {
+  if (exerciseId !== SCORING_EXERCISE_ID) return undefined;
+  const latestScoringResult = results
+    .filter((result) => result.playerId === currentPlayerId && result.exerciseId === exerciseId && result.variant)
+    .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
+
+  return latestScoringResult?.variant ?? SCORING_TARGETS[0].variant;
 }
 
 function getPrimaryMetric(exercise: TrainingExercise) {
@@ -860,7 +1047,10 @@ function TrainingExerciseCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Træningsspil</div>
-          <h3 className="mt-1 text-2xl font-black leading-tight">{summary.exercise.name}</h3>
+          <h3 className="mt-1 text-2xl font-black leading-tight">
+            {summary.exercise.name}
+            {summary.variant ? <span className="ml-2 text-base text-orange-300">{summary.variant}</span> : null}
+          </h3>
           <p className="mt-1 text-sm font-semibold text-gray-500">{summary.exercise.description}</p>
         </div>
         <button
@@ -1003,6 +1193,14 @@ function getSecondaryMetrics(result: TrainingResult) {
     return `Remaining ${numericMetric(result, "remaining420") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
   }
 
+  if (result.exerciseId === SCORING_EXERCISE_ID) {
+    return `${result.variant ?? "Target"} · Hits ${numericMetric(result, "hits") ?? "-"}/${numericMetric(result, "attempts") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
+  }
+
+  if (result.exerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID) {
+    return `Triples ${numericMetric(result, "triples") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
+  }
+
   return `Hits ${numericMetric(result, "hits") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
 }
 
@@ -1131,6 +1329,88 @@ function calculateGame420State(results: Game420Target[]) {
   };
 }
 
+function scoringThrowPoints(value: ScoringThrow) {
+  if (value === "single") return 1;
+  if (value === "double") return 2;
+  if (value === "triple") return 3;
+  return 0;
+}
+
+function calculateScoringState(throws: ScoringThrow[], target: ScoringTarget | null) {
+  const limitedThrows = throws.slice(0, SCORING_DARTS);
+  const singles = limitedThrows.filter((value) => value === "single").length;
+  const doubles = limitedThrows.filter((value) => value === "double").length;
+  const triples = limitedThrows.filter((value) => value === "triple").length;
+  const misses = limitedThrows.filter((value) => value === "miss").length;
+  const hits = singles + doubles + triples;
+  const attempts = limitedThrows.length;
+  const first50Score = limitedThrows.slice(0, 50).reduce((sum, value) => sum + scoringThrowPoints(value), 0);
+  const second50Score = limitedThrows.slice(50, 100).reduce((sum, value) => sum + scoringThrowPoints(value), 0);
+  const score = first50Score + second50Score;
+
+  return {
+    target,
+    score,
+    singles,
+    doubles,
+    triples,
+    misses,
+    hits,
+    attempts,
+    hitPercent: percent(hits, attempts),
+    first50Score,
+    second50Score,
+    dartsRemaining: SCORING_DARTS - attempts,
+    isComplete: attempts >= SCORING_DARTS,
+  };
+}
+
+function calculatePriestleyState(throws: PriestleyThrow[]) {
+  const limitedThrows = throws.slice(0, PRIESTLEY_TOTAL_DARTS);
+  const singles = limitedThrows.filter((value) => value === "single").length;
+  const doubles = limitedThrows.filter((value) => value === "double").length;
+  const triples = limitedThrows.filter((value) => value === "triple").length;
+  const attempts = limitedThrows.length;
+  const hits = triples;
+  const misses = attempts - triples;
+  const details = PRIESTLEY_TARGETS.map((target, index) => {
+    const targetThrows = limitedThrows.slice(index * PRIESTLEY_DARTS_PER_TARGET, (index + 1) * PRIESTLEY_DARTS_PER_TARGET);
+    const targetTriples = targetThrows.filter((value) => value === "triple").length;
+
+    return {
+      target: target.target,
+      value: target.value,
+      singles: targetThrows.filter((value) => value === "single").length,
+      doubles: targetThrows.filter((value) => value === "double").length,
+      triples: targetTriples,
+      misses: targetThrows.length - targetTriples,
+      attempts: targetThrows.length,
+      scoreChange: targetTriples,
+    };
+  });
+  const completedTargets = Math.floor(attempts / PRIESTLEY_DARTS_PER_TARGET);
+  const currentTarget = PRIESTLEY_TARGETS[completedTargets] ?? null;
+  const currentDart = attempts % PRIESTLEY_DARTS_PER_TARGET + 1;
+
+  return {
+    score: triples,
+    singles,
+    doubles,
+    triples,
+    misses,
+    hits,
+    attempts,
+    hitPercent: percent(hits, attempts),
+    completedTargets,
+    remainingTargets: PRIESTLEY_TARGETS.length - completedTargets,
+    currentTarget,
+    currentDart,
+    dartsRemaining: PRIESTLEY_TOTAL_DARTS - attempts,
+    details,
+    isComplete: attempts >= PRIESTLEY_TOTAL_DARTS,
+  };
+}
+
 function getCatch40Details(result: TrainingResult): Catch40Result[] {
   const checkouts = result.details?.checkouts;
   if (!Array.isArray(checkouts)) return [];
@@ -1149,6 +1429,59 @@ function getCatch40Details(result: TrainingResult): Catch40Result[] {
       typeof target.points === "number"
     );
   });
+}
+
+function getPriestleyDetails(result: TrainingResult): PriestleyTarget[] {
+  const targets = result.details?.targets;
+  if (!Array.isArray(targets)) return [];
+
+  return targets.filter((target): target is PriestleyTarget => {
+    return (
+      typeof target === "object" &&
+      target !== null &&
+      "target" in target &&
+      "value" in target &&
+      "singles" in target &&
+      "doubles" in target &&
+      "triples" in target &&
+      "misses" in target &&
+      "attempts" in target &&
+      "scoreChange" in target &&
+      typeof target.target === "string" &&
+      typeof target.value === "number" &&
+      typeof target.singles === "number" &&
+      typeof target.doubles === "number" &&
+      typeof target.triples === "number" &&
+      typeof target.misses === "number" &&
+      typeof target.attempts === "number" &&
+      typeof target.scoreChange === "number"
+    );
+  });
+}
+
+function getScoringDetails(result: TrainingResult): {
+  target: string;
+  throws: ScoringThrow[];
+  first50Score: number;
+  second50Score: number;
+} {
+  const target = typeof result.details?.target === "string" ? result.details.target : result.variant ?? "-";
+  const throws = Array.isArray(result.details?.throws)
+    ? result.details.throws.filter((value): value is ScoringThrow => (
+        value === "single" || value === "double" || value === "triple" || value === "miss"
+      ))
+    : [];
+
+  return {
+    target,
+    throws,
+    first50Score: typeof result.details?.first50Score === "number"
+      ? result.details.first50Score
+      : numericMetric(result, "first50Score") ?? 0,
+    second50Score: typeof result.details?.second50Score === "number"
+      ? result.details.second50Score
+      : numericMetric(result, "second50Score") ?? 0,
+  };
 }
 
 function getBobs27Details(result: TrainingResult): Bobs27Target[] {
@@ -1489,6 +1822,130 @@ function Game420Gameplay({
   );
 }
 
+function ScoringGameplay({
+  target,
+  state,
+  scorePersonalBest,
+  hitPercentPersonalBest,
+  onSelectTarget,
+  onInput,
+  onUndo,
+  onAbort,
+}: {
+  target: ScoringTarget | null;
+  state: ReturnType<typeof calculateScoringState>;
+  scorePersonalBest: number | null;
+  hitPercentPersonalBest: number | null;
+  onSelectTarget: (target: ScoringTarget) => void;
+  onInput: (value: ScoringThrow) => void;
+  onUndo: () => void;
+  onAbort: () => void;
+}) {
+  if (!target) {
+    return (
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+        <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Scoring</div>
+        <h2 className="mt-2 text-3xl font-black">Vælg target</h2>
+        <p className="mt-1 text-sm font-semibold text-gray-500">100 pile · performance-point · variant adskilles i statistik</p>
+        <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+          {SCORING_TARGETS.map((option) => (
+            <button
+              key={option.variant}
+              type="button"
+              onClick={() => onSelectTarget(option)}
+              className="min-h-24 rounded-2xl border border-gray-800 bg-gray-950 px-3 py-4 text-3xl font-black text-white transition hover:border-orange-500 hover:text-orange-300 active:scale-[0.98] sm:min-h-32 sm:text-5xl"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <GameplayShell
+      eyebrow="Scoring"
+      target={target.variant}
+      meta={`${state.attempts}/${SCORING_DARTS} pile · ${state.dartsRemaining} tilbage`}
+      stats={[
+        { label: "Score", value: state.score },
+        { label: "Hits", value: `${state.hits}/${state.attempts}` },
+        { label: "Træf %", value: `${state.hitPercent}%` },
+        { label: "PR", value: scorePersonalBest ?? "-" },
+      ]}
+      onUndo={onUndo}
+      onAbort={onAbort}
+      canUndo={state.attempts > 0}
+    >
+      <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 sm:grid-cols-4 xl:px-4">
+        <CompactStat label="Singles" value={state.singles} />
+        <CompactStat label="Doubles" value={state.doubles} />
+        <CompactStat label="Triples" value={state.triples} />
+        <CompactStat label="Miss" value={state.misses} />
+        <CompactStat label="Første 50" value={state.first50Score} />
+        <CompactStat label="Sidste 50" value={state.second50Score} />
+        <CompactStat label="PR træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
+        <CompactStat label="Target" value={target.label} />
+      </div>
+      <div className={target.allowTriple ? "grid grid-cols-2 gap-2 sm:gap-3" : "grid grid-cols-3 gap-2 sm:gap-3"}>
+        <TouchButton label="SINGLE" tone="green" onClick={() => onInput("single")} />
+        <TouchButton label="DOUBLE" tone="amber" onClick={() => onInput("double")} />
+        {target.allowTriple ? <TouchButton label="TRIPLE" tone="orange" onClick={() => onInput("triple")} /> : null}
+        <TouchButton label="NO HIT" tone="red" onClick={() => onInput("miss")} />
+      </div>
+    </GameplayShell>
+  );
+}
+
+function PriestleyGameplay({
+  state,
+  scorePersonalBest,
+  triplesPersonalBest,
+  hitPercentPersonalBest,
+  onInput,
+  onUndo,
+  onAbort,
+}: {
+  state: ReturnType<typeof calculatePriestleyState>;
+  scorePersonalBest: number | null;
+  triplesPersonalBest: number | null;
+  hitPercentPersonalBest: number | null;
+  onInput: (value: PriestleyThrow) => void;
+  onUndo: () => void;
+  onAbort: () => void;
+}) {
+  return (
+    <GameplayShell
+      eyebrow="Priestley's Triples"
+      target={state.currentTarget?.target ?? "Færdig"}
+      meta={`${state.attempts}/${PRIESTLEY_TOTAL_DARTS} pile · pil ${Math.min(state.currentDart, PRIESTLEY_DARTS_PER_TARGET)}/${PRIESTLEY_DARTS_PER_TARGET}`}
+      stats={[
+        { label: "Score", value: state.score },
+        { label: "Triples", value: `${state.triples}/${state.attempts}` },
+        { label: "Træf %", value: `${state.hitPercent}%` },
+        { label: "PR", value: scorePersonalBest ?? "-" },
+      ]}
+      onUndo={onUndo}
+      onAbort={onAbort}
+      canUndo={state.attempts > 0}
+    >
+      <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 sm:grid-cols-4 xl:px-4">
+        <CompactStat label="Progress" value={`${state.completedTargets}/${PRIESTLEY_TARGETS.length}`} />
+        <CompactStat label="Misses" value={state.misses} />
+        <CompactStat label="PR triples" value={triplesPersonalBest ?? "-"} />
+        <CompactStat label="PR træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <TouchButton label="SINGLE" tone="amber" onClick={() => onInput("single")} />
+        <TouchButton label="DOUBLE" tone="orange" onClick={() => onInput("double")} />
+        <TouchButton label="TRIPLE" tone="green" onClick={() => onInput("triple")} />
+        <TouchButton label="NO HIT" tone="red" onClick={() => onInput("miss")} />
+      </div>
+    </GameplayShell>
+  );
+}
+
 function ResultScreen({
   result,
   exercise,
@@ -1501,6 +1958,7 @@ function ResultScreen({
   shanghaiStats,
   checkoutPercentStats,
   hitPercentStats,
+  triplesStats,
   showDetails,
   onToggleDetails,
   onPlayAgain,
@@ -1517,6 +1975,7 @@ function ResultScreen({
   shanghaiStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
   checkoutPercentStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
   hitPercentStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
+  triplesStats: ReturnType<typeof calculateTrainingMonthlyStats>["metrics"][number] | null;
   showDetails: boolean;
   onToggleDetails: () => void;
   onPlayAgain: () => void;
@@ -1526,12 +1985,17 @@ function ResultScreen({
   const isCatch40 = result.exerciseId === CATCH_40_EXERCISE_ID;
   const isBobs27 = result.exerciseId === BOBS_27_EXERCISE_ID;
   const isGame420 = result.exerciseId === GAME_420_EXERCISE_ID;
+  const isScoring = result.exerciseId === SCORING_EXERCISE_ID;
+  const isPriestley = result.exerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID;
+  const resultTitle = isScoring && result.variant
+    ? `${exercise?.name ?? "Scoring"} - ${result.variant}`
+    : exercise?.name ?? "Træning";
 
   return (
     <div className="grid gap-4 sm:gap-5">
       <section className="rounded-2xl border border-emerald-700/60 bg-emerald-950/40 p-4 sm:p-5">
         <p className="text-sm font-black uppercase tracking-wide text-emerald-300">Gennemført</p>
-        <h2 className="mt-1 text-3xl font-black">{exercise?.name ?? "Træning"}</h2>
+        <h2 className="mt-1 text-3xl font-black">{resultTitle}</h2>
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
           <StatTile label="Score" value={numericMetric(result, "score") ?? "-"} />
           {isJdc ? (
@@ -1552,6 +2016,24 @@ function ResultScreen({
               <StatTile label="Forsøg" value={numericMetric(result, "attempts") ?? 0} />
               <StatTile label={isGame420 ? "Remaining" : "Træf %"} value={isGame420 ? numericMetric(result, "remaining420") ?? "-" : `${numericMetric(result, "hitPercent") ?? 0}%`} />
             </>
+          ) : isScoring ? (
+            <>
+              <StatTile label="Hits / 100" value={`${numericMetric(result, "hits") ?? 0}/${numericMetric(result, "attempts") ?? 0}`} />
+              <StatTile label="Træf %" value={`${numericMetric(result, "hitPercent") ?? 0}%`} />
+              <StatTile label="Misses" value={numericMetric(result, "misses") ?? 0} />
+              <StatTile label="Singles" value={numericMetric(result, "singles") ?? 0} />
+              <StatTile label="Doubles" value={numericMetric(result, "doubles") ?? 0} />
+              <StatTile label="Triples" value={numericMetric(result, "triples") ?? 0} />
+              <StatTile label="Første 50" value={numericMetric(result, "first50Score") ?? 0} />
+              <StatTile label="Sidste 50" value={numericMetric(result, "second50Score") ?? 0} />
+            </>
+          ) : isPriestley ? (
+            <>
+              <StatTile label="Triple hits" value={numericMetric(result, "triples") ?? 0} />
+              <StatTile label="Hits / forsøg" value={`${numericMetric(result, "hits") ?? 0}/${numericMetric(result, "attempts") ?? 0}`} />
+              <StatTile label="Træf %" value={`${numericMetric(result, "hitPercent") ?? 0}%`} />
+              <StatTile label="Misses" value={numericMetric(result, "misses") ?? 0} />
+            </>
           ) : null}
         </div>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
@@ -1569,7 +2051,7 @@ function ResultScreen({
           >
             Tilbage til træning
           </button>
-          {(isCatch40 || isBobs27 || isGame420) ? (
+          {(isCatch40 || isBobs27 || isGame420 || isScoring || isPriestley) ? (
             <button
               type="button"
               onClick={onToggleDetails}
@@ -1598,12 +2080,26 @@ function ResultScreen({
                   { label: "PR lukke %", value: checkoutPercentPersonalBest !== null ? `${checkoutPercentPersonalBest}%` : "-" },
                   { label: "PR højeste luk", value: highestCheckoutPersonalBest ?? "-" },
                 ]
-              : isGame420
-                ? [
-                    { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
-                    { label: "PR remaining", value: remaining420PersonalBest ?? "-" },
-                    { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
-                  ]
+                : isGame420
+                  ? [
+                      { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+                      { label: "PR remaining", value: remaining420PersonalBest ?? "-" },
+                      { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
+                    ]
+                  : isScoring
+                    ? [
+                        { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+                        { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
+                        { label: "Første 50 snit", value: monthlyStats?.metrics.find((metric) => metric.key === "first50Score")?.currentAverage ?? "-" },
+                        { label: "Sidste 50 snit", value: monthlyStats?.metrics.find((metric) => metric.key === "second50Score")?.currentAverage ?? "-" },
+                      ]
+                    : isPriestley
+                      ? [
+                          { label: "Triples total", value: triplesStats?.currentTotal ?? "-" },
+                          { label: "Triples snit", value: triplesStats?.currentAverage ?? "-" },
+                          { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
+                          { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
+                        ]
                 : [
                     { label: "Snit træf %", value: hitPercentStats?.currentAverage ?? "-" },
                     { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
@@ -1614,6 +2110,8 @@ function ResultScreen({
       {showDetails && isCatch40 ? <Catch40DetailsTable details={getCatch40Details(result)} /> : null}
       {showDetails && isBobs27 ? <Bobs27DetailsTable details={getBobs27Details(result)} /> : null}
       {showDetails && isGame420 ? <Game420DetailsTable details={getGame420Details(result)} /> : null}
+      {showDetails && isScoring ? <ScoringDetailsTable details={getScoringDetails(result)} /> : null}
+      {showDetails && isPriestley ? <PriestleyDetailsTable details={getPriestleyDetails(result)} /> : null}
     </div>
   );
 }
@@ -1686,6 +2184,66 @@ function Game420DetailsTable({ details }: { details: Game420Target[] }) {
           <div>{target.hits}</div>
           <div>{target.attempts}</div>
           <div className="text-emerald-300">{target.scoreChange}</div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function ScoringDetailsTable({
+  details,
+}: {
+  details: ReturnType<typeof getScoringDetails>;
+}) {
+  const labelMap: Record<ScoringThrow, string> = {
+    single: "S",
+    double: "D",
+    triple: "T",
+    miss: "-",
+  };
+
+  return (
+    <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 className="text-lg font-black">Scoring detaljer</h3>
+          <p className="mt-1 text-sm font-semibold text-gray-500">{details.target} · 100 pile</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:w-64">
+          <CompactStat label="Første 50" value={details.first50Score} />
+          <CompactStat label="Sidste 50" value={details.second50Score} />
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-10 gap-1">
+        {details.throws.map((value, index) => (
+          <div
+            key={`${index}-${value}`}
+            className={`rounded-lg border px-1 py-2 text-center text-xs font-black sm:text-sm ${
+              value === "miss"
+                ? "border-red-900 bg-red-950/40 text-red-300"
+                : "border-emerald-900 bg-emerald-950/40 text-emerald-300"
+            }`}
+            title={`Pil ${index + 1}: ${value}`}
+          >
+            <div className="text-[0.6rem] text-gray-500">{index + 1}</div>
+            {labelMap[value]}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PriestleyDetailsTable({ details }: { details: PriestleyTarget[] }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+      <TableHeader columns={["Target", "S/D/T", "Miss", "Score"]} />
+      {details.map((target) => (
+        <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-3 py-3 text-sm font-bold sm:px-4">
+          <div>{target.target}</div>
+          <div>{target.singles}/{target.doubles}/{target.triples}</div>
+          <div className={target.misses > 0 ? "text-red-300" : "text-gray-400"}>{target.misses}</div>
+          <div className={target.scoreChange > 0 ? "text-emerald-300" : "text-gray-500"}>{target.scoreChange}</div>
         </div>
       ))}
     </section>

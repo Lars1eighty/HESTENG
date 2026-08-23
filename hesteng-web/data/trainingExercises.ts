@@ -4,6 +4,8 @@ export const JDC_CHALLENGE_EXERCISE_ID = "jdc-challenge";
 export const CATCH_40_EXERCISE_ID = "catch-40";
 export const BOBS_27_EXERCISE_ID = "bobs-27";
 export const GAME_420_EXERCISE_ID = "game-420";
+export const SCORING_EXERCISE_ID = "scoring";
+export const PRIESTLEY_TRIPLES_EXERCISE_ID = "priestleys-triples";
 
 export const trainingExercises: TrainingExercise[] = [
   {
@@ -145,6 +147,119 @@ export const trainingExercises: TrainingExercise[] = [
         label: "Træf %",
         valueType: "percent",
         personalBest: "higherIsBetter",
+      },
+    ],
+  },
+  {
+    id: SCORING_EXERCISE_ID,
+    name: "Scoring",
+    type: "target-scoring",
+    description: "100 pile på valgt target med performance-point og automatisk statistik.",
+    isActive: true,
+    metrics: [
+      {
+        key: "score",
+        label: "Score",
+        valueType: "number",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "singles",
+        label: "Singles",
+        valueType: "count",
+      },
+      {
+        key: "doubles",
+        label: "Doubles",
+        valueType: "count",
+      },
+      {
+        key: "triples",
+        label: "Triples",
+        valueType: "count",
+      },
+      {
+        key: "misses",
+        label: "Misses",
+        valueType: "count",
+      },
+      {
+        key: "hits",
+        label: "Hits",
+        valueType: "count",
+      },
+      {
+        key: "attempts",
+        label: "Forsøg",
+        valueType: "count",
+      },
+      {
+        key: "hitPercent",
+        label: "Træf %",
+        valueType: "percent",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "first50Score",
+        label: "Første 50",
+        valueType: "number",
+      },
+      {
+        key: "second50Score",
+        label: "Sidste 50",
+        valueType: "number",
+      },
+    ],
+  },
+  {
+    id: PRIESTLEY_TRIPLES_EXERCISE_ID,
+    name: "Priestley's Triples",
+    type: "triple-training",
+    description: "3 pile mod hver triple fra T10 til T20. Kun triple-hits tæller.",
+    isActive: true,
+    metrics: [
+      {
+        key: "score",
+        label: "Score",
+        valueType: "number",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "hits",
+        label: "Hits",
+        valueType: "count",
+      },
+      {
+        key: "attempts",
+        label: "Forsøg",
+        valueType: "count",
+      },
+      {
+        key: "hitPercent",
+        label: "Træf %",
+        valueType: "percent",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "triples",
+        label: "Triples",
+        valueType: "count",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "singles",
+        label: "Singles",
+        valueType: "count",
+      },
+      {
+        key: "doubles",
+        label: "Doubles",
+        valueType: "count",
+      },
+      {
+        key: "misses",
+        label: "Misses",
+        valueType: "count",
       },
     ],
   },
