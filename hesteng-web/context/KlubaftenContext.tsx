@@ -6,6 +6,7 @@ import { DEMO_CLUB_ID } from "@/data/clubs";
 import { useClub } from "@/context/ClubContext";
 import { getCurrentClubId } from "@/lib/currentClub";
 import { getCompletedMatches, replaceCompletedMatchesFromSharedState } from "@/lib/matchStore";
+import { saveLiveActiveSnapshotForClubNight } from "@/lib/liveActiveEngine";
 import type { SharedClubNightState } from "@/lib/serverClubNightStateStore";
 
 export type Pool = {
@@ -370,8 +371,20 @@ export function KlubaftenProvider({ children }: { children: ReactNode }) {
   const setHandicapBoards = useCallback((handicapBoards: number[]) => updateCurrentClubNight((current) => ({ ...current, handicapBoards })), [updateCurrentClubNight]);
   const finishClubNight = useCallback((clubNightId = getStoredKlubaften().currentClubNightId ?? undefined) => {
     if (!clubNightId) return;
-    updateClubNight(clubNightId, (current) => ({ ...current, status: "finished", finishedAt: new Date().toISOString() }));
-  }, [updateClubNight]);
+    const finishedAt = new Date().toISOString();
+    updateStoredKlubaften((snapshot) => {
+      const nextClubNights = snapshot.clubNights.map((clubNight) => clubNight.id === clubNightId
+        ? normalizeClubNight({ ...clubNight, status: "finished", finishedAt }, clubNight.id, clubNight.clubId ?? currentClubId)
+        : clubNight
+      );
+      saveLiveActiveSnapshotForClubNight(nextClubNights, currentClubId, clubNightId);
+
+      return {
+        ...snapshot,
+        clubNights: nextClubNights,
+      };
+    });
+  }, [currentClubId]);
   const abortClubNight = useCallback((clubNightId = getStoredKlubaften().currentClubNightId ?? undefined) => {
     if (!clubNightId) return;
     updateClubNight(clubNightId, (current) => ({ ...current, status: "aborted", finishedAt: new Date().toISOString() }));

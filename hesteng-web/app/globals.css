@@ -151,12 +151,27 @@ body {
   }
 }
 
+.hesteng-live-ticker-track {
+  width: max-content;
+  animation: hestengLiveTicker 62s linear infinite;
+}
+
+@keyframes hestengLiveTicker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hesteng-intro,
   .hesteng-intro-target span,
   .hesteng-intro-lines span,
   .hesteng-intro-wordmark,
-  .hesteng-intro-slogan {
+  .hesteng-intro-slogan,
+  .hesteng-live-ticker-track {
     animation: none;
   }
 }

@@ -20,12 +20,14 @@ type PlayerScore = {
   checkouts: number;
   checkoutAttempts: number;
   highestCheckout: number;
+  highCheckouts: number[];
   oneEighties: number;
   lastInput: number | null;
   legDarts: number;
   legEntries: number;
   recentScores: number[];
   fastestLegDarts: number | null;
+  fastLegDarts: number[];
 };
 
 type Props = {
@@ -149,8 +151,8 @@ function appendRecentScore(scores: number[], score: number) {
 
 export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, scoringMode = "total", board = null, pool = null, round = null, startedAt, onMatchComplete }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
-    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
-    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null },
+    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
+    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [input, setInput] = useState("");
@@ -203,9 +205,11 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       checkoutAttempts: player.checkoutAttempts,
       checkoutPercent: player.checkoutAttempts ? Math.round((player.checkouts / player.checkoutAttempts) * 100) : 0,
       highestCheckout: player.highestCheckout,
+      highCheckouts: player.highCheckouts,
       oneEighties: player.oneEighties,
       fastestLegDarts: player.fastestLegDarts,
-    })) as [{ name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; highestCheckout: number; oneEighties: number; fastestLegDarts: number | null }, { name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; highestCheckout: number; oneEighties: number; fastestLegDarts: number | null }];
+      fastLegDarts: player.fastLegDarts,
+    })) as [{ name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; highestCheckout: number; highCheckouts: number[]; oneEighties: number; fastestLegDarts: number | null; fastLegDarts: number[] }, { name: string; legs: number; totalScored: number; entries: number; average: number; checkouts: number; checkoutAttempts: number; checkoutPercent: number; highestCheckout: number; highCheckouts: number[]; oneEighties: number; fastestLegDarts: number | null; fastLegDarts: number[] }];
 
     return {
       id: matchId,
@@ -393,6 +397,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       }
       const completedLegDarts = player.legDarts + entryDarts;
       const fastestLegDarts = player.fastestLegDarts === null ? completedLegDarts : Math.min(player.fastestLegDarts, completedLegDarts);
+      const fastLegDarts = completedLegDarts <= 21 ? [...player.fastLegDarts, completedLegDarts] : player.fastLegDarts;
       return {
         ...player,
         remaining: matchIsFinished ? 0 : 501,
@@ -402,12 +407,14 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         checkouts: player.checkouts + 1,
         checkoutAttempts: player.checkoutAttempts + darts,
         highestCheckout: Math.max(player.highestCheckout, score),
+        highCheckouts: [...player.highCheckouts, score],
         oneEighties: player.oneEighties + (score === 180 ? 1 : 0),
         lastInput: score,
         legDarts: 0,
         legEntries: matchIsFinished ? player.legEntries + 1 : 0,
         recentScores: matchIsFinished ? appendRecentScore(player.recentScores, score) : [],
         fastestLegDarts,
+        fastLegDarts,
       };
     }));
 

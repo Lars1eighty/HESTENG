@@ -10,8 +10,10 @@ export type CompletedPlayerStats = {
   checkoutAttempts: number;
   checkoutPercent: number;
   highestCheckout?: number;
+  highCheckouts?: number[];
   oneEighties: number;
   fastestLegDarts: number | null;
+  fastLegDarts?: number[];
 };
 
 export type CompletedMatch = {

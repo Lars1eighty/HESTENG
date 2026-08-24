@@ -6,6 +6,7 @@ import { getCurrentClubId } from "@/lib/currentClub";
 import { getCompletedMatches, type CompletedMatch } from "@/lib/matchStore";
 import { normalizeName } from "@/lib/playerIdentity";
 import { getPlayerRegistry } from "@/lib/playerRegistry";
+import { calculateThursdayPoints } from "@/lib/thursdayPointsEngine";
 
 export type RankingRow = {
   player: string;
@@ -83,11 +84,13 @@ function addHistoricalSeed(stats: Map<string, AggregatedRankingStats>, clubId: s
 
 function addCompletedMatches(stats: Map<string, AggregatedRankingStats>, matches: CompletedMatch[], clubId: string) {
   const countedMatchIds = new Set<string>();
+  const clubNightMatches: CompletedMatch[] = [];
 
   matches.forEach((match) => {
     if (!isClubNightMatch(match, clubId)) return;
     if (countedMatchIds.has(match.id)) return;
     countedMatchIds.add(match.id);
+    clubNightMatches.push(match);
 
     match.players.forEach((playerStats) => {
       const target = getExisting(stats, playerStats.name);
@@ -103,8 +106,12 @@ function addCompletedMatches(stats: Map<string, AggregatedRankingStats>, matches
       }
     });
 
-    const winner = getExisting(stats, match.winner);
-    if (winner) winner.clubNightPoints += 2;
+  });
+
+  calculateThursdayPoints(clubNightMatches).forEach((pointsRow) => {
+    const target = getExisting(stats, pointsRow.player);
+    if (!target) return;
+    target.clubNightPoints += pointsRow.totalPoints;
   });
 }
 
