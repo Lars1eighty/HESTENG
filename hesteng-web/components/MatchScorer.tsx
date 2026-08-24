@@ -564,8 +564,9 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     avg: player.entries ? player.totalScored / player.entries : 0,
     closePercent: player.checkoutAttempts ? Math.round((player.checkouts / player.checkoutAttempts) * 100) : 0,
   }));
-  const calculatorExpressionParts = [...scoreParts, ...(input ? [currentScorePart] : [])];
-  const calculatorExpression = calculatorExpressionParts.join(" + ");
+  const calculatorExpression = hasCalculatorState
+    ? `${scoreParts.join(" + ")}${input ? ` + ${currentScorePart}` : " +"}`
+    : "";
 
   const playerCard = (player: PlayerScore, index: 0 | 1) => (
     <div className={`rounded-2xl border-2 ${index === 0 ? "border-blue-600" : "border-red-600"} bg-gray-900 p-5`}>
@@ -670,8 +671,8 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
           ) : (
             <>
               <div className="text-2xl font-bold tabular-nums text-white">{hasCalculatorState ? calculatorTotal : input}</div>
-              {calculatorExpression ? (
-                <div className="min-w-0 truncate text-sm text-gray-400">{calculatorExpression}{calculatorExpressionParts.length > 1 ? ` = ${calculatorTotal}` : ""}</div>
+              {hasCalculatorState ? (
+                <div className="min-w-0 truncate text-sm text-gray-400">{calculatorExpression}</div>
               ) : (
                 <div className="text-gray-500">INDTASTET TAL</div>
               )}
