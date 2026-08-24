@@ -154,6 +154,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [input, setInput] = useState("");
+  const [scoreParts, setScoreParts] = useState<number[]>([]);
   const [dartMultiplier, setDartMultiplier] = useState<Multiplier>("S");
   const [dartThrows, setDartThrows] = useState<DartThrow[]>([]);
   const [checkoutEntryDarts, setCheckoutEntryDarts] = useState<number | null>(null);
@@ -172,10 +173,14 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
   const isDartByDartScoring = scoringMode === "dart-by-dart";
   const activeInputMode = isDartByDartScoring ? "darts" : "score";
   const dartScore = dartThrows.reduce((total, dart) => total + dart.score, 0);
+  const scorePartsSum = scoreParts.reduce((total, part) => total + part, 0);
+  const currentScorePart = input ? Number(input) : 0;
+  const calculatorTotal = scorePartsSum + currentScorePart;
+  const hasCalculatorState = scoreParts.length > 0;
   const checkoutEntryOptions = getCheckoutEntryOptions(current.remaining);
   const hasPendingCheckoutPrompt = !!pendingEntryCheckout || !!pendingCheckout || pendingMiss || pendingBull;
   const canUseCheckoutEntry = !matchWinner && !hasPendingCheckoutPrompt && checkoutEntryOptions.length > 0;
-  const hasVisitInput = activeInputMode === "darts" ? dartThrows.length > 0 : !!input;
+  const hasVisitInput = activeInputMode === "darts" ? dartThrows.length > 0 : !!input || hasCalculatorState;
   const showBustMiss = !matchWinner && !hasPendingCheckoutPrompt && current.remaining <= 170 && !hasVisitInput;
 
   const buildCompletedMatch = useCallback(() => {
@@ -241,6 +246,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
 
   function resetInputState() {
     setInput("");
+    setScoreParts([]);
     setDartThrows([]);
     setCheckoutEntryDarts(null);
   }
@@ -251,6 +257,10 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     const nextInput = input + digit.toString();
     const nextScore = Number(nextInput);
     const maxInput = isDartByDartScoring ? MAX_SCORE : Math.max(MAX_SCORE, current.remaining);
+    if (hasCalculatorState && scorePartsSum + nextScore > MAX_SCORE) {
+      setMessage("Samlet score må maks være 180.");
+      return;
+    }
     if (nextScore > maxInput) return;
     setInput(nextInput);
     setDartThrows([]);
@@ -260,7 +270,25 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
   function chooseScore(score: number) {
     if (isDartByDartScoring) return;
     if (matchWinner || hasPendingCheckoutPrompt || score > MAX_SCORE) return;
+    if (hasCalculatorState && scorePartsSum + score > MAX_SCORE) {
+      setMessage("Samlet score må maks være 180.");
+      return;
+    }
     setInput(score.toString());
+    setDartThrows([]);
+    setMessage("");
+  }
+
+  function addScorePart() {
+    if (isDartByDartScoring || matchWinner || hasPendingCheckoutPrompt || !input) return;
+    const part = Number(input);
+    const nextTotal = scorePartsSum + part;
+    if (!Number.isInteger(part) || part < 0 || nextTotal > MAX_SCORE) {
+      setMessage("Samlet score må maks være 180.");
+      return;
+    }
+    setScoreParts((parts) => [...parts, part]);
+    setInput("");
     setDartThrows([]);
     setMessage("");
   }
@@ -300,6 +328,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     setPendingCheckout({ score: current.remaining, remaining: 0, entryDarts: darts, possibleAttempts: getPossibleCheckoutAttempts(current.remaining, darts) });
     setCheckoutDarts("");
     setInput("");
+    setScoreParts([]);
     setDartThrows([]);
     setMessage("");
   }
@@ -389,6 +418,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     setCheckoutDarts("");
     setCheckoutEntryDarts(null);
     setInput("");
+    setScoreParts([]);
     setDartThrows([]);
     if (!matchIsFinished) {
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
@@ -440,12 +470,14 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         setPendingEntryCheckout({ score });
         setCheckoutDarts("");
         setInput("");
+        setScoreParts([]);
         setDartThrows([]);
         return;
       }
       setPendingCheckout({ score, remaining: 0, entryDarts, possibleAttempts: getPossibleCheckoutAttempts(score, entryDarts) });
       setCheckoutDarts("");
       setInput("");
+      setScoreParts([]);
       setDartThrows([]);
       return;
     }
@@ -454,6 +486,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       setPendingCheckout({ score, remaining: nextRemaining, entryDarts });
       setCheckoutDarts("");
       setInput("");
+      setScoreParts([]);
       setDartThrows([]);
       return;
     }
@@ -463,19 +496,23 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
 
   function enterScore() {
     if (matchWinner || hasPendingCheckoutPrompt) return;
-    if (activeInputMode === "score" && !input) return;
+    if (activeInputMode === "score" && !input && !hasCalculatorState) return;
     if (activeInputMode === "darts" && dartThrows.length !== 3) {
       setMessage("Registrer tre pile før ENTER.");
       return;
     }
 
-    const score = activeInputMode === "darts" ? dartScore : Number(input);
+    const score = activeInputMode === "darts" ? dartScore : calculatorTotal;
+    if (activeInputMode === "score" && score > MAX_SCORE) {
+      setMessage("Samlet score må maks være 180.");
+      return;
+    }
     const entryDarts = checkoutEntryDarts ?? (activeInputMode === "darts" ? dartThrows.length : 3);
     registerVisitScore(score, entryDarts, activeInputMode === "score" && checkoutEntryDarts === null);
   }
 
   function enterRemainingScore() {
-    if (matchWinner || hasPendingCheckoutPrompt || !input) return;
+    if (matchWinner || hasPendingCheckoutPrompt || !input || hasCalculatorState) return;
     const targetRemaining = Number(input);
     if (!Number.isInteger(targetRemaining) || targetRemaining < 0 || targetRemaining > current.remaining) {
       setMessage("Ugyldig restscore.");
@@ -527,6 +564,8 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     avg: player.entries ? player.totalScored / player.entries : 0,
     closePercent: player.checkoutAttempts ? Math.round((player.checkouts / player.checkoutAttempts) * 100) : 0,
   }));
+  const calculatorExpressionParts = [...scoreParts, ...(input ? [currentScorePart] : [])];
+  const calculatorExpression = calculatorExpressionParts.join(" + ");
 
   const playerCard = (player: PlayerScore, index: 0 | 1) => (
     <div className={`rounded-2xl border-2 ${index === 0 ? "border-blue-600" : "border-red-600"} bg-gray-900 p-5`}>
@@ -630,8 +669,12 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
             </>
           ) : (
             <>
-              <div className="text-2xl font-bold tabular-nums text-white">{input}</div>
-              {!input && <div className="text-gray-500">INDTASTET TAL</div>}
+              <div className="text-2xl font-bold tabular-nums text-white">{hasCalculatorState ? calculatorTotal : input}</div>
+              {calculatorExpression ? (
+                <div className="min-w-0 truncate text-sm text-gray-400">{calculatorExpression}{calculatorExpressionParts.length > 1 ? ` = ${calculatorTotal}` : ""}</div>
+              ) : (
+                <div className="text-gray-500">INDTASTET TAL</div>
+              )}
             </>
           )}
         </div>
@@ -649,7 +692,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         ) : (
           <>
             <button disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-blue-500 bg-blue-500/20 py-3 text-sm font-bold text-blue-300 disabled:opacity-40">SCORE</button>
-            <button onClick={enterRemainingScore} disabled={hasPendingCheckoutPrompt || !input} className="rounded-xl border border-gray-800 bg-gray-900 py-3 text-sm font-bold text-gray-300 disabled:opacity-40 hover:border-blue-500 hover:bg-blue-500/20 hover:text-blue-300">SCORE TILBAGE</button>
+            <button onClick={enterRemainingScore} disabled={hasPendingCheckoutPrompt || !input || hasCalculatorState} className="rounded-xl border border-gray-800 bg-gray-900 py-3 text-sm font-bold text-gray-300 disabled:opacity-40 hover:border-blue-500 hover:bg-blue-500/20 hover:text-blue-300">SCORE TILBAGE</button>
           </>
         )}
       </div>
@@ -679,8 +722,9 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <button onClick={undo} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-red-900 bg-red-500/10 py-5 text-xl font-bold text-red-400 disabled:opacity-40">↶ UNDO</button>
+        <button onClick={addScorePart} disabled={hasPendingCheckoutPrompt || isDartByDartScoring || !input} className="rounded-xl border border-orange-500/70 bg-orange-500/10 py-5 text-3xl font-black text-orange-300 disabled:opacity-40">+</button>
         <button onClick={() => (input ? addDigit(0) : chooseScore(180))} disabled={hasPendingCheckoutPrompt || isDartByDartScoring} className="rounded-xl border border-blue-600 bg-blue-600 py-5 text-2xl font-bold text-white disabled:opacity-40">{input ? "0" : "180"}</button>
         <button onClick={showBustMiss ? startBustMiss : enterScore} disabled={hasPendingCheckoutPrompt} className="rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">{showBustMiss ? "BUST / MISS" : "ENTER →"}</button>
       </div>
