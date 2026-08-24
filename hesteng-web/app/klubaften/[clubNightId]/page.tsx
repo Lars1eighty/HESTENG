@@ -102,12 +102,20 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
             </p>
           </div>
           <div className="flex flex-col items-end gap-3">
-            <Link
-              href={`/klubaften/${clubNight.id}/afslut`}
-              className="rounded-full border border-gray-700 px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-400 transition hover:border-orange-500/70 hover:text-orange-300"
-            >
-              Administration
-            </Link>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Link
+                href={`/klubaften/${clubNight.id}/kampe`}
+                className="rounded-full border border-orange-500/70 bg-orange-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-orange-200 transition hover:border-orange-400 hover:bg-orange-500/20"
+              >
+                KAMPE
+              </Link>
+              <Link
+                href={`/klubaften/${clubNight.id}/afslut`}
+                className="rounded-full border border-gray-700 px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-400 transition hover:border-orange-500/70 hover:text-orange-300"
+              >
+                Administration
+              </Link>
+            </div>
             <div className="rounded-2xl border border-orange-500/40 bg-orange-500/10 px-6 py-4 text-right">
               <div className="text-sm font-semibold uppercase tracking-wider text-orange-300">
                 {isActive ? "Auto-opdatering" : "Arkivvisning"}
@@ -197,7 +205,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
               const poolMatches = matches.filter((match) => match.pool === pool.name);
               const poolFinished = poolMatches.filter((match) => match.status === "finished").length;
               const poolProgress = poolMatches.length > 0 ? Math.round((poolFinished / poolMatches.length) * 100) : 0;
-              const standings = calculatePoolStandings(pool.name, pool.players, matches).slice(0, 4);
+              const standings = calculatePoolStandings(pool.name, pool.players, matches);
               return (
                 <div key={pool.name} className="rounded-2xl bg-gray-950 p-5">
                   <div className="flex items-start justify-between gap-4">
