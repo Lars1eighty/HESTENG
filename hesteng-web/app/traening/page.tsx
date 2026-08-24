@@ -230,6 +230,76 @@ const RANDOM_TARGET_VARIANTS: { id: RandomTargetVariant; label: string }[] = [
   { id: "MIXED", label: "Blandet" },
 ];
 
+function AroundTheWorldGameplay({
+  variant,
+  state,
+  dartsUsedPersonalBest,
+  hitPercentPersonalBest,
+  onSelectVariant,
+  onInput,
+  onUndo,
+  onAbort,
+}: {
+  variant: AroundTheWorldVariant | null;
+  state: ReturnType<typeof calculateAroundTheWorldState>;
+  dartsUsedPersonalBest: number | null;
+  hitPercentPersonalBest: number | null;
+  onSelectVariant: (variant: AroundTheWorldVariant) => void;
+  onInput: (value: AroundTheWorldInput) => void;
+  onUndo: () => void;
+  onAbort: () => void;
+}) {
+  if (!variant) {
+    return (
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+        <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Around the World</div>
+        <h2 className="mt-2 text-3xl font-black">Vælg variant</h2>
+        <p className="mt-1 text-sm font-semibold text-gray-500">1-20 og Bull · færrest pile er bedst</p>
+        <div className="mt-5 grid gap-2 sm:grid-cols-3 sm:gap-3">
+          {AROUND_THE_WORLD_VARIANTS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onSelectVariant(option.id)}
+              className="min-h-20 rounded-2xl border border-gray-800 bg-gray-950 px-3 py-4 text-2xl font-black text-white transition hover:border-orange-500 hover:text-orange-300 active:scale-[0.98] sm:min-h-28 sm:text-4xl"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <GameplayShell
+      eyebrow={`Around the World - ${formatAroundTheWorldVariant(variant)}`}
+      target={state.currentTargetLabel}
+      meta={`${state.completedTargets}/${AROUND_THE_WORLD_TARGETS.length} targets · ${state.dartsUsed} pile brugt`}
+      stats={[
+        { label: "Pile", value: state.dartsUsed },
+        { label: "Hits", value: `${state.hits}/${state.attempts}` },
+        { label: "Træf %", value: `${state.hitPercent}%` },
+        { label: "PR", value: dartsUsedPersonalBest !== null ? `${dartsUsedPersonalBest} pile` : "-" },
+      ]}
+      onUndo={onUndo}
+      onAbort={onAbort}
+      canUndo={state.attempts > 0}
+    >
+      <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 sm:grid-cols-4 xl:px-4">
+        <CompactStat label="Variant" value={formatAroundTheWorldVariant(variant)} />
+        <CompactStat label="Misses" value={state.misses} />
+        <CompactStat label="På target" value={state.attemptsOnCurrentTarget} />
+        <CompactStat label="PR træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <TouchButton label="HIT" tone="green" onClick={() => onInput("hit")} />
+        <TouchButton label="MISS" tone="red" onClick={() => onInput("miss")} />
+      </div>
+    </GameplayShell>
+  );
+}
+
 function currentMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -2653,76 +2723,6 @@ function PriestleyGameplay({
         <TouchButton label="DOUBLE" tone="orange" onClick={() => onInput("double")} />
         <TouchButton label="TRIPLE" tone="green" onClick={() => onInput("triple")} />
         <TouchButton label="NO HIT" tone="red" onClick={() => onInput("miss")} />
-      </div>
-    </GameplayShell>
-  );
-}
-
-function AroundTheWorldGameplay({
-  variant,
-  state,
-  dartsUsedPersonalBest,
-  hitPercentPersonalBest,
-  onSelectVariant,
-  onInput,
-  onUndo,
-  onAbort,
-}: {
-  variant: AroundTheWorldVariant | null;
-  state: ReturnType<typeof calculateAroundTheWorldState>;
-  dartsUsedPersonalBest: number | null;
-  hitPercentPersonalBest: number | null;
-  onSelectVariant: (variant: AroundTheWorldVariant) => void;
-  onInput: (value: AroundTheWorldInput) => void;
-  onUndo: () => void;
-  onAbort: () => void;
-}) {
-  if (!variant) {
-    return (
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-        <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Around the World</div>
-        <h2 className="mt-2 text-3xl font-black">Vælg variant</h2>
-        <p className="mt-1 text-sm font-semibold text-gray-500">1-20 og Bull · færrest pile er bedst</p>
-        <div className="mt-5 grid gap-2 sm:grid-cols-3 sm:gap-3">
-          {AROUND_THE_WORLD_VARIANTS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => onSelectVariant(option.id)}
-              className="min-h-20 rounded-2xl border border-gray-800 bg-gray-950 px-3 py-4 text-2xl font-black text-white transition hover:border-orange-500 hover:text-orange-300 active:scale-[0.98] sm:min-h-28 sm:text-4xl"
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <GameplayShell
-      eyebrow={`Around the World - ${formatAroundTheWorldVariant(variant)}`}
-      target={state.currentTargetLabel}
-      meta={`${state.completedTargets}/${AROUND_THE_WORLD_TARGETS.length} targets · ${state.dartsUsed} pile brugt`}
-      stats={[
-        { label: "Pile", value: state.dartsUsed },
-        { label: "Hits", value: `${state.hits}/${state.attempts}` },
-        { label: "Træf %", value: `${state.hitPercent}%` },
-        { label: "PR", value: dartsUsedPersonalBest !== null ? `${dartsUsedPersonalBest} pile` : "-" },
-      ]}
-      onUndo={onUndo}
-      onAbort={onAbort}
-      canUndo={state.attempts > 0}
-    >
-      <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 sm:grid-cols-4 xl:px-4">
-        <CompactStat label="Variant" value={formatAroundTheWorldVariant(variant)} />
-        <CompactStat label="Misses" value={state.misses} />
-        <CompactStat label="På target" value={state.attemptsOnCurrentTarget} />
-        <CompactStat label="PR træf %" value={hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-"} />
-      </div>
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
-        <TouchButton label="HIT" tone="green" onClick={() => onInput("hit")} />
-        <TouchButton label="MISS" tone="red" onClick={() => onInput("miss")} />
       </div>
     </GameplayShell>
   );
