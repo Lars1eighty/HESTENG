@@ -42,10 +42,16 @@ export default function AfslutKlubaftenPage() {
     removeEloEventsForClubNightInClubAndRebuildRatings(currentClubId, clubNightId, currentFinishedMatchIds);
     setMatches(matches.map((match) => {
       if (!ids.has(match.id)) return match;
-      const { winner, loser, finishedAt, ...rest } = match;
+      const { winner, loser, startedAt, completedAt, finishedAt, durationSeconds, legsPlayed, avgSecondsPerLeg, timingSource, ...rest } = match;
       void winner;
       void loser;
+      void startedAt;
+      void completedAt;
       void finishedAt;
+      void durationSeconds;
+      void legsPlayed;
+      void avgSecondsPerLeg;
+      void timingSource;
       return {
         ...rest,
         score1: 0,

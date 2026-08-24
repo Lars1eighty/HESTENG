@@ -23,6 +23,7 @@ export type ClubMatch = {
   winner?: string;
   loser?: string;
   startedAt?: string;
+  completedAt?: string;
   finishedAt?: string;
   durationSeconds?: number;
   legsPlayed?: number;

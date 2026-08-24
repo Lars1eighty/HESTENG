@@ -17,6 +17,20 @@ const SCORING_MODE_OPTIONS: Array<{ value: NonNullable<ClubMatch["scoringMode"]>
   { value: "dart-by-dart", label: "Pil for pil" },
 ];
 
+function formatMatchDuration(seconds?: number) {
+  if (!seconds || seconds <= 0) return null;
+  const totalSeconds = Math.round(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
 export default function KampScoringPage() {
   const params = useParams<{ id?: string; clubNightId?: string }>();
   const searchParams = useSearchParams();
@@ -57,6 +71,7 @@ export default function KampScoringPage() {
         winner: scopedCompletedMatch.winner,
         loser,
         startedAt: scopedCompletedMatch.startedAt,
+        completedAt: scopedCompletedMatch.completedAt,
         finishedAt: scopedCompletedMatch.finishedAt,
         durationSeconds: scopedCompletedMatch.durationSeconds,
         legsPlayed: scopedCompletedMatch.legsPlayed,
@@ -88,6 +103,7 @@ export default function KampScoringPage() {
   const isFinished = match.status === "finished";
   const matchId = match.id;
   const completedMatch = isFinished ? getCompletedMatchInClub(currentClubId, match.id) : null;
+  const matchDuration = formatMatchDuration(completedMatch?.durationSeconds ?? match.durationSeconds);
 
   function startMatch() {
     if (isReadOnly) return;
@@ -123,6 +139,12 @@ export default function KampScoringPage() {
             <div className="text-sm font-semibold text-green-400">KAMP FÆRDIG</div>
             <div className="mt-2 text-3xl font-bold">{match.winner ?? "Vinderen"} vinder</div>
             <div className="mt-2 text-xl text-gray-300">{match.score1} – {match.score2}</div>
+            {matchDuration && (
+              <div className="mx-auto mt-4 max-w-xs rounded-xl border border-green-800/60 bg-gray-950/40 px-4 py-3">
+                <div className="text-xs font-bold uppercase tracking-wide text-gray-400">Kampvarighed</div>
+                <div className="mt-1 text-2xl font-black tabular-nums text-white">{matchDuration}</div>
+              </div>
+            )}
             {completedMatch && (
               <div className="mx-auto mt-6 max-w-md rounded-xl border border-green-800/60 bg-gray-950/40 p-4 text-sm">
                 <div className="grid grid-cols-[90px_1fr_1fr] gap-3 text-center">

@@ -27,6 +27,20 @@ function formatEstimatedMinutes(seconds?: number) {
   return `${Math.max(1, Math.round(seconds / 60))} min`;
 }
 
+function formatMatchDuration(seconds?: number) {
+  if (!seconds || seconds <= 0) return null;
+  const totalSeconds = Math.round(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
 function getTimingSourceLabel(source?: string) {
   if (source === "hesteng") return "HESTENG";
   if (source === "mixed") return "Blandet";
@@ -129,14 +143,19 @@ export default function KampePage() {
                         <div className="text-gray-600">vs.</div>
                         <div className="truncate text-right font-semibold">{match.player2}</div>
                       </div>
-                      {match.status === "finished" && (
-                        <div className="mt-4 rounded-xl border border-green-800 bg-green-500/10 px-4 py-3">
-                          <div className="flex items-center justify-between gap-3">
+                  {match.status === "finished" && (
+                    <div className="mt-4 rounded-xl border border-green-800 bg-green-500/10 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
                             <span className="text-sm font-semibold text-green-400">{match.winner ?? "Vinder"} vinder</span>
                             <span className="text-2xl font-bold tabular-nums text-white">{match.score1} – {match.score2}</span>
-                          </div>
+                      </div>
+                      {formatMatchDuration(match.durationSeconds) && (
+                        <div className="mt-2 text-xs font-semibold text-green-200/80">
+                          Varighed: {formatMatchDuration(match.durationSeconds)}
                         </div>
                       )}
+                    </div>
+                  )}
                       {match.status === "live" && (
                         <div className="mt-4 rounded-xl border border-orange-800 bg-orange-500/10 px-4 py-3">
                           <div className="flex items-center justify-between gap-3">

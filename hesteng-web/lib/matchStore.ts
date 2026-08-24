@@ -30,6 +30,7 @@ export type CompletedMatch = {
   round: number | null;
   status: "finished";
   startedAt?: string;
+  completedAt?: string;
   finishedAt: string;
   durationSeconds?: number;
   legsPlayed?: number;
@@ -55,6 +56,10 @@ function syncCompletedMatchToSharedState(match: CompletedMatch) {
   }).catch(() => {
     // Local MatchStore remains the offline fallback if the shared dev store is unavailable.
   });
+}
+
+function getCompletedTimestamp(match: CompletedMatch) {
+  return match.completedAt ?? match.finishedAt ?? "";
 }
 
 export function getCompletedMatches(): CompletedMatch[] {
@@ -100,12 +105,12 @@ export function replaceCompletedMatchesFromSharedState(matches: CompletedMatch[]
   [...matches, ...current].forEach((match) => {
     if (!match?.id) return;
     const existing = byId.get(match.id);
-    if (!existing || (match.finishedAt ?? "").localeCompare(existing.finishedAt ?? "") >= 0) {
+    if (!existing || getCompletedTimestamp(match).localeCompare(getCompletedTimestamp(existing)) >= 0) {
       byId.set(match.id, match);
     }
   });
 
-  const next = [...byId.values()].sort((a, b) => (b.finishedAt ?? "").localeCompare(a.finishedAt ?? ""));
+  const next = [...byId.values()].sort((a, b) => getCompletedTimestamp(b).localeCompare(getCompletedTimestamp(a)));
   if (JSON.stringify(current) !== JSON.stringify(next)) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }

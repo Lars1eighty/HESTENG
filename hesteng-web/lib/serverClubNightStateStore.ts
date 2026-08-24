@@ -30,12 +30,14 @@ function normalizeCompletedMatches(matches: CompletedMatch[]) {
   matches.forEach((match) => {
     if (!match?.id) return;
     const existing = byId.get(match.id);
-    if (!existing || (match.finishedAt ?? "").localeCompare(existing.finishedAt ?? "") >= 0) {
+    const matchCompletedAt = match.completedAt ?? match.finishedAt ?? "";
+    const existingCompletedAt = existing?.completedAt ?? existing?.finishedAt ?? "";
+    if (!existing || matchCompletedAt.localeCompare(existingCompletedAt) >= 0) {
       byId.set(match.id, match);
     }
   });
 
-  return [...byId.values()].sort((a, b) => (b.finishedAt ?? "").localeCompare(a.finishedAt ?? ""));
+  return [...byId.values()].sort((a, b) => (b.completedAt ?? b.finishedAt ?? "").localeCompare(a.completedAt ?? a.finishedAt ?? ""));
 }
 
 function normalizeClubNights(clubNights: ClubNight[]) {

@@ -180,11 +180,14 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
 
   const buildCompletedMatch = useCallback(() => {
     if (!matchWinner) return null;
-    const finishedAt = new Date().toISOString();
-    const safeStartedAt = startedAt ?? finishedAt;
-    const durationSeconds = Math.max(1, Math.round((new Date(finishedAt).getTime() - new Date(safeStartedAt).getTime()) / 1000));
+    const completedAt = new Date().toISOString();
+    const startedTime = startedAt ? new Date(startedAt).getTime() : Number.NaN;
+    const completedTime = new Date(completedAt).getTime();
+    const durationSeconds = Number.isFinite(startedTime) && completedTime > startedTime
+      ? Math.round((completedTime - startedTime) / 1000)
+      : undefined;
     const legsPlayed = players[0].legs + players[1].legs;
-    const avgSecondsPerLeg = legsPlayed > 0 ? Number((durationSeconds / legsPlayed).toFixed(2)) : durationSeconds;
+    const avgSecondsPerLeg = durationSeconds && legsPlayed > 0 ? Number((durationSeconds / legsPlayed).toFixed(2)) : undefined;
     const stats = players.map((player) => ({
       name: player.name,
       legs: player.legs,
@@ -214,12 +217,13 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       pool,
       round,
       status: "finished" as const,
-      startedAt: safeStartedAt,
-      finishedAt,
+      startedAt,
+      completedAt,
+      finishedAt: completedAt,
       durationSeconds,
       legsPlayed,
       avgSecondsPerLeg,
-      timingSource: "hesteng-scorer" as const,
+      timingSource: durationSeconds ? "hesteng-scorer" as const : undefined,
       players: stats,
     };
   }, [bestOfLegs, board, clubId, clubNightId, matchId, matchWinner, players, pool, round, scoringMode, startedAt]);
