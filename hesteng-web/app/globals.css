@@ -156,6 +156,10 @@ body {
   animation: hestengLiveTicker 62s linear infinite;
 }
 
+.hesteng-performance-scroll-track {
+  animation: hestengPerformanceScroll 24s ease-in-out infinite;
+}
+
 @keyframes hestengLiveTicker {
   from {
     transform: translateX(0);
@@ -165,13 +169,28 @@ body {
   }
 }
 
+@keyframes hestengPerformanceScroll {
+  0%,
+  16% {
+    transform: translateY(0);
+  }
+  48%,
+  64% {
+    transform: translateY(var(--hesteng-performance-scroll-distance, -4rem));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hesteng-intro,
   .hesteng-intro-target span,
   .hesteng-intro-lines span,
   .hesteng-intro-wordmark,
   .hesteng-intro-slogan,
-  .hesteng-live-ticker-track {
+  .hesteng-live-ticker-track,
+  .hesteng-performance-scroll-track {
     animation: none;
   }
 }

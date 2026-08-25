@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useMemo, useSyncExternalStore, useState } from "react";
+import type { CSSProperties } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
@@ -251,7 +252,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
 
           <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
               <h2 className="mb-1 text-xs font-black uppercase tracking-wide text-gray-300">Dagens performance</h2>
-              <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-2">
                 <PerformanceList title="180'ere" rows={oneEightyRows} />
                 <PerformanceList title="Høje luk" rows={highCheckoutRows} />
                 <PerformanceList title="Hurtige legs" rows={fastLegRows} />
@@ -362,19 +363,49 @@ function TopPill({ label, value, tone }: { label: string; value: string | number
 }
 
 function PerformanceList({ title, rows }: { title: string; rows: PerformanceRow[] }) {
+  const topRows = rows.slice(0, 3);
+  const restRows = rows.slice(3);
+  const shouldScroll = restRows.length > 5;
+
   return (
-    <div className="rounded-md bg-gray-950 p-1.5">
-      <div className="mb-1 text-[10px] font-black uppercase text-gray-500">{title}</div>
-      <div className="space-y-0.5">
-        {rows.length ? rows.slice(0, 8).map((row) => (
-          <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-1 text-[11px] leading-none 2xl:text-xs">
-            <div className="truncate font-bold text-gray-200">{row.player}</div>
-            <div className="font-black tabular-nums text-orange-300">{row.value}</div>
+    <div className="min-h-0 rounded-md bg-gray-950 p-1">
+      <div className="mb-0.5 text-[10px] font-black uppercase leading-none text-gray-500">{title}</div>
+      {rows.length ? (
+        <>
+          <div className="space-y-0.5">
+            {topRows.map((row, index) => (
+              <PerformanceRowView key={row.id} rank={index + 1} row={row} strong />
+            ))}
           </div>
-        )) : (
-          <div className="text-[11px] font-bold text-gray-600">Ingen endnu</div>
-        )}
-      </div>
+          {restRows.length > 0 && (
+            <div className={`mt-1 overflow-hidden ${shouldScroll ? "h-[4.9rem]" : ""}`}>
+              <div
+                className={shouldScroll ? "hesteng-performance-scroll-track space-y-0.5" : "space-y-0.5"}
+                style={shouldScroll ? {
+                  "--hesteng-performance-scroll-distance": `-${(restRows.length - 5) * 0.98}rem`,
+                  animationDuration: `${Math.max(18, restRows.length * 3.2)}s`,
+                } as CSSProperties : undefined}
+              >
+                {restRows.map((row, index) => (
+                  <PerformanceRowView key={row.id} rank={index + 4} row={row} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-[11px] font-bold text-gray-600">Ingen endnu</div>
+      )}
+    </div>
+  );
+}
+
+function PerformanceRowView({ rank, row, strong = false }: { rank: number; row: PerformanceRow; strong?: boolean }) {
+  return (
+    <div className={`grid grid-cols-[16px_minmax(0,1fr)_auto] gap-1 text-[11px] leading-none 2xl:text-xs ${strong ? "text-gray-100" : "text-gray-300"}`}>
+      <div className="font-black tabular-nums text-gray-500">{rank}</div>
+      <div className="truncate font-bold" title={row.player}>{row.player}</div>
+      <div className={`font-black tabular-nums ${strong ? "text-orange-300" : "text-gray-400"}`}>{row.value}</div>
     </div>
   );
 }
