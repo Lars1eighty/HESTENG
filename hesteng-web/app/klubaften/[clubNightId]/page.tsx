@@ -223,7 +223,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
                       <div className="text-base font-black text-orange-300 xl:text-lg">{pool.name}</div>
                       <div className="text-[10px] font-bold text-gray-500">{poolFinished}/{poolMatches.length}</div>
                     </div>
-                    <div className="grid grid-cols-[20px_minmax(0,1fr)_22px_22px_22px_32px] gap-1 border-b border-gray-900 pb-0.5 text-[10px] font-black uppercase text-gray-600">
+                    <div className="grid grid-cols-[16px_minmax(0,1fr)_18px_18px_18px_24px] gap-0.5 border-b border-gray-900 pb-0.5 text-[10px] font-black uppercase text-gray-600">
                       <div>#</div>
                       <div>Navn</div>
                       <div className="text-right">K</div>
@@ -233,9 +233,9 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
                     </div>
                     <div>
                       {standings.map((standing, index) => (
-                        <div key={standing.player} className="grid grid-cols-[20px_minmax(0,1fr)_22px_22px_22px_32px] items-center gap-1 border-b border-gray-900/70 py-0.5 text-[11px] leading-none xl:text-xs">
+                        <div key={standing.player} className="grid grid-cols-[16px_minmax(0,1fr)_18px_18px_18px_24px] items-center gap-0.5 border-b border-gray-900/70 py-0.5 text-[11px] leading-none xl:text-xs">
                           <div className="font-black text-gray-500">{index + 1}</div>
-                          <div className="truncate font-bold text-gray-100">{standing.player}</div>
+                          <div className="truncate font-bold text-gray-100" title={standing.player}>{standing.player}</div>
                           <div className="text-right font-bold tabular-nums text-gray-400">{standing.played}</div>
                           <div className="text-right font-bold tabular-nums text-green-400">{standing.wins}</div>
                           <div className="text-right font-bold tabular-nums text-red-300">{standing.losses}</div>
