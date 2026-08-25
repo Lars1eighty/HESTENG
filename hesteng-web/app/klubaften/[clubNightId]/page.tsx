@@ -22,6 +22,34 @@ import {
 const REFRESH_INTERVAL_MS = 7000;
 type PerformanceRow = { id: string; player: string; value: string | number };
 
+function getPoolLayoutProfile(pools: Array<{ players: string[] }>) {
+  const poolCount = pools.length;
+  const maxPlayers = Math.max(0, ...pools.map((pool) => pool.players.length));
+  const longestName = Math.max(0, ...pools.flatMap((pool) => pool.players.map((player) => player.length)));
+  const shouldPrioritizeWidth = longestName >= 24 || maxPlayers >= 7;
+  const columns = poolCount >= 4 && maxPlayers <= 6 && !(shouldPrioritizeWidth && poolCount <= 4) ? 2 : 1;
+  const dense = columns > 1 || poolCount >= 5;
+
+  return {
+    columns,
+    gridStyle: {
+      "--hesteng-pool-columns": columns,
+    } as CSSProperties,
+    cardClassName: dense
+      ? "rounded-lg border border-gray-800 bg-gray-950 p-1.5"
+      : "rounded-lg border border-gray-800 bg-gray-950 p-2",
+    poolTitleClassName: dense
+      ? "text-base font-black leading-none text-orange-300 2xl:text-lg"
+      : "text-lg font-black leading-none text-orange-300 xl:text-xl",
+    tableHeaderClassName: dense
+      ? "grid grid-cols-[16px_minmax(0,1fr)_18px_18px_18px_28px] gap-0.5 border-b border-gray-900 pb-0.5 text-[10px] font-black uppercase leading-none text-gray-600"
+      : "grid grid-cols-[18px_minmax(0,1fr)_22px_22px_22px_34px] gap-1 border-b border-gray-900 pb-1 text-[11px] font-black uppercase leading-none text-gray-600",
+    rowClassName: dense
+      ? "grid grid-cols-[16px_minmax(0,1fr)_18px_18px_18px_28px] items-center gap-0.5 border-b border-gray-900/70 py-0.5 text-[11px] leading-none 2xl:text-xs"
+      : "grid grid-cols-[18px_minmax(0,1fr)_22px_22px_22px_34px] items-center gap-1 border-b border-gray-900/70 py-1 text-xs leading-none xl:text-sm",
+  };
+}
+
 export default function ClubNightDashboardPage({ params }: { params: Promise<{ clubNightId: string }> }) {
   const { clubNightId } = use(params);
   const { currentClubId, clubNights, setCurrentClubNightId } = useKlubaften();
@@ -130,6 +158,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
   const clubNightPointRows: PerformanceRow[] = calculateThursdayPoints(completedMatches)
     .filter((player) => player.totalPoints > 0)
     .map((player) => ({ id: `club-night-points-${player.player}`, player: player.player, value: player.totalPoints }));
+  const poolLayout = getPoolLayoutProfile(clubNight.pools);
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -196,7 +225,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
           </div>
         </section>
 
-        <div className="grid min-h-0 flex-1 gap-1 xl:grid-cols-[minmax(760px,1.65fr)_minmax(330px,0.8fr)_minmax(310px,0.65fr)] xl:overflow-hidden">
+        <div className="grid min-h-0 flex-1 gap-1 xl:grid-cols-[minmax(720px,1.45fr)_minmax(440px,0.95fr)_minmax(300px,0.55fr)] xl:overflow-hidden">
           <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
             <div className="mb-1 flex items-center justify-between">
               <h2 className="text-sm font-black uppercase tracking-wide text-orange-300 xl:text-lg">Live Aktiv</h2>
@@ -213,18 +242,18 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
               <h2 className="text-sm font-black uppercase tracking-wide xl:text-lg">Puljestillinger</h2>
               <span className="text-xs font-bold text-gray-500">{progress}% · {clubNight.pools.length} puljer</span>
             </div>
-            <div className="grid gap-1.5 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <div className="hesteng-pool-grid grid gap-1.5 md:grid-cols-2" style={poolLayout.gridStyle}>
               {clubNight.pools.map((pool) => {
                 const poolMatches = matches.filter((match) => match.pool === pool.name);
                 const poolFinished = poolMatches.filter((match) => match.status === "finished").length;
                 const standings = calculatePoolStandings(pool.name, pool.players, matches);
                 return (
-                  <div key={pool.name} className="rounded-lg border border-gray-800 bg-gray-950 p-1.5">
+                  <div key={pool.name} className={poolLayout.cardClassName}>
                     <div className="mb-1 flex items-center justify-between border-b border-gray-800 pb-1">
-                      <div className="text-base font-black text-orange-300 xl:text-lg">{pool.name}</div>
-                      <div className="text-[10px] font-bold text-gray-500">{poolFinished}/{poolMatches.length}</div>
+                      <div className={poolLayout.poolTitleClassName}>{pool.name}</div>
+                      <div className="text-xs font-bold text-gray-500">{poolFinished}/{poolMatches.length}</div>
                     </div>
-                    <div className="grid grid-cols-[16px_minmax(0,1fr)_18px_18px_18px_24px] gap-0.5 border-b border-gray-900 pb-0.5 text-[10px] font-black uppercase text-gray-600">
+                    <div className={poolLayout.tableHeaderClassName}>
                       <div>#</div>
                       <div>Navn</div>
                       <div className="text-right">K</div>
@@ -234,7 +263,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
                     </div>
                     <div>
                       {standings.map((standing, index) => (
-                        <div key={standing.player} className="grid grid-cols-[16px_minmax(0,1fr)_18px_18px_18px_24px] items-center gap-0.5 border-b border-gray-900/70 py-0.5 text-[11px] leading-none xl:text-xs">
+                        <div key={standing.player} className={poolLayout.rowClassName}>
                           <div className="font-black text-gray-500">{index + 1}</div>
                           <div className="truncate font-bold text-gray-100" title={standing.player}>{standing.player}</div>
                           <div className="text-right font-bold tabular-nums text-gray-400">{standing.played}</div>

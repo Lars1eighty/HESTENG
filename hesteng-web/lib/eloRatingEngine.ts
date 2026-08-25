@@ -337,3 +337,20 @@ export function removeEloEventsAndRebuildRatings(matchIds: string[], clubId = ge
 
   return rebuiltEvents;
 }
+
+export function resetEloRatingsToSeedForClub(clubId = getCurrentClubId()): PlayerEloRating[] {
+  const ratingsForOtherClubs = readStorageArray<PlayerEloRating>(RATINGS_STORAGE_KEY)
+    .map((rating) => ({ ...rating, clubId: rating.clubId ?? DEMO_CLUB_ID }))
+    .filter((rating) => (rating.clubId ?? DEMO_CLUB_ID) !== clubId);
+  const eventsForOtherClubs = getEloEvents()
+    .filter((event) => (event.clubId ?? DEMO_CLUB_ID) !== clubId);
+  const seedRatings = getInitialSeedRatings(clubId);
+
+  writeStorageArray<PlayerEloRating>(
+    RATINGS_STORAGE_KEY,
+    [...ratingsForOtherClubs, ...seedRatings].sort((a, b) => a.player.localeCompare(b.player))
+  );
+  writeStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY, eventsForOtherClubs);
+
+  return seedRatings;
+}

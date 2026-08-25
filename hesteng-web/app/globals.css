@@ -183,6 +183,12 @@ body {
   }
 }
 
+@media (min-width: 1280px) {
+  .hesteng-pool-grid {
+    grid-template-columns: repeat(var(--hesteng-pool-columns, 1), minmax(0, 1fr));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hesteng-intro,
   .hesteng-intro-target span,

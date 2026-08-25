@@ -159,3 +159,15 @@ export function deleteCompletedMatchesForClubNightInClub(clubId: string, clubNig
   const matchIds = getCompletedMatchesForClubNightInClub(clubId, clubNightId, fallbackMatchIds).map((match) => match.id);
   return deleteCompletedMatches(matchIds);
 }
+
+export function deleteCompletedMatchesForClub(clubId: string): CompletedMatch[] {
+  const next = getCompletedMatches()
+    .map((match) => withClubId(match, match.clubId ?? DEMO_CLUB_ID))
+    .filter((match) => match.clubId !== clubId);
+
+  if (canUseStorage()) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+
+  return next;
+}

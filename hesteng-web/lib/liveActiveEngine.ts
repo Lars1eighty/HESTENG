@@ -263,3 +263,12 @@ export function saveLiveActiveSnapshotForClubNight(clubNights: ClubNight[], club
   writeSnapshots(next);
   return snapshot;
 }
+
+export function resetLiveActiveSnapshotsToBootstrap(clubId: string) {
+  const bootstrapSnapshot = getBootstrapSnapshot(clubId);
+  const snapshotsForOtherClubs = readSnapshots().filter((snapshot) => snapshot.clubId !== clubId);
+  const next = bootstrapSnapshot ? [bootstrapSnapshot, ...snapshotsForOtherClubs] : snapshotsForOtherClubs;
+
+  writeSnapshots(next.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  return bootstrapSnapshot;
+}

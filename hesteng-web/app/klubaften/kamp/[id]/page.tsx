@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import MatchScorer from "@/components/MatchScorer";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { getCompletedMatchInClub, type CompletedMatch } from "@/lib/matchStore";
@@ -33,11 +33,13 @@ function formatMatchDuration(seconds?: number) {
 
 export default function KampScoringPage() {
   const params = useParams<{ id?: string; clubNightId?: string }>();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const id = typeof params.id === "string" ? params.id : "";
   const routeClubNightId = typeof params.clubNightId === "string"
     ? params.clubNightId
     : searchParams.get("clubNightId");
+  const shouldReturnToBoard = searchParams.get("returnTo") === "board";
   const { currentClubId, clubNights, matches, setMatches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
   const clubNight = clubNights.find((item) => item.id === clubNightId) ?? null;
@@ -45,6 +47,7 @@ export default function KampScoringPage() {
   const match = scopedMatches.find((item) => item.id === id);
   const [selectedBestOfLegs, setSelectedBestOfLegs] = useState(5);
   const [selectedScoringMode, setSelectedScoringMode] = useState<NonNullable<ClubMatch["scoringMode"]>>("total");
+  const [startError, setStartError] = useState<string | null>(null);
 
   useEffect(() => {
     if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
@@ -80,7 +83,11 @@ export default function KampScoringPage() {
         status: "finished",
       };
     }));
-  }, [clubNight?.clubId, clubNightId, currentClubId, scopedMatches, setMatches]);
+
+    if (shouldReturnToBoard && clubNightId) {
+      router.replace(`/klubaften/${clubNightId}/bane`);
+    }
+  }, [clubNight?.clubId, clubNightId, currentClubId, router, scopedMatches, setMatches, shouldReturnToBoard]);
 
   if (!match) {
     return (
@@ -107,6 +114,19 @@ export default function KampScoringPage() {
 
   function startMatch() {
     if (isReadOnly) return;
+    if (!match) return;
+    const liveMatchOnBoard = scopedMatches.find((item) =>
+      item.id !== matchId &&
+      item.board === match.board &&
+      item.status === "live"
+    );
+
+    if (liveMatchOnBoard) {
+      setStartError(`Bane ${match.board} har allerede en aktiv kamp: ${liveMatchOnBoard.player1} vs ${liveMatchOnBoard.player2}.`);
+      return;
+    }
+
+    setStartError(null);
     setMatches(scopedMatches.map((item) => item.id === matchId ? {
       ...item,
       clubId: item.clubId ?? clubNight?.clubId ?? currentClubId,
@@ -132,6 +152,11 @@ export default function KampScoringPage() {
           <Link href={clubNightId ? `/klubaften/${clubNightId}/live` : "/klubaften/live"} className="rounded-xl border border-gray-700 px-4 py-2 text-sm hover:bg-gray-800">
             Tilbage til live
           </Link>
+          {shouldReturnToBoard && clubNightId && (
+            <Link href={`/klubaften/${clubNightId}/bane`} className="rounded-xl border border-orange-500/60 px-4 py-2 text-sm font-semibold text-orange-200 hover:bg-orange-500/10">
+              Tilbage til bane
+            </Link>
+          )}
         </div>
 
         {isFinished ? (
@@ -200,6 +225,11 @@ export default function KampScoringPage() {
               </div>
             </div>
             <button onClick={startMatch} className="mt-4 w-full rounded-2xl bg-green-500 py-5 text-xl font-bold text-black">START KAMP</button>
+            {startError && (
+              <div className="mt-4 rounded-xl border border-red-800 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
+                {startError}
+              </div>
+            )}
           </div>
         ) : (
           <MatchScorer
