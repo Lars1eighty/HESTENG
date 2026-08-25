@@ -85,7 +85,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
   const completedMatches = getCompletedMatchesForClubNightInClub(currentClubId, clubNight.id, matchIds);
   const eveningStats = calculateEveningStats(completedMatches);
   void refreshTick;
-  const liveActiveRows = calculateLiveActiveRows(clubNights, currentClubId, liveActiveSnapshot);
+  const liveActiveRows = calculateLiveActiveRows(clubNights, currentClubId, liveActiveSnapshot, clubNight.id);
   const liveMatches = isActive ? matches.filter((match) => match.status === "live").sort((a, b) => a.board - b.board) : [];
   const nextMatches = isActive
     ? matches

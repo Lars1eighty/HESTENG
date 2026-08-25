@@ -114,6 +114,17 @@ function resolvePlayerFromName(registry: PlayerProfile[], name: string) {
   return registry.find((player) => normalizeName(player.name) === normalizeName(name)) ?? null;
 }
 
+function getCurrentSelectedPlayers(clubNights: ClubNight[], clubId: string, currentClubNightId?: string) {
+  if (!currentClubNightId) return [];
+  const registry = getPlayerRegistry(clubId);
+  const clubNight = clubNights.find((item) => item.id === currentClubNightId && (item.clubId ?? clubId) === clubId);
+  if (!clubNight || clubNight.status !== "active") return [];
+
+  return clubNight.selectedPlayers
+    .map((name) => resolvePlayerFromName(registry, name))
+    .filter((player): player is PlayerProfile => player !== null);
+}
+
 function getRecentActivitySources(clubNights: ClubNight[], clubId: string) {
   const registry = getPlayerRegistry(clubId);
   const actualSources = clubNights
@@ -157,13 +168,17 @@ function getParticipantNames(clubNight: ClubNight) {
   return [...names.values()];
 }
 
-function calculateCurrentRows(clubNights: ClubNight[], clubId: string): LiveActiveSnapshotRow[] {
+function calculateCurrentRows(clubNights: ClubNight[], clubId: string, currentClubNightId?: string): LiveActiveSnapshotRow[] {
   const activePlayers = new Map<string, PlayerProfile>();
 
   getRecentActivitySources(clubNights, clubId).forEach((source) => {
     source.players.forEach((player) => {
       activePlayers.set(player.id, player);
     });
+  });
+
+  getCurrentSelectedPlayers(clubNights, clubId, currentClubNightId).forEach((player) => {
+    activePlayers.set(player.id, player);
   });
 
   return [...activePlayers.values()]
@@ -214,9 +229,10 @@ export function getLatestLiveActiveSnapshotFromStorageValue(clubId: string, stor
 export function calculateLiveActiveRows(
   clubNights: ClubNight[],
   clubId: string,
-  latestSnapshot: LiveActiveSnapshot | null = getLatestLiveActiveSnapshot(clubId)
+  latestSnapshot: LiveActiveSnapshot | null = getLatestLiveActiveSnapshot(clubId),
+  currentClubNightId?: string
 ): LiveActiveRow[] {
-  const currentRows = calculateCurrentRows(clubNights, clubId);
+  const currentRows = calculateCurrentRows(clubNights, clubId, currentClubNightId);
   const previousRows = new Map(
     (latestSnapshot?.rows ?? []).map((row) => [normalizeName(row.player), row])
   );
