@@ -1,0 +1,84 @@
+⨯ ./app/klubaften/spillere/page.tsx:6:1
+Module not found: Can't resolve '@/components/PlayerSearch'
+  [90m4 |[0m [36mimport[0m [33mHeader[0m [36mfrom[0m [32m"@/components/Header"[0m;
+  [90m5 |[0m [36mimport[0m [33mBackButton[0m [36mfrom[0m [32m"@/components/BackButton"[0m;
+[31m[1m>[0m [90m6 |[0m [36mimport[0m [33mPlayerSearch[0m [36mfrom[0m [32m"@/components/PlayerSearch"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m [36mimport[0m [33mLink[0m [36mfrom[0m [32m"next/link"[0m;
+  [90m8 |[0m [36mimport[0m { useParams } [36mfrom[0m [32m"next/navigation"[0m;
+  [90m9 |[0m [36mimport[0m { useKlubaften } [36mfrom[0m [32m"@/context/KlubaftenContext"[0m;
+
+Import map: aliased to relative './components/PlayerSearch' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./app/klubaften/spillere/page.tsx
+    ./app/klubaften/[clubNightId]/spillere/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./app/klubaften/spillere/page.tsx:6:1
+Module not found: Can't resolve '@/components/PlayerSearch'
+  [90m4 |[0m [36mimport[0m [33mHeader[0m [36mfrom[0m [32m"@/components/Header"[0m;
+  [90m5 |[0m [36mimport[0m [33mBackButton[0m [36mfrom[0m [32m"@/components/BackButton"[0m;
+[31m[1m>[0m [90m6 |[0m [36mimport[0m [33mPlayerSearch[0m [36mfrom[0m [32m"@/components/PlayerSearch"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m [36mimport[0m [33mLink[0m [36mfrom[0m [32m"next/link"[0m;
+  [90m8 |[0m [36mimport[0m { useParams } [36mfrom[0m [32m"next/navigation"[0m;
+  [90m9 |[0m [36mimport[0m { useKlubaften } [36mfrom[0m [32m"@/context/KlubaftenContext"[0m;
+
+Import map: aliased to relative './components/PlayerSearch' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./app/klubaften/spillere/page.tsx
+    ./app/klubaften/[clubNightId]/spillere/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./app/klubaften/spillere/page.tsx:6:1
+Module not found: Can't resolve '@/components/PlayerSearch'
+  [90m4 |[0m [36mimport[0m [33mHeader[0m [36mfrom[0m [32m"@/components/Header"[0m;
+  [90m5 |[0m [36mimport[0m [33mBackButton[0m [36mfrom[0m [32m"@/components/BackButton"[0m;
+[31m[1m>[0m [90m6 |[0m [36mimport[0m [33mPlayerSearch[0m [36mfrom[0m [32m"@/components/PlayerSearch"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m [36mimport[0m [33mLink[0m [36mfrom[0m [32m"next/link"[0m;
+  [90m8 |[0m [36mimport[0m { useParams } [36mfrom[0m [32m"next/navigation"[0m;
+  [90m9 |[0m [36mimport[0m { useKlubaften } [36mfrom[0m [32m"@/context/KlubaftenContext"[0m;
+
+Import map: aliased to relative './components/PlayerSearch' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./app/klubaften/spillere/page.tsx
+    ./app/klubaften/[clubNightId]/spillere/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./app/klubaften/spillere/page.tsx:6:1
+Module not found: Can't resolve '@/components/PlayerSearch'
+  [90m4 |[0m [36mimport[0m [33mHeader[0m [36mfrom[0m [32m"@/components/Header"[0m;
+  [90m5 |[0m [36mimport[0m [33mBackButton[0m [36mfrom[0m [32m"@/components/BackButton"[0m;
+[31m[1m>[0m [90m6 |[0m [36mimport[0m [33mPlayerSearch[0m [36mfrom[0m [32m"@/components/PlayerSearch"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m [36mimport[0m [33mLink[0m [36mfrom[0m [32m"next/link"[0m;
+  [90m8 |[0m [36mimport[0m { useParams } [36mfrom[0m [32m"next/navigation"[0m;
+  [90m9 |[0m [36mimport[0m { useKlubaften } [36mfrom[0m [32m"@/context/KlubaftenContext"[0m;
+
+Import map: aliased to relative './components/PlayerSearch' inside of [project]/
+
+
+Import trace:
+  Server Component:
+    ./app/klubaften/spillere/page.tsx
+    ./app/klubaften/[clubNightId]/spillere/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
