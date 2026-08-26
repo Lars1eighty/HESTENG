@@ -121,9 +121,9 @@ export default function ClubNightCheckInPage({ params }: { params: Promise<{ clu
               <Link
                 href={`/klubaften/${clubNight.id}`}
                 className="rounded-full border border-gray-700 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-gray-300 hover:border-orange-400 hover:text-orange-200"
-              >
-                Live
-              </Link>
+                >
+                  Tilbage
+                </Link>
               <Link
                 href={`/klubaften/${clubNight.id}/spillere`}
                 className="rounded-full border border-gray-700 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-gray-300 hover:border-orange-400 hover:text-orange-200"

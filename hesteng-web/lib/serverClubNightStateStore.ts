@@ -95,15 +95,10 @@ export async function replaceSharedClubNightSnapshot(input: {
   currentClubNightId: string | null;
   completedMatches?: CompletedMatch[];
 }): Promise<SharedClubNightState> {
-  const current = await readSharedClubNightState();
-
   return writeSharedClubNightState({
     clubNights: input.clubNights,
     currentClubNightId: input.currentClubNightId,
-    completedMatches: normalizeCompletedMatches([
-      ...current.completedMatches,
-      ...(input.completedMatches ?? []),
-    ]),
+    completedMatches: normalizeCompletedMatches(input.completedMatches ?? []),
   });
 }
 

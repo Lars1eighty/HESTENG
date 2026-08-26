@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, ReactNode } from "react";
 import type { ClubMatch } from "@/lib/matchEngine";
 import { DEMO_CLUB_ID } from "@/data/clubs";
 import { useClub } from "@/context/ClubContext";
@@ -19,6 +19,7 @@ type KlubaftenContextType = {
   clubNights: ClubNight[];
   activeClubNights: ClubNight[];
   archivedClubNights: ClubNight[];
+  isSharedStateReady: boolean;
   currentClubNightId: string | null;
   currentClubNight: ClubNight | null;
   setCurrentClubNightId: (clubNightId: string | null) => void;
@@ -44,6 +45,7 @@ type KlubaftenContextType = {
 const KlubaftenContext = createContext<KlubaftenContextType | undefined>(undefined);
 const STORAGE_KEY = "hesteng.klubaftenState";
 const STORAGE_CHANGE_EVENT = "hesteng.klubaftenStateChanged";
+const SHARED_STATE_MIGRATION_KEY = "hesteng.sharedClubNightMigrated.v1";
 const SHARED_STATE_API = "/api/club-night-state";
 const SHARED_STATE_POLL_INTERVAL_MS = 5000;
 
@@ -188,20 +190,51 @@ function sharedSnapshotHasClubNightData(snapshot: SharedClubNightState) {
   return snapshot.clubNights.length > 0 || snapshot.completedMatches.length > 0;
 }
 
-async function pushSharedKlubaftenSnapshot(snapshot: KlubaftenSnapshot, rawSnapshot: string) {
+function hasMigratedLocalSnapshotToShared() {
+  if (typeof window === "undefined") return true;
+  return window.localStorage.getItem(SHARED_STATE_MIGRATION_KEY) === "true";
+}
+
+function markLocalSnapshotMigratedToShared() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SHARED_STATE_MIGRATION_KEY, "true");
+}
+
+function hasLocalClubNightsMissingFromShared(localSnapshot: KlubaftenSnapshot, sharedSnapshot: KlubaftenSnapshot) {
+  const sharedIds = new Set(sharedSnapshot.clubNights.map((clubNight) => clubNight.id));
+  return localSnapshot.clubNights.some((clubNight) => !sharedIds.has(clubNight.id));
+}
+
+function mergeLocalClubNightsIntoShared(localSnapshot: KlubaftenSnapshot, sharedSnapshot: KlubaftenSnapshot): KlubaftenSnapshot {
+  const sharedIds = new Set(sharedSnapshot.clubNights.map((clubNight) => clubNight.id));
+  const migratedLocalClubNights = localSnapshot.clubNights.filter((clubNight) => !sharedIds.has(clubNight.id));
+  const currentClubNightId =
+    localSnapshot.currentClubNightId && migratedLocalClubNights.some((clubNight) => clubNight.id === localSnapshot.currentClubNightId)
+      ? localSnapshot.currentClubNightId
+      : sharedSnapshot.currentClubNightId;
+
+  return normalizeSnapshot({
+    clubNights: [...migratedLocalClubNights, ...sharedSnapshot.clubNights],
+    currentClubNightId,
+  });
+}
+
+async function pushSharedKlubaftenSnapshot(snapshot: KlubaftenSnapshot, rawSnapshot: string, completedMatches = getCompletedMatches()) {
   pendingSharedPushRaw = rawSnapshot;
   try {
-    await fetch(SHARED_STATE_API, {
+    const response = await fetch(SHARED_STATE_API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         clubNights: snapshot.clubNights,
         currentClubNightId: snapshot.currentClubNightId,
-        completedMatches: getCompletedMatches(),
+        completedMatches,
       }),
     });
+    return response.ok;
   } catch {
     // LocalStorage remains a local cache/fallback if the shared dev store is unavailable.
+    return false;
   } finally {
     if (pendingSharedPushRaw === rawSnapshot) pendingSharedPushRaw = null;
   }
@@ -245,6 +278,7 @@ function subscribeToKlubaften(callback: () => void) {
 
 export function KlubaftenProvider({ children }: { children: ReactNode }) {
   const snapshot = useSyncExternalStore(subscribeToKlubaften, getStoredKlubaften, () => DEFAULT_KLUBAFTEN);
+  const [isSharedStateReady, setIsSharedStateReady] = useState(false);
   const { currentClubId } = useClub();
 
   useEffect(() => {
@@ -253,11 +287,12 @@ export function KlubaftenProvider({ children }: { children: ReactNode }) {
     async function syncFromSharedState() {
       try {
         const response = await fetch(SHARED_STATE_API, { cache: "no-store" });
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (!cancelled) setIsSharedStateReady(true);
+          return;
+        }
         const sharedState = await response.json() as SharedClubNightState;
         if (cancelled) return;
-
-        replaceCompletedMatchesFromSharedState(sharedState.completedMatches ?? []);
 
         const localSnapshot = getStoredKlubaften();
         const localRaw = JSON.stringify(localSnapshot);
@@ -267,17 +302,50 @@ export function KlubaftenProvider({ children }: { children: ReactNode }) {
         });
         const sharedRaw = JSON.stringify(sharedSnapshot);
 
-        if (!sharedSnapshotHasClubNightData(sharedState) && localSnapshot.clubNights.length > 0) {
-          await pushSharedKlubaftenSnapshot(localSnapshot, localRaw);
+        if (
+          !hasMigratedLocalSnapshotToShared() &&
+          hasLocalClubNightsMissingFromShared(localSnapshot, sharedSnapshot)
+        ) {
+          const migratedSnapshot = mergeLocalClubNightsIntoShared(localSnapshot, sharedSnapshot);
+          const migratedRaw = JSON.stringify(migratedSnapshot);
+          const migratedCompletedMatches = [
+            ...(sharedState.completedMatches ?? []),
+            ...getCompletedMatches(),
+          ];
+          const migrated = await pushSharedKlubaftenSnapshot(migratedSnapshot, migratedRaw, migratedCompletedMatches);
+          if (migrated) {
+            markLocalSnapshotMigratedToShared();
+            replaceCompletedMatchesFromSharedState(migratedCompletedMatches);
+            saveStoredKlubaften(migratedSnapshot, { syncShared: false });
+          }
+          if (!cancelled) setIsSharedStateReady(true);
           return;
         }
 
+        if (!sharedSnapshotHasClubNightData(sharedState) && localSnapshot.clubNights.length > 0) {
+          if (!hasMigratedLocalSnapshotToShared()) {
+            const migrated = await pushSharedKlubaftenSnapshot(localSnapshot, localRaw);
+            if (migrated) markLocalSnapshotMigratedToShared();
+            if (!cancelled) setIsSharedStateReady(true);
+            return;
+          }
+          replaceCompletedMatchesFromSharedState([]);
+          if (sharedRaw !== localRaw) {
+            saveStoredKlubaften(sharedSnapshot, { syncShared: false });
+          }
+          if (!cancelled) setIsSharedStateReady(true);
+          return;
+        }
+
+        replaceCompletedMatchesFromSharedState(sharedState.completedMatches ?? []);
         if (pendingSharedPushRaw && pendingSharedPushRaw !== sharedRaw) return;
         if (sharedRaw !== localRaw) {
           saveStoredKlubaften(sharedSnapshot, { syncShared: false });
         }
+        if (!cancelled) setIsSharedStateReady(true);
       } catch {
         // Shared state is a server-side upgrade; localStorage keeps the current device usable offline.
+        if (!cancelled) setIsSharedStateReady(true);
       }
     }
 
@@ -395,6 +463,7 @@ export function KlubaftenProvider({ children }: { children: ReactNode }) {
     clubNights: scopedClubNights,
     activeClubNights,
     archivedClubNights,
+    isSharedStateReady,
     currentClubNightId: snapshot.currentClubNightId,
     currentClubNight,
     setCurrentClubNightId,
@@ -425,6 +494,7 @@ export function KlubaftenProvider({ children }: { children: ReactNode }) {
     deleteClubNight,
     finishClubNight,
     finishKlubaften,
+    isSharedStateReady,
     setBoardCount,
     setCurrentClubNightId,
     setHandicapBoards,

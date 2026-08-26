@@ -104,7 +104,7 @@ export function replaceCompletedMatchesFromSharedState(matches: CompletedMatch[]
   const current = getCompletedMatches();
   const byId = new Map<string, CompletedMatch>();
 
-  [...matches, ...current].forEach((match) => {
+  matches.forEach((match) => {
     if (!match?.id) return;
     const existing = byId.get(match.id);
     if (!existing || getCompletedTimestamp(match).localeCompare(getCompletedTimestamp(existing)) >= 0) {

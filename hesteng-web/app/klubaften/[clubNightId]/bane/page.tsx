@@ -53,13 +53,16 @@ export default function ClubNightBoardPage({ params }: { params: Promise<{ clubN
   const clubNight = clubNights.find((item) => item.id === clubNightId) ?? null;
   const boardCount = clubNight?.boardCount ?? 13;
   const boardOptions = useMemo(() => Array.from({ length: boardCount }, (_, index) => index + 1), [boardCount]);
-  const isBoardValid = preferredBoardNumber !== null && preferredBoardNumber >= 1 && preferredBoardNumber <= boardCount;
+  const isBoardNumberInRange = preferredBoardNumber !== null && preferredBoardNumber >= 1 && preferredBoardNumber <= boardCount;
   const boardMatches = useMemo(() => {
-    if (!clubNight || !isBoardValid) return [];
+    if (!clubNight || !isBoardNumberInRange) return [];
     return clubNight.matches
       .filter((match) => match.board === preferredBoardNumber)
       .sort(sortBoardMatches);
-  }, [clubNight, isBoardValid, preferredBoardNumber]);
+  }, [clubNight, isBoardNumberInRange, preferredBoardNumber]);
+  const isBoardUsedInClubNight = boardMatches.length > 0;
+  const hasScheduledMatches = (clubNight?.matches.length ?? 0) > 0;
+  const isBoardValid = isBoardNumberInRange && (!hasScheduledMatches || isBoardUsedInClubNight);
   const liveMatches = boardMatches.filter((match) => match.status === "live");
   const liveMatch = liveMatches[0] ?? null;
   const nextMatch = liveMatch ?? boardMatches.find((match) => match.status === "pending") ?? null;
@@ -134,7 +137,7 @@ export default function ClubNightBoardPage({ params }: { params: Promise<{ clubN
                   href={`/klubaften/${clubNight.id}`}
                   className="rounded-full border border-gray-700 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-gray-300 hover:border-orange-400 hover:text-orange-200"
                 >
-                  Live
+                  Tilbage
                 </Link>
                 <button
                   type="button"

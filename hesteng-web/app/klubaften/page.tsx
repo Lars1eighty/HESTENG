@@ -16,7 +16,7 @@ function statusLabel(status: ClubNight["status"]) {
 }
 
 export default function KlubaftenPage() {
-  const { activeClubNights, archivedClubNights, setCurrentClubNightId } = useKlubaften();
+  const { activeClubNights, archivedClubNights, isSharedStateReady, setCurrentClubNightId } = useKlubaften();
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -39,7 +39,11 @@ export default function KlubaftenPage() {
             <h2 className="text-2xl font-bold">Aktive klubaftner</h2>
             <span className="rounded-full bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-300">{activeClubNights.length} aktive</span>
           </div>
-          {activeClubNights.length ? (
+          {!isSharedStateReady ? (
+            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">
+              Henter fælles klubaftner...
+            </div>
+          ) : activeClubNights.length ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {activeClubNights.map((clubNight) => {
                 const finished = clubNight.matches.filter((match) => match.status === "finished").length;
@@ -82,7 +86,11 @@ export default function KlubaftenPage() {
             <h2 className="text-2xl font-bold">Arkiv</h2>
             <span className="rounded-full bg-gray-800 px-3 py-1 text-sm font-semibold text-gray-300">{archivedClubNights.length} arkiverede</span>
           </div>
-          {archivedClubNights.length ? (
+          {!isSharedStateReady ? (
+            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">
+              Henter arkiv...
+            </div>
+          ) : archivedClubNights.length ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {archivedClubNights.map((clubNight) => (
                 <Link

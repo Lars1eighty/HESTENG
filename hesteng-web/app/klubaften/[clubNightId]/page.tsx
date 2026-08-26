@@ -138,22 +138,38 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
     .sort((a, b) => b.oneEighties - a.oneEighties || a.player.localeCompare(b.player))
     .map((player) => ({ id: `180-${player.player}`, player: player.player, value: `×${player.oneEighties}` }));
   const highCheckoutRows: PerformanceRow[] = completedMatches.flatMap((match) =>
-    match.players
-      .filter((player) => (player.highestCheckout ?? 0) >= 100)
-      .map((player) => ({
-        id: `co-${match.id}-${player.name}-${player.highestCheckout}`,
-        player: player.name,
-        value: player.highestCheckout ?? 0,
-      }))
+    match.players.flatMap((player) => {
+      const checkouts = Array.isArray(player.highCheckouts)
+        ? player.highCheckouts
+        : player.highestCheckout
+          ? [player.highestCheckout]
+          : [];
+
+      return checkouts
+        .filter((checkout) => checkout >= 100)
+        .map((checkout, index) => ({
+          id: `co-${match.id}-${player.name}-${checkout}-${index}`,
+          player: player.name,
+          value: checkout,
+        }));
+    })
   ).sort((a, b) => Number(b.value) - Number(a.value) || a.player.localeCompare(b.player));
   const fastLegRows: PerformanceRow[] = completedMatches.flatMap((match) =>
-    match.players
-      .filter((player) => player.fastestLegDarts !== null && player.fastestLegDarts <= 21)
-      .map((player) => ({
-        id: `leg-${match.id}-${player.name}-${player.fastestLegDarts}`,
-        player: player.name,
-        value: `${player.fastestLegDarts} pile`,
-      }))
+    match.players.flatMap((player) => {
+      const legs = Array.isArray(player.fastLegDarts)
+        ? player.fastLegDarts
+        : player.fastestLegDarts !== null && player.fastestLegDarts !== undefined
+          ? [player.fastestLegDarts]
+          : [];
+
+      return legs
+        .filter((darts) => darts <= 21)
+        .map((darts, index) => ({
+          id: `leg-${match.id}-${player.name}-${darts}-${index}`,
+          player: player.name,
+          value: `${darts} pile`,
+        }));
+    })
   ).sort((a, b) => Number.parseInt(String(a.value), 10) - Number.parseInt(String(b.value), 10) || a.player.localeCompare(b.player));
   const clubNightPointRows: PerformanceRow[] = calculateThursdayPoints(completedMatches)
     .filter((player) => player.totalPoints > 0)
@@ -181,6 +197,9 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
                 <div className="text-[9px] uppercase tracking-wider text-orange-300">{isActive ? "Auto" : "Status"}</div>
                 <div className="text-xs tabular-nums text-orange-100">{lastUpdatedLabel}</div>
               </div>
+              <Link href="/klubaften" className="rounded-full border border-gray-700 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-gray-400 transition hover:border-orange-500/70 hover:text-orange-300">
+                Tilbage
+              </Link>
               <Link href={`/klubaften/${clubNight.id}/kampe`} className="rounded-full border border-orange-500/70 bg-orange-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange-200 transition hover:border-orange-400 hover:bg-orange-500/20">
                 KAMPE
               </Link>
