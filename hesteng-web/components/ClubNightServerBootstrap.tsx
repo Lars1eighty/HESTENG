@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 const STORAGE_KEY = "hesteng.klubaftenState";
-const STORAGE_CHANGE_EVENT = "hesteng.klubaftenStateChanged";
+const STORAGE_CHANGE_EVENT = "hesteng.klubaftenChanged";
 const API_URL = "/api/club-night-state";
 const POLL_MS = 5000;
 
