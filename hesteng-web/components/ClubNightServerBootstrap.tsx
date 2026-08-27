@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 const STORAGE_KEY = "hesteng.klubaftenState";
-const STORAGE_CHANGE_EVENT = "hesteng.klubaftenChanged";
+const STORAGE_CHANGE_EVENT = "hesteng.klubaftenStateChanged";
 const API_URL = "/api/club-night-state";
 const POLL_MS = 5000;
 
@@ -12,13 +12,6 @@ type SharedClubNightState = {
   currentClubNightId?: string | null;
 };
 
-/**
- * Small server-first bootstrap for multi-device use.
- *
- * KlubaftenContext still owns the application state. This component only makes
- * sure a fresh/new browser receives the authoritative club-night snapshot from
- * the server and emits the same event KlubaftenContext already subscribes to.
- */
 export default function ClubNightServerBootstrap() {
   useEffect(() => {
     let cancelled = false;
@@ -29,12 +22,7 @@ export default function ClubNightServerBootstrap() {
         if (!response.ok || cancelled) return;
 
         const server = (await response.json()) as SharedClubNightState;
-        if (cancelled || !Array.isArray(server.clubNights)) return;
-
-        // An empty server must never wipe a browser that still has the only
-        // recoverable copy of an evening. Empty-server migration is handled by
-        // KlubaftenContext.
-        if (server.clubNights.length === 0) return;
+        if (cancelled || !Array.isArray(server.clubNights) || server.clubNights.length === 0) return;
 
         const snapshot = JSON.stringify({
           clubNights: server.clubNights,
