@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   readSharedClubNightState,
   replaceSharedClubNightSnapshot,
+  upsertSharedClubNightMatches,
   upsertSharedCompletedMatch,
 } from "@/lib/serverClubNightStateStore";
 
@@ -17,6 +18,14 @@ export async function POST(request: NextRequest) {
 
   if (body?.type === "completedMatch") {
     const state = await upsertSharedCompletedMatch(body.completedMatch);
+    return NextResponse.json(state);
+  }
+
+  if (body?.type === "matches" && typeof body.clubNightId === "string") {
+    const state = await upsertSharedClubNightMatches(
+      body.clubNightId,
+      Array.isArray(body.matches) ? body.matches : []
+    );
     return NextResponse.json(state);
   }
 
