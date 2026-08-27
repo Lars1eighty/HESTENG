@@ -86,6 +86,35 @@ function serializeWrite<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 
+function matchProgress(match: ClubMatch) {
+  if (match.status === "finished") return 2;
+  if (match.status === "live") return 1;
+  return 0;
+}
+
+function preserveAdvancedMatch(incoming: ClubMatch, stored?: ClubMatch): ClubMatch {
+  if (!stored) return incoming;
+  const incomingProgress = matchProgress(incoming);
+  const storedProgress = matchProgress(stored);
+  if (storedProgress > incomingProgress) return stored;
+  if (incomingProgress > storedProgress) return incoming;
+  if (incoming.status === "finished" && stored.status === "finished") {
+    const incomingTime = incoming.completedAt ?? incoming.finishedAt ?? "";
+    const storedTime = stored.completedAt ?? stored.finishedAt ?? "";
+    return storedTime.localeCompare(incomingTime) > 0 ? stored : incoming;
+  }
+  return incoming;
+}
+
+function mergeConcurrentMatchProgress(incomingNight: ClubNight, storedNight?: ClubNight): ClubNight {
+  if (!storedNight || incomingNight.matches.length === 0) return incomingNight;
+  const storedById = new Map(storedNight.matches.map((match) => [match.id, match]));
+  return {
+    ...incomingNight,
+    matches: incomingNight.matches.map((match) => preserveAdvancedMatch(match, storedById.get(match.id))),
+  };
+}
+
 export async function writeSharedClubNightState(input: Partial<SharedClubNightState>): Promise<SharedClubNightState> {
   return serializeWrite(() => writeStateNow(input));
 }
@@ -95,10 +124,15 @@ export async function replaceSharedClubNightSnapshot(input: {
   currentClubNightId: string | null;
   completedMatches?: CompletedMatch[];
 }): Promise<SharedClubNightState> {
-  return writeSharedClubNightState({
-    clubNights: input.clubNights,
-    currentClubNightId: input.currentClubNightId,
-    completedMatches: normalizeCompletedMatches(input.completedMatches ?? []),
+  return serializeWrite(async () => {
+    const current = await readSharedClubNightState();
+    const currentById = new Map(current.clubNights.map((clubNight) => [clubNight.id, clubNight]));
+    const clubNights = input.clubNights.map((clubNight) => mergeConcurrentMatchProgress(clubNight, currentById.get(clubNight.id)));
+    return writeStateNow({
+      clubNights,
+      currentClubNightId: input.currentClubNightId,
+      completedMatches: normalizeCompletedMatches([...(input.completedMatches ?? []), ...current.completedMatches]),
+    });
   });
 }
 
@@ -107,12 +141,10 @@ export async function upsertSharedClubNightMatches(clubNightId: string, matches:
     const current = await readSharedClubNightState();
     const clubNight = current.clubNights.find((item) => item.id === clubNightId);
     if (!clubNight) return current;
-
     const byId = new Map(clubNight.matches.map((match) => [match.id, match]));
     matches.forEach((match) => {
-      if (match?.id) byId.set(match.id, { ...match, clubNightId: match.clubNightId ?? clubNightId });
+      if (match?.id) byId.set(match.id, preserveAdvancedMatch({ ...match, clubNightId: match.clubNightId ?? clubNightId }, byId.get(match.id)));
     });
-
     return writeStateNow({
       ...current,
       clubNights: current.clubNights.map((item) => item.id === clubNightId ? { ...item, matches: [...byId.values()] } : item),
