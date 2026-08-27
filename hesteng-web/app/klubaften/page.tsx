@@ -3,7 +3,7 @@
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useKlubaften, type ClubNight } from "@/context/KlubaftenContext";
 
 function formatDate(date: string) {
@@ -23,7 +23,6 @@ type ServerClubNightState = {
 
 export default function KlubaftenPage() {
   const {
-    currentClubId,
     activeClubNights: contextActiveClubNights,
     archivedClubNights: contextArchivedClubNights,
     isSharedStateReady,
@@ -57,19 +56,15 @@ export default function KlubaftenPage() {
     };
   }, []);
 
-  const serverClubNightsForCurrentClub = useMemo(
-    () =>
-      serverClubNights?.filter(
-        (clubNight) => !clubNight.clubId || clubNight.clubId === currentClubId,
-      ) ?? null,
-    [serverClubNights, currentClubId],
-  );
-
-  const activeClubNights = serverClubNightsForCurrentClub
-    ? serverClubNightsForCurrentClub.filter((clubNight) => clubNight.status === "active")
+  // The shared server is authoritative for this overview. Do not apply a
+  // device-local currentClubId filter here: a fresh mobile browser may have a
+  // stale/different local club selection even though the server has the valid
+  // club night.
+  const activeClubNights = serverClubNights
+    ? serverClubNights.filter((clubNight) => clubNight.status === "active")
     : contextActiveClubNights;
-  const archivedClubNights = serverClubNightsForCurrentClub
-    ? serverClubNightsForCurrentClub.filter((clubNight) => clubNight.status !== "active")
+  const archivedClubNights = serverClubNights
+    ? serverClubNights.filter((clubNight) => clubNight.status !== "active")
     : contextArchivedClubNights;
   const pageReady = serverClubNights !== null || isSharedStateReady;
 
