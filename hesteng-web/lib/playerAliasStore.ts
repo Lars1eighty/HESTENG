@@ -4,6 +4,7 @@ import { normalizeName, type PlayerId } from "@/lib/playerIdentity";
 import { getPlayerRegistry } from "@/lib/playerRegistry";
 
 const STORAGE_KEY = "hesteng.playerAliases.v1";
+const SHARED_CLUB_DATA_API = "/api/shared-club-data";
 
 export type PlayerAliasMapping = {
   clubId: string;
@@ -37,6 +38,23 @@ function readAliasState(): PlayerAliasState {
 function writeAliasState(state: PlayerAliasState) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function syncPlayerAliasesToSharedStore(state: PlayerAliasState) {
+  if (typeof window === "undefined") return;
+  void fetch(SHARED_CLUB_DATA_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ playerAliases: state }),
+  }).catch(() => undefined);
+}
+
+export function getPlayerAliasStateForSync(): PlayerAliasState {
+  return readAliasState();
+}
+
+export function replacePlayerAliasesFromSharedState(state: PlayerAliasState) {
+  writeAliasState(state);
 }
 
 export function getDartConnectPlayerAliases(clubId = getCurrentClubId()): PlayerAliasMapping[] {
@@ -91,6 +109,10 @@ export function addDartConnectPlayerAlias(
   ].sort((a, b) => a.canonicalName.localeCompare(b.canonicalName) || a.alias.localeCompare(b.alias));
 
   writeAliasState({
+    ...state,
+    [clubId]: nextAliases,
+  });
+  syncPlayerAliasesToSharedStore({
     ...state,
     [clubId]: nextAliases,
   });

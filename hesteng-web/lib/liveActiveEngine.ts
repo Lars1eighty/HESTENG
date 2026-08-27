@@ -30,6 +30,7 @@ const LIVE_ACTIVE_SNAPSHOT_KEY = "hesteng.liveActiveSnapshots";
 const LIVE_ACTIVE_SNAPSHOT_EVENT = "hesteng.liveActiveSnapshotsChanged";
 const LIVE_ACTIVE_CLUB_NIGHT_COUNT = 4;
 const LIVE_ACTIVE_BOOTSTRAP_CLUB_NIGHT_ID = "live-active-bootstrap-2026-08-20";
+const SHARED_CLUB_DATA_API = "/api/shared-club-data";
 
 function canUseStorage() {
   return typeof window !== "undefined" && !!window.localStorage;
@@ -50,6 +51,23 @@ function writeSnapshots(snapshots: LiveActiveSnapshot[]) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(LIVE_ACTIVE_SNAPSHOT_KEY, JSON.stringify(snapshots));
   window.dispatchEvent(new Event(LIVE_ACTIVE_SNAPSHOT_EVENT));
+}
+
+function syncLiveActiveSnapshotsToSharedStore() {
+  if (typeof window === "undefined") return;
+  void fetch(SHARED_CLUB_DATA_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ liveActiveSnapshots: readSnapshots() }),
+  }).catch(() => undefined);
+}
+
+export function getLiveActiveSnapshotsForSync(): LiveActiveSnapshot[] {
+  return readSnapshots();
+}
+
+export function replaceLiveActiveSnapshotsFromSharedState(snapshots: LiveActiveSnapshot[]) {
+  writeSnapshots(snapshots);
 }
 
 export function getLiveActiveSnapshotStorageValue() {
@@ -261,6 +279,7 @@ export function saveLiveActiveSnapshotForClubNight(clubNights: ClubNight[], club
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   writeSnapshots(next);
+  syncLiveActiveSnapshotsToSharedStore();
   return snapshot;
 }
 
@@ -270,5 +289,6 @@ export function resetLiveActiveSnapshotsToBootstrap(clubId: string) {
   const next = bootstrapSnapshot ? [bootstrapSnapshot, ...snapshotsForOtherClubs] : snapshotsForOtherClubs;
 
   writeSnapshots(next.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  syncLiveActiveSnapshotsToSharedStore();
   return bootstrapSnapshot;
 }

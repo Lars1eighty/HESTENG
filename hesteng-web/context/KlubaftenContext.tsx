@@ -7,6 +7,7 @@ import { useClub } from "@/context/ClubContext";
 import { getCurrentClubId } from "@/lib/currentClub";
 import { getCompletedMatches, replaceCompletedMatchesFromSharedState } from "@/lib/matchStore";
 import { saveLiveActiveSnapshotForClubNight } from "@/lib/liveActiveEngine";
+import { syncSharedClubDataFromServer } from "@/lib/sharedClubDataClient";
 import type { SharedClubNightState } from "@/lib/serverClubNightStateStore";
 
 export type Pool = {
@@ -45,7 +46,7 @@ type KlubaftenContextType = {
 const KlubaftenContext = createContext<KlubaftenContextType | undefined>(undefined);
 const STORAGE_KEY = "hesteng.klubaftenState";
 const STORAGE_CHANGE_EVENT = "hesteng.klubaftenStateChanged";
-const SHARED_STATE_MIGRATION_KEY = "hesteng.sharedClubNightMigrated.v1";
+const SHARED_STATE_MIGRATION_KEY = "hesteng.sharedClubNightMigrated.v2";
 const SHARED_STATE_API = "/api/club-night-state";
 const SHARED_STATE_POLL_INTERVAL_MS = 5000;
 
@@ -208,10 +209,11 @@ function hasLocalClubNightsMissingFromShared(localSnapshot: KlubaftenSnapshot, s
 function mergeLocalClubNightsIntoShared(localSnapshot: KlubaftenSnapshot, sharedSnapshot: KlubaftenSnapshot): KlubaftenSnapshot {
   const sharedIds = new Set(sharedSnapshot.clubNights.map((clubNight) => clubNight.id));
   const migratedLocalClubNights = localSnapshot.clubNights.filter((clubNight) => !sharedIds.has(clubNight.id));
-  const currentClubNightId =
+  const currentClubNightId = sharedSnapshot.currentClubNightId ?? (
     localSnapshot.currentClubNightId && migratedLocalClubNights.some((clubNight) => clubNight.id === localSnapshot.currentClubNightId)
       ? localSnapshot.currentClubNightId
-      : sharedSnapshot.currentClubNightId;
+      : null
+  );
 
   return normalizeSnapshot({
     clubNights: [...migratedLocalClubNights, ...sharedSnapshot.clubNights],
@@ -286,6 +288,7 @@ export function KlubaftenProvider({ children }: { children: ReactNode }) {
 
     async function syncFromSharedState() {
       try {
+        await syncSharedClubDataFromServer();
         const response = await fetch(SHARED_STATE_API, { cache: "no-store" });
         if (!response.ok) {
           if (!cancelled) setIsSharedStateReady(true);

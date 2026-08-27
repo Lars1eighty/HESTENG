@@ -35,6 +35,7 @@ export type EloRatingEvent = {
 
 const RATINGS_STORAGE_KEY = "hesteng.eloRatings";
 const EVENTS_STORAGE_KEY = "hesteng.eloEvents";
+const SHARED_CLUB_DATA_API = "/api/shared-club-data";
 
 function canUseStorage() {
   return typeof window !== "undefined" && !!window.localStorage;
@@ -55,6 +56,19 @@ function readStorageArray<T>(key: string): T[] {
 function writeStorageArray<T>(key: string, value: T[]) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function syncEloStateToSharedStore() {
+  if (typeof window === "undefined") return;
+
+  void fetch(SHARED_CLUB_DATA_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eloRatings: readStorageArray<PlayerEloRating>(RATINGS_STORAGE_KEY),
+      eloEvents: getEloEvents(),
+    }),
+  }).catch(() => undefined);
 }
 
 function samePlayer(left: string, right: string) {
@@ -113,6 +127,21 @@ export function getEloEvents(): EloRatingEvent[] {
     ...event,
     clubId: event.clubId ?? DEMO_CLUB_ID,
   }));
+}
+
+export function getEloStateForSync() {
+  return {
+    eloRatings: readStorageArray<PlayerEloRating>(RATINGS_STORAGE_KEY).map((rating) => ({
+      ...rating,
+      clubId: rating.clubId ?? DEMO_CLUB_ID,
+    })),
+    eloEvents: getEloEvents(),
+  };
+}
+
+export function replaceEloStateFromSharedState(input: { eloRatings?: PlayerEloRating[]; eloEvents?: EloRatingEvent[] }) {
+  writeStorageArray<PlayerEloRating>(RATINGS_STORAGE_KEY, input.eloRatings ?? []);
+  writeStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY, input.eloEvents ?? []);
 }
 
 export function getPlayerElo(player: string, clubId = getCurrentClubId()): PlayerEloRating {
@@ -215,6 +244,7 @@ export function applyEloForCompletedMatch(match: CompletedMatch): EloRatingEvent
     updatedPlayer2,
   ].sort((a, b) => a.player.localeCompare(b.player)));
   writeStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY, [event, ...getEloEvents()]);
+  syncEloStateToSharedStore();
 
   return event;
 }
@@ -334,6 +364,7 @@ export function removeEloEventsAndRebuildRatings(matchIds: string[], clubId = ge
     ...getEloEvents().filter((event) => (event.clubId ?? DEMO_CLUB_ID) !== clubId),
     ...rebuiltEvents,
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  syncEloStateToSharedStore();
 
   return rebuiltEvents;
 }
@@ -351,6 +382,7 @@ export function resetEloRatingsToSeedForClub(clubId = getCurrentClubId()): Playe
     [...ratingsForOtherClubs, ...seedRatings].sort((a, b) => a.player.localeCompare(b.player))
   );
   writeStorageArray<EloRatingEvent>(EVENTS_STORAGE_KEY, eventsForOtherClubs);
+  syncEloStateToSharedStore();
 
   return seedRatings;
 }

@@ -4,8 +4,9 @@ import { getCurrentClubId } from "@/lib/currentClub";
 import { normalizeName, type PlayerProfile } from "@/lib/playerIdentity";
 
 const PLAYER_BOARD_NEEDS_STORAGE_KEY = "hesteng.playerBoardNeeds.v1";
+const SHARED_CLUB_DATA_API = "/api/shared-club-data";
 
-type PlayerBoardNeedsState = Record<string, Record<string, { requiresAccessibleBoard?: boolean }>>;
+export type PlayerBoardNeedsState = Record<string, Record<string, { requiresAccessibleBoard?: boolean }>>;
 
 function createStablePlayerId(source: "seed", name: string) {
   return `${source}:${normalizeName(name).replace(/\s+/g, "-")}`;
@@ -31,6 +32,23 @@ function getPlayerBoardNeedsState(): PlayerBoardNeedsState {
 function savePlayerBoardNeedsState(state: PlayerBoardNeedsState) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(PLAYER_BOARD_NEEDS_STORAGE_KEY, JSON.stringify(state));
+}
+
+function syncPlayerBoardNeedsToSharedStore(state: PlayerBoardNeedsState) {
+  if (typeof window === "undefined") return;
+  void fetch(SHARED_CLUB_DATA_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ playerBoardNeeds: state }),
+  }).catch(() => undefined);
+}
+
+export function getPlayerBoardNeedsStateForSync(): PlayerBoardNeedsState {
+  return getPlayerBoardNeedsState();
+}
+
+export function replacePlayerBoardNeedsFromSharedState(state: PlayerBoardNeedsState) {
+  savePlayerBoardNeedsState(state);
 }
 
 export function getPlayerRegistry(clubId = getCurrentClubId()): PlayerProfile[] {
@@ -71,6 +89,10 @@ export function setPlayerAccessibleBoardNeed(clubId: string, playerId: string, r
   };
 
   savePlayerBoardNeedsState({
+    ...state,
+    [clubId]: nextClubNeeds,
+  });
+  syncPlayerBoardNeedsToSharedStore({
     ...state,
     [clubId]: nextClubNeeds,
   });

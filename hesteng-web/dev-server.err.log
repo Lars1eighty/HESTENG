@@ -162,3 +162,68 @@ module.exports = {
 }
 
 Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+⨯ Error: ENOENT: no such file or directory, rename 'C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\hesteng web\hesteng-web\.hesteng-shared\training-results.json.tmp' -> 'C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\hesteng web\hesteng-web\.hesteng-shared\training-results.json'
+    at async writeSharedTrainingResults (lib\serverTrainingResultStore.ts:66:3)
+    at async POST (app\api\training-results\route.ts:31:17)
+  64 |   const temporaryFile = `${STORE_FILE}.tmp`;
+  65 |   await fs.writeFile(temporaryFile, JSON.stringify(state, null, 2), "utf8");
+> 66 |   await fs.rename(temporaryFile, STORE_FILE);
+     |   ^
+  67 |
+  68 |   return state;
+  69 | } {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'rename',
+  path: 'C:\\Users\\heste\\OneDrive\\Dokumenter\\Hesteng Firma\\hesteng web\\hesteng-web\\.hesteng-shared\\training-results.json.tmp',
+  dest: 'C:\\Users\\heste\\OneDrive\\Dokumenter\\Hesteng Firma\\hesteng web\\hesteng-web\\.hesteng-shared\\training-results.json'
+}
+⨯ Error: ENOENT: no such file or directory, rename 'C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\hesteng web\hesteng-web\.hesteng-shared\training-results.json.tmp' -> 'C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\hesteng web\hesteng-web\.hesteng-shared\training-results.json'
+    at async writeSharedTrainingResults (lib\serverTrainingResultStore.ts:66:3)
+    at async POST (app\api\training-results\route.ts:31:17)
+  64 |   const temporaryFile = `${STORE_FILE}.tmp`;
+  65 |   await fs.writeFile(temporaryFile, JSON.stringify(state, null, 2), "utf8");
+> 66 |   await fs.rename(temporaryFile, STORE_FILE);
+     |   ^
+  67 |
+  68 |   return state;
+  69 | } {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'rename',
+  path: 'C:\\Users\\heste\\OneDrive\\Dokumenter\\Hesteng Firma\\hesteng web\\hesteng-web\\.hesteng-shared\\training-results.json.tmp',
+  dest: 'C:\\Users\\heste\\OneDrive\\Dokumenter\\Hesteng Firma\\hesteng web\\hesteng-web\\.hesteng-shared\\training-results.json'
+}
+⨯ Error: ENOENT: no such file or directory, rename 'C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\hesteng web\hesteng-web\.hesteng-shared\training-results.json.tmp' -> 'C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\hesteng web\hesteng-web\.hesteng-shared\training-results.json'
+    at async writeSharedTrainingResults (lib\serverTrainingResultStore.ts:66:3)
+    at async POST (app\api\training-results\route.ts:31:17)
+  64 |   const temporaryFile = `${STORE_FILE}.tmp`;
+  65 |   await fs.writeFile(temporaryFile, JSON.stringify(state, null, 2), "utf8");
+> 66 |   await fs.rename(temporaryFile, STORE_FILE);
+     |   ^
+  67 |
+  68 |   return state;
+  69 | } {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'rename',
+  path: 'C:\\Users\\heste\\OneDrive\\Dokumenter\\Hesteng Firma\\hesteng web\\hesteng-web\\.hesteng-shared\\training-results.json.tmp',
+  dest: 'C:\\Users\\heste\\OneDrive\\Dokumenter\\Hesteng Firma\\hesteng web\\hesteng-web\\.hesteng-shared\\training-results.json'
+}
+⨯ Error: ENOENT: no such file or directory, rename 'C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\hesteng web\hesteng-web\.hesteng-shared\training-results.json.tmp' -> 'C:\Users\heste\OneDrive\Dokumenter\Hesteng Firma\hesteng web\hesteng-web\.hesteng-shared\training-results.json'
+    at async writeSharedTrainingResults (lib\serverTrainingResultStore.ts:66:3)
+    at async POST (app\api\training-results\route.ts:31:17)
+  64 |   const temporaryFile = `${STORE_FILE}.tmp`;
+  65 |   await fs.writeFile(temporaryFile, JSON.stringify(state, null, 2), "utf8");
+> 66 |   await fs.rename(temporaryFile, STORE_FILE);
+     |   ^
+  67 |
+  68 |   return state;
+  69 | } {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'rename',
+  path: 'C:\\Users\\heste\\OneDrive\\Dokumenter\\Hesteng Firma\\hesteng web\\hesteng-web\\.hesteng-shared\\training-results.json.tmp',
+  dest: 'C:\\Users\\heste\\OneDrive\\Dokumenter\\Hesteng Firma\\hesteng web\\hesteng-web\\.hesteng-shared\\training-results.json'
+}
+⚠ Fast Refresh had to perform a full reload when ./context/KlubaftenContext.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload

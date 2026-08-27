@@ -26,10 +26,10 @@ export default function PuljerPage() {
   }, [routeClubNightId, setCurrentClubNightId]);
 
   useEffect(() => {
-    if (selectedPlayers.length >= 10) {
+    if (selectedPlayers.length >= 10 && pools.length === 0) {
       setPools(createClubNightPools(selectedPlayers, currentClubId));
     }
-  }, [currentClubId, selectedPlayers, setPools]);
+  }, [currentClubId, pools.length, selectedPlayers, setPools]);
 
   function getPlayerInfo(playerName: string) {
     const profile = playerRegistry.find((player) => player.name === playerName);
