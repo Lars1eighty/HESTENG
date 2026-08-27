@@ -3,6 +3,7 @@ import "./globals.css";
 import { KlubaftenProvider } from "@/context/KlubaftenContext";
 import { ClubProvider } from "@/context/ClubContext";
 import { CurrentUserProvider } from "@/context/CurrentUserContext";
+import ClubNightServerBootstrap from "@/components/ClubNightServerBootstrap";
 
 export const metadata: Metadata = {
   title: "HESTENG",
@@ -20,6 +21,7 @@ export default function RootLayout({
         <ClubProvider>
           <CurrentUserProvider>
             <KlubaftenProvider>
+              <ClubNightServerBootstrap />
               {children}
             </KlubaftenProvider>
           </CurrentUserProvider>
