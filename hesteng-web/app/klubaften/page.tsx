@@ -3,6 +3,7 @@
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useKlubaften, type ClubNight } from "@/context/KlubaftenContext";
 
 function formatDate(date: string) {
@@ -15,8 +16,62 @@ function statusLabel(status: ClubNight["status"]) {
   return "Aktiv";
 }
 
+type ServerClubNightState = {
+  clubNights?: ClubNight[];
+  currentClubNightId?: string | null;
+};
+
 export default function KlubaftenPage() {
-  const { activeClubNights, archivedClubNights, isSharedStateReady, setCurrentClubNightId } = useKlubaften();
+  const {
+    currentClubId,
+    activeClubNights: contextActiveClubNights,
+    archivedClubNights: contextArchivedClubNights,
+    isSharedStateReady,
+    setCurrentClubNightId,
+  } = useKlubaften();
+  const [serverClubNights, setServerClubNights] = useState<ClubNight[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadServerClubNights() {
+      try {
+        const response = await fetch("/api/club-night-state", { cache: "no-store" });
+        if (!response.ok || cancelled) return;
+
+        const state = (await response.json()) as ServerClubNightState;
+        if (!cancelled && Array.isArray(state.clubNights)) {
+          setServerClubNights(state.clubNights);
+        }
+      } catch {
+        // Context remains the fallback if the shared server is temporarily unavailable.
+      }
+    }
+
+    void loadServerClubNights();
+    const interval = window.setInterval(loadServerClubNights, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const serverClubNightsForCurrentClub = useMemo(
+    () =>
+      serverClubNights?.filter(
+        (clubNight) => !clubNight.clubId || clubNight.clubId === currentClubId,
+      ) ?? null,
+    [serverClubNights, currentClubId],
+  );
+
+  const activeClubNights = serverClubNightsForCurrentClub
+    ? serverClubNightsForCurrentClub.filter((clubNight) => clubNight.status === "active")
+    : contextActiveClubNights;
+  const archivedClubNights = serverClubNightsForCurrentClub
+    ? serverClubNightsForCurrentClub.filter((clubNight) => clubNight.status !== "active")
+    : contextArchivedClubNights;
+  const pageReady = serverClubNights !== null || isSharedStateReady;
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -39,7 +94,7 @@ export default function KlubaftenPage() {
             <h2 className="text-2xl font-bold">Aktive klubaftner</h2>
             <span className="rounded-full bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-300">{activeClubNights.length} aktive</span>
           </div>
-          {!isSharedStateReady ? (
+          {!pageReady ? (
             <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">
               Henter fælles klubaftner...
             </div>
@@ -86,7 +141,7 @@ export default function KlubaftenPage() {
             <h2 className="text-2xl font-bold">Arkiv</h2>
             <span className="rounded-full bg-gray-800 px-3 py-1 text-sm font-semibold text-gray-300">{archivedClubNights.length} arkiverede</span>
           </div>
-          {!isSharedStateReady ? (
+          {!pageReady ? (
             <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">
               Henter arkiv...
             </div>
