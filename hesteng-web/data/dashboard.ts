@@ -10,10 +10,10 @@ export const dashboardCards = [
   {
     label: "TRÆNING",
     title: "Træning",
-    description: "Start en individuel træning.",
+    description: "Åbn spillerens personlige træning og udvikling.",
     icon: "🎯",
-    buttonText: "Start træning →",
-    href: "/traening",
+    buttonText: "Åbn Player →",
+    href: "/player",
   },
   {
     label: "SPILLERE",

@@ -12,8 +12,18 @@ export default function Header() {
         </p>
       </Link>
 
-      <div className="text-gray-300">
-        👤 Lars
+      <div className="flex items-center gap-4 text-sm font-semibold text-gray-300">
+        <nav className="flex items-center gap-2 rounded-full border border-gray-800 bg-gray-950/60 p-1">
+          <Link href="/player" className="rounded-full px-3 py-1.5 text-orange-300 transition hover:bg-orange-500/10 hover:text-orange-200">
+            Player
+          </Link>
+          <Link href="/dashboard" className="rounded-full px-3 py-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white">
+            Club
+          </Link>
+        </nav>
+        <div className="hidden text-gray-300 sm:block">
+          👤 Lars
+        </div>
       </div>
     </header>
   );

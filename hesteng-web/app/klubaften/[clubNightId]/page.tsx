@@ -27,7 +27,8 @@ function getPoolLayoutProfile(pools: Array<{ players: string[] }>) {
   const maxPlayers = Math.max(0, ...pools.map((pool) => pool.players.length));
   const longestName = Math.max(0, ...pools.flatMap((pool) => pool.players.map((player) => player.length)));
   const shouldPrioritizeWidth = longestName >= 24 || maxPlayers >= 7;
-  const columns = poolCount >= 4 && maxPlayers <= 6 && !(shouldPrioritizeWidth && poolCount <= 4) ? 2 : 1;
+  const shouldSplitThreePoolNights = poolCount === 3 && maxPlayers <= 6;
+  const columns = (shouldSplitThreePoolNights || (poolCount >= 4 && maxPlayers <= 6 && !(shouldPrioritizeWidth && poolCount <= 4))) ? 2 : 1;
   const dense = columns > 1 || poolCount >= 5;
 
   return {
