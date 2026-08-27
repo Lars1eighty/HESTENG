@@ -6,7 +6,7 @@ import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useClub } from "@/context/ClubContext";
-import { useKlubaften } from "@/context/KlubaftenContext";
+import { useKlubaften, type Pool } from "@/context/KlubaftenContext";
 import { DEFAULT_ELO, getEloRatings } from "@/lib/eloRatingEngine";
 import { normalizeName } from "@/lib/playerIdentity";
 import { getPlayerRegistry } from "@/lib/playerRegistry";
@@ -16,8 +16,11 @@ export default function PuljerPage() {
   const params = useParams<{ clubNightId?: string }>();
   const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
   const { currentClubId } = useClub();
-  const { selectedPlayers, pools, setPools, currentClubNightId, setCurrentClubNightId } = useKlubaften();
+  const { clubNights, selectedPlayers, pools, setPools, updateClubNight, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
+  const routeClubNight = clubNightId ? clubNights.find((clubNight) => clubNight.id === clubNightId) ?? null : null;
+  const displayedSelectedPlayers = routeClubNight?.selectedPlayers ?? selectedPlayers;
+  const displayedPools = routeClubNight?.pools ?? pools;
   const playerRegistry = getPlayerRegistry(currentClubId);
   const eloRatings = getEloRatings(currentClubId);
 
@@ -26,10 +29,15 @@ export default function PuljerPage() {
   }, [routeClubNightId, setCurrentClubNightId]);
 
   useEffect(() => {
-    if (selectedPlayers.length >= 10 && pools.length === 0) {
-      setPools(createClubNightPools(selectedPlayers, currentClubId));
+    if (displayedSelectedPlayers.length >= 10 && displayedPools.length === 0) {
+      const generatedPools = createClubNightPools(displayedSelectedPlayers, currentClubId);
+      if (routeClubNight) {
+        updateClubNight(routeClubNight.id, (clubNight) => ({ ...clubNight, pools: generatedPools }));
+      } else {
+        setPools(generatedPools);
+      }
     }
-  }, [currentClubId, pools.length, selectedPlayers, setPools]);
+  }, [currentClubId, displayedPools.length, displayedSelectedPlayers, routeClubNight, setPools, updateClubNight]);
 
   function getPlayerInfo(playerName: string) {
     const profile = playerRegistry.find((player) => player.name === playerName);
@@ -44,7 +52,7 @@ export default function PuljerPage() {
     };
   }
 
-  if (selectedPlayers.length < 10) {
+  if (displayedSelectedPlayers.length < 10) {
     return (
       <main className="min-h-screen bg-gray-950 text-white">
         <Header />
@@ -68,7 +76,7 @@ export default function PuljerPage() {
           <div>
             <h1 className="text-4xl font-bold">🏆 Puljer</h1>
             <p className="mt-2 text-gray-400">
-              {selectedPlayers.length} spillere fordelt i {pools.length} puljer.
+              {displayedSelectedPlayers.length} spillere fordelt i {displayedPools.length} puljer.
             </p>
           </div>
           <div className="rounded-xl bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-400">
@@ -77,7 +85,7 @@ export default function PuljerPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {pools.map((pool) => (
+          {displayedPools.map((pool: Pool) => (
             <div key={pool.name} className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-bold">{pool.name}</h2>
