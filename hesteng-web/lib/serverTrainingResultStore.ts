@@ -76,6 +76,16 @@ export async function mergeSharedTrainingResults(results: TrainingResult[]) {
   });
 }
 
+export async function mergeSharedTrainingResultsForPlayer(playerId: string, results: TrainingResult[]) {
+  const current = await readSharedTrainingResults();
+  const playerResults = results.filter((result) => result.playerId === playerId);
+  const otherPlayerResults = current.results.filter((result) => result.playerId !== playerId);
+
+  return writeSharedTrainingResults({
+    results: normalizeTrainingResults([...playerResults, ...otherPlayerResults, ...current.results.filter((result) => result.playerId === playerId)]),
+  });
+}
+
 export async function upsertSharedTrainingResult(result: TrainingResult) {
   const current = await readSharedTrainingResults();
 
@@ -84,10 +94,10 @@ export async function upsertSharedTrainingResult(result: TrainingResult) {
   });
 }
 
-export async function deleteSharedTrainingResult(resultId: string) {
+export async function deleteSharedTrainingResult(resultId: string, playerId?: string) {
   const current = await readSharedTrainingResults();
 
   return writeSharedTrainingResults({
-    results: current.results.filter((result) => result.id !== resultId),
+    results: current.results.filter((result) => result.id !== resultId || (playerId !== undefined && result.playerId !== playerId)),
   });
 }

@@ -22,7 +22,7 @@ import {
 import { calculateTrainingMonthlyStats } from "@/lib/trainingMonthlyStatsEngine";
 import {
   getTrainingResultsForPlayer,
-  saveTrainingResult,
+  saveTrainingResultToSharedStore,
   subscribeToTrainingResults,
   syncTrainingResultsFromSharedStore,
 } from "@/lib/trainingResultStore";
@@ -463,7 +463,6 @@ export default function TrainingPage() {
   };
 
   function refreshResults() {
-    setResults(getTrainingResultsForPlayer(currentPlayerId));
     void syncTrainingResultsFromSharedStore(currentPlayerId).then(setResults);
   }
 
@@ -640,11 +639,10 @@ export default function TrainingPage() {
   }
 
   function saveFinishedResult(result: TrainingResult) {
-    saveTrainingResult(result);
-    refreshResults();
     setLastSavedResult(result);
     setShowDetails(false);
     replaceTrainingHash(getTrainingHash("result", result.exerciseId));
+    void saveTrainingResultToSharedStore(result).then(setResults);
   }
 
   function handleJdcInput(value: JdcThrow) {

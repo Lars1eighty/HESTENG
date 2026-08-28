@@ -72,38 +72,66 @@ export function getTrainingResultsForPlayer(playerId: string): TrainingResult[] 
   return getTrainingResults().filter((result) => result.playerId === playerId);
 }
 
+function writePlayerTrainingResultsToCache(playerId: string, playerResults: TrainingResult[]) {
+  const otherResults = getTrainingResults().filter((result) => result.playerId !== playerId);
+  writeLocalTrainingResults([...playerResults, ...otherResults]);
+}
+
 export function saveTrainingResult(result: TrainingResult): TrainingResult[] {
   const next = normalizeTrainingResults([result, ...getTrainingResults().filter((item) => item.id !== result.id)]);
 
   writeLocalTrainingResults(next);
-  void syncTrainingResultToSharedStore(result);
+  void saveTrainingResultToSharedStore(result);
   return next;
 }
 
 export function deleteTrainingResult(resultId: string): TrainingResult[] {
+  const result = getTrainingResults().find((item) => item.id === resultId);
   const next = getTrainingResults().filter((result) => result.id !== resultId);
 
   writeLocalTrainingResults(next);
   if (typeof window !== "undefined") {
-    void fetch(`${SHARED_TRAINING_RESULTS_API}?resultId=${encodeURIComponent(resultId)}`, {
+    const playerId = result?.playerId;
+    const url = playerId
+      ? `${SHARED_TRAINING_RESULTS_API}?resultId=${encodeURIComponent(resultId)}&playerId=${encodeURIComponent(playerId)}`
+      : `${SHARED_TRAINING_RESULTS_API}?resultId=${encodeURIComponent(resultId)}`;
+    void fetch(url, {
       method: "DELETE",
+      headers: playerId ? { "x-hesteng-player-id": playerId } : undefined,
     }).catch(() => undefined);
   }
 
   return next;
 }
 
-async function syncTrainingResultToSharedStore(result: TrainingResult) {
-  if (typeof window === "undefined") return;
+export async function saveTrainingResultToSharedStore(result: TrainingResult): Promise<TrainingResult[]> {
+  if (typeof window === "undefined") return [];
 
   try {
-    await fetch(SHARED_TRAINING_RESULTS_API, {
+    const response = await fetch(`${SHARED_TRAINING_RESULTS_API}?playerId=${encodeURIComponent(result.playerId)}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-hesteng-player-id": result.playerId,
+      },
       body: JSON.stringify({ type: "result", result }),
     });
+    if (!response.ok) {
+      const fallbackResults = normalizeTrainingResults([result, ...getTrainingResultsForPlayer(result.playerId).filter((item) => item.id !== result.id)]);
+      writePlayerTrainingResultsToCache(result.playerId, fallbackResults);
+      return fallbackResults;
+    }
+
+    const state = await response.json() as { results?: TrainingResult[] };
+    const playerResults = normalizeTrainingResults(Array.isArray(state.results) ? state.results : []);
+    writePlayerTrainingResultsToCache(result.playerId, playerResults);
+
+    return playerResults;
   } catch {
     // Local cache keeps training usable if the dev server store is unavailable.
+    const fallbackResults = normalizeTrainingResults([result, ...getTrainingResultsForPlayer(result.playerId).filter((item) => item.id !== result.id)]);
+    writePlayerTrainingResultsToCache(result.playerId, fallbackResults);
+    return fallbackResults;
   }
 }
 
@@ -111,21 +139,33 @@ export async function syncTrainingResultsFromSharedStore(playerId?: string): Pro
   if (typeof window === "undefined") return [];
 
   const localResults = getTrainingResults();
+  const localPlayerResults = playerId
+    ? localResults.filter((result) => result.playerId === playerId)
+    : localResults;
 
   try {
-    const response = await fetch(SHARED_TRAINING_RESULTS_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ results: localResults }),
-    });
-    if (!response.ok) return playerId ? getTrainingResultsForPlayer(playerId) : localResults;
+    const response = playerId
+      ? await fetch(`${SHARED_TRAINING_RESULTS_API}?playerId=${encodeURIComponent(playerId)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-hesteng-player-id": playerId,
+          },
+          body: JSON.stringify({ playerId, results: localPlayerResults }),
+        })
+      : await fetch(SHARED_TRAINING_RESULTS_API);
+    if (!response.ok) return playerId ? localPlayerResults : localResults;
 
     const state = await response.json() as { results?: TrainingResult[] };
     const sharedResults = normalizeTrainingResults(Array.isArray(state.results) ? state.results : []);
-    writeLocalTrainingResults(sharedResults);
+    if (playerId) {
+      writePlayerTrainingResultsToCache(playerId, sharedResults);
+    } else {
+      writeLocalTrainingResults(sharedResults);
+    }
 
     return playerId ? sharedResults.filter((result) => result.playerId === playerId) : sharedResults;
   } catch {
-    return playerId ? getTrainingResultsForPlayer(playerId) : localResults;
+    return playerId ? localPlayerResults : localResults;
   }
 }
