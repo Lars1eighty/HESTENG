@@ -2,12 +2,4 @@
 > hesteng-web@0.1.0 dev
 > next dev --hostname 0.0.0.0 --port 3000
 
-▲ Next.js 16.2.12 (Turbopack)
-- Local:         http://localhost:3000
-- Network:       http://0.0.0.0:3000
-- Environments: .env.local, .env
-✓ Ready in 2.3s
-
- GET /traening 200 in 9.5s (next.js: 7.8s, application-code: 1672ms)
- GET /api/training-results?playerId=seed%3Alars-hesteng-jensen 200 in 10.1s (next.js: 7.4s, application-code: 2.8s)
-✓ Finished filesystem cache database compaction in 19.3s
+[?25h
