@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, ReactNode, useContext, useMemo } from "react";
+import { SessionProvider, useSession } from "next-auth/react";
+import type { Session } from "next-auth";
 
 import { DEMO_CLUB_ID } from "@/data/clubs";
 import { getPlayerRegistry } from "@/lib/playerRegistry";
@@ -31,6 +33,8 @@ const FALLBACK_DEMO_PLAYER: PlayerProfile = {
   type: "player",
 };
 const CurrentUserContext = createContext<CurrentUserContextType | undefined>(undefined);
+const CAN_USE_DEMO_USER =
+  process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_HESTENG_DEMO_USER === "true";
 
 function getDemoCurrentPlayer() {
   const registry = getPlayerRegistry(DEMO_CLUB_ID);
@@ -38,27 +42,72 @@ function getDemoCurrentPlayer() {
 }
 
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
-  const currentPlayer = getDemoCurrentPlayer();
-  const currentUser = useMemo<CurrentUser>(() => ({
-    id: "demo-user-lars-hesteng",
-    name: currentPlayer.name,
-    currentPlayerId: currentPlayer.id,
-    memberships: [
-      {
-        clubId: DEMO_CLUB_ID,
-        playerId: currentPlayer.id,
-        role: "admin",
-      },
-    ],
-  }), [currentPlayer.id, currentPlayer.name]);
+  return (
+    <SessionProvider>
+      <CurrentUserProviderInner>{children}</CurrentUserProviderInner>
+    </SessionProvider>
+  );
+}
 
-  const value = useMemo(() => ({
-    currentUser,
-    currentPlayer,
-    currentPlayerId: currentPlayer.id,
-  }), [currentPlayer, currentUser]);
+function CurrentUserProviderInner({ children }: { children: ReactNode }) {
+  const { data: session } = useSession();
+  const sessionPlayer = getSessionPlayer(session);
+  const demoPlayer = CAN_USE_DEMO_USER ? getDemoCurrentPlayer() : undefined;
+  const currentPlayer = sessionPlayer ?? demoPlayer;
+  let currentUser: CurrentUser | undefined;
+
+  if (session?.user?.id && sessionPlayer) {
+    currentUser = {
+      id: session.user.id,
+      name: session.user.name ?? sessionPlayer.name,
+      email: session.user.email ?? undefined,
+      currentPlayerId: sessionPlayer.id,
+      memberships: [],
+    };
+  } else if (demoPlayer) {
+    currentUser = {
+      id: "demo-user-lars-hesteng",
+      name: demoPlayer.name,
+      currentPlayerId: demoPlayer.id,
+      memberships: [
+        {
+          clubId: DEMO_CLUB_ID,
+          playerId: demoPlayer.id,
+          role: "admin",
+        },
+      ],
+    };
+  }
+
+  const value = useMemo(() => {
+    if (!currentPlayer || !currentUser) {
+      return undefined;
+    }
+
+    return {
+      currentUser,
+      currentPlayer,
+      currentPlayerId: currentPlayer.id,
+    };
+  }, [currentPlayer, currentUser]);
+
+  if (!value) {
+    return <>{children}</>;
+  }
 
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>;
+}
+
+function getSessionPlayer(session: Session | null): PlayerProfile | undefined {
+  if (!session?.user?.playerProfileId) {
+    return undefined;
+  }
+
+  return {
+    id: session.user.playerProfileId,
+    name: session.user.name ?? session.user.email ?? "HESTENG Player",
+    type: "player",
+  };
 }
 
 export function useCurrentUser() {
@@ -69,4 +118,8 @@ export function useCurrentUser() {
   }
 
   return context;
+}
+
+export function useOptionalCurrentUser() {
+  return useContext(CurrentUserContext);
 }

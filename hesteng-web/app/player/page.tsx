@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import Header from "@/components/Header";
-import { useCurrentUser } from "@/context/CurrentUserContext";
+import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import { trainingExercises } from "@/data/trainingExercises";
 import { calculateTrainingMonthlyStats } from "@/lib/trainingMonthlyStatsEngine";
 import {
@@ -42,7 +42,33 @@ function getLatestResult(results: TrainingResult[], exerciseId: string) {
 }
 
 export default function PlayerPage() {
-  const { currentPlayer, currentPlayerId } = useCurrentUser();
+  const currentUserContext = useOptionalCurrentUser();
+
+  if (!currentUserContext) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-white">
+        <Header />
+        <section className="mx-auto flex min-h-[70vh] max-w-3xl flex-col justify-center px-5 py-12 text-center sm:px-8">
+          <div className="text-xs font-black uppercase tracking-[0.22em] text-orange-400">Player</div>
+          <h1 className="mt-3 text-4xl font-black tracking-normal sm:text-5xl">Log ind for at åbne dit HESTENG</h1>
+          <p className="mt-4 text-lg text-gray-300">
+            Player-området er klar til rigtig session og PlayerProfile. Lokal development bruger fortsat demo-spiller.
+          </p>
+          <div className="mt-6">
+            <Link href="/login" className="inline-flex rounded-xl bg-orange-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-black transition hover:bg-orange-400">
+              Log ind
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return <PlayerPageContent currentUserContext={currentUserContext} />;
+}
+
+function PlayerPageContent({ currentUserContext }: { currentUserContext: NonNullable<ReturnType<typeof useOptionalCurrentUser>> }) {
+  const { currentPlayer, currentPlayerId } = currentUserContext;
   const [results, setResults] = useState<TrainingResult[]>([]);
   const month = useMemo(() => currentMonthKey(), []);
   const activeExercises = trainingExercises.filter((exercise) => exercise.isActive);

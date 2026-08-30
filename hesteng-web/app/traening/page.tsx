@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
 import { useClub } from "@/context/ClubContext";
-import { useCurrentUser } from "@/context/CurrentUserContext";
+import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import {
   AROUND_THE_WORLD_EXERCISE_ID,
   BOBS_27_EXERCISE_ID,
@@ -359,8 +359,29 @@ function parseTrainingHash(hash: string): { view: "dashboard" | "details" | "pla
 }
 
 export default function TrainingPage() {
+  const currentUserContext = useOptionalCurrentUser();
+
+  if (!currentUserContext) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-white">
+        <Header />
+        <section className="mx-auto flex min-h-[70vh] max-w-3xl flex-col justify-center px-5 py-12 text-center sm:px-8">
+          <div className="text-xs font-black uppercase tracking-[0.22em] text-orange-400">Min træning</div>
+          <h1 className="mt-3 text-4xl font-black tracking-normal sm:text-5xl">Log ind for at se din træning</h1>
+          <p className="mt-4 text-lg text-gray-300">
+            Træningshistorik er klar til server-side PlayerProfile. Lokal development bruger fortsat demo-spiller.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return <TrainingPageContent currentUserContext={currentUserContext} />;
+}
+
+function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNullable<ReturnType<typeof useOptionalCurrentUser>> }) {
   const { currentClubId, currentClub } = useClub();
-  const { currentPlayer, currentPlayerId } = useCurrentUser();
+  const { currentPlayer, currentPlayerId } = currentUserContext;
   const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId | null>(null);
   const activeExercise = activeExerciseId ? getTrainingExercise(activeExerciseId) : null;
   const [results, setResults] = useState<TrainingResult[]>([]);
