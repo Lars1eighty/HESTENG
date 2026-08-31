@@ -52,9 +52,9 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
 }
 
 function CurrentUserProviderInner({ children }: { children: ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const sessionPlayer = getSessionPlayer(session);
-  const demoPlayer = CAN_USE_DEMO_USER ? getDemoCurrentPlayer() : undefined;
+  const demoPlayer = status === "unauthenticated" && CAN_USE_DEMO_USER ? getDemoCurrentPlayer() : undefined;
   const currentPlayer = sessionPlayer ?? demoPlayer;
   let currentUser: CurrentUser | undefined;
 

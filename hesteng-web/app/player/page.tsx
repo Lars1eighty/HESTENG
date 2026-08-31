@@ -68,7 +68,9 @@ export default function PlayerPage() {
 }
 
 function PlayerPageContent({ currentUserContext }: { currentUserContext: NonNullable<ReturnType<typeof useOptionalCurrentUser>> }) {
-  const { currentPlayer, currentPlayerId } = currentUserContext;
+  const { currentPlayer, currentPlayerId, currentUser } = currentUserContext;
+  const primaryMembership = currentUser.memberships[0];
+  const isClubAdmin = primaryMembership?.role === "ADMIN";
   const [results, setResults] = useState<TrainingResult[]>([]);
   const month = useMemo(() => currentMonthKey(), []);
   const activeExercises = trainingExercises.filter((exercise) => exercise.isActive);
@@ -126,16 +128,24 @@ function PlayerPageContent({ currentUserContext }: { currentUserContext: NonNull
             <h1 className="mt-2 text-4xl font-black tracking-normal sm:text-5xl">
               Mit HESTENG
             </h1>
-            <p className="mt-3 max-w-2xl text-lg text-gray-300">
-              Træner som <span className="font-bold text-white">{currentPlayer.name}</span>. Herfra går du direkte til din egen træning, udvikling og historik.
+            <div className="mt-3">
+              <div className="text-2xl font-black text-white sm:text-3xl">{currentPlayer.name}</div>
+              <div className="mt-1 text-sm font-semibold uppercase tracking-[0.22em] text-gray-500">
+                {primaryMembership?.clubName ?? "Ingen klub tilknyttet"}
+              </div>
+            </div>
+            <p className="mt-4 max-w-2xl text-lg text-gray-300">
+              Herfra går du direkte til din egen træning, udvikling og historik.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/traening" className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-black transition hover:bg-orange-400">
                 Åbn Min træning
               </Link>
-              <Link href="/dashboard" className="rounded-xl border border-gray-700 px-5 py-3 text-sm font-black uppercase tracking-wide text-gray-300 transition hover:border-orange-500/70 hover:text-orange-300">
-                Gå til Club
-              </Link>
+              {isClubAdmin ? (
+                <Link href="/dashboard" className="rounded-xl border border-gray-700 px-5 py-3 text-sm font-black uppercase tracking-wide text-gray-300 transition hover:border-orange-500/70 hover:text-orange-300">
+                  Klubadministration
+                </Link>
+              ) : null}
             </div>
           </div>
 
