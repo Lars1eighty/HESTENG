@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 import { useState } from "react";
 
 export default function LoginPage() {
@@ -39,13 +40,13 @@ export default function LoginPage() {
         </div>
         <button
           type="button"
-          disabled
-          className="w-full rounded-xl bg-orange-500 px-5 py-4 font-black text-gray-950 opacity-60"
+          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+          className="w-full rounded-xl bg-orange-500 px-5 py-4 font-black text-gray-950 transition hover:bg-orange-400"
         >
-          Log ind
+          Log ind med Google
         </button>
         <p className="text-center text-xs leading-5 text-gray-500">
-          Login tilsluttes en rigtig auth-provider senere. &quot;Husk mig&quot; skal kobles på providerens sikre session/cookie, ikke localStorage.
+          &quot;Husk mig&quot; bruger auth-providerens sikre session/cookie og gemmer aldrig adgangskoden lokalt.
         </p>
       </form>
     </PublicAuthShell>

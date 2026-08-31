@@ -3,6 +3,7 @@
 import { createContext, ReactNode, useContext, useMemo } from "react";
 import { SessionProvider, useSession } from "next-auth/react";
 import type { Session } from "next-auth";
+import type { ClubMembershipRole } from "@prisma/client";
 
 import { DEMO_CLUB_ID } from "@/data/clubs";
 import { getPlayerRegistry } from "@/lib/playerRegistry";
@@ -15,8 +16,9 @@ export type CurrentUser = {
   currentPlayerId: string;
   memberships: {
     clubId: string;
-    playerId: string;
-    role: "member" | "admin";
+    clubName?: string;
+    playerId?: string;
+    role: ClubMembershipRole;
   }[];
 };
 
@@ -62,7 +64,7 @@ function CurrentUserProviderInner({ children }: { children: ReactNode }) {
       name: session.user.name ?? sessionPlayer.name,
       email: session.user.email ?? undefined,
       currentPlayerId: sessionPlayer.id,
-      memberships: [],
+      memberships: session.user.memberships ?? [],
     };
   } else if (demoPlayer) {
     currentUser = {
@@ -72,8 +74,9 @@ function CurrentUserProviderInner({ children }: { children: ReactNode }) {
       memberships: [
         {
           clubId: DEMO_CLUB_ID,
+          clubName: "Jyden Dartklub",
           playerId: demoPlayer.id,
-          role: "admin",
+          role: "ADMIN",
         },
       ],
     };

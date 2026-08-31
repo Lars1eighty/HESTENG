@@ -31,6 +31,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = user.id;
         session.user.playerProfileId = playerProfile.id;
         session.user.name = playerProfile.displayName;
+        session.user.memberships = await getUserClubMemberships(user.id);
       }
 
       return session;
@@ -111,4 +112,28 @@ function resolveMappedClubPlayer(name?: string | null) {
 
 function isSyntheticTrainingUser(userId: string) {
   return userId.startsWith("training-user-");
+}
+
+async function getUserClubMemberships(userId: string) {
+  const prisma = getPrisma();
+  const memberships = await prisma.clubMembership.findMany({
+    where: { userId },
+    include: {
+      club: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  return memberships.map((membership) => ({
+    clubId: membership.clubId,
+    clubName: membership.club.name,
+    role: membership.role,
+  }));
 }

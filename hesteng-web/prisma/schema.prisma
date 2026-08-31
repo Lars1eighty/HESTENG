@@ -15,8 +15,38 @@ model User {
   accounts      Account[]
   sessions      Session[]
   playerProfile PlayerProfile?
+  memberships   ClubMembership[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+}
+
+model Club {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  memberships ClubMembership[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ClubMembership {
+  id        String             @id @default(cuid())
+  userId    String
+  clubId    String
+  role      ClubMembershipRole
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubId])
+  @@index([clubId])
+}
+
+enum ClubMembershipRole {
+  MEMBER
+  ADMIN
 }
 
 model Account {
