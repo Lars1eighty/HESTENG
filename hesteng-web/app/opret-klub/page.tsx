@@ -1,11 +1,56 @@
+"use client";
+
 import Link from "next/link";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 
 export default function OpretKlubPage() {
+  const router = useRouter();
+  const { status } = useSession();
+  const [clubName, setClubName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isAuthenticated = status === "authenticated";
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = clubName.trim();
+
+    if (!name) {
+      setError("Klubnavn skal udfyldes.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    const response = await fetch("/api/clubs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setError(typeof body.error === "string" ? body.error : "Klubben kunne ikke oprettes.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
+  }
+
   return (
     <PublicAuthShell
       eyebrow="Opret klub"
       title="Start din klub på HESTENG"
-      description="Opret klub-flowet er klar til at blive koblet på organisation, admin-bruger og rigtig auth."
+      description={isAuthenticated
+        ? "Opret klubben og bliv automatisk administrator."
+        : "Log ind med Google for at oprette en klub."}
       footer={(
         <>
           Har du allerede adgang?{" "}
@@ -15,22 +60,38 @@ export default function OpretKlubPage() {
         </>
       )}
     >
-      <form className="space-y-4">
-        <Field label="Klubnavn" type="text" autoComplete="organization" />
-        <Field label="Administrator e-mail" type="email" autoComplete="email" />
-        <Field label="Adgangskode" type="password" autoComplete="new-password" />
-        <Field label="Bekræft adgangskode" type="password" autoComplete="new-password" />
-        <button
-          type="button"
-          disabled
-          className="w-full rounded-xl bg-orange-500 px-5 py-4 font-black text-gray-950 opacity-60"
-        >
-          Opret klub
-        </button>
-        <p className="text-center text-xs leading-5 text-gray-500">
-          Oprettelse kræver rigtig auth og database. Formularen gemmer ikke oplysninger endnu.
-        </p>
-      </form>
+      {isAuthenticated ? (
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <Field
+            label="Klubnavn"
+            type="text"
+            autoComplete="organization"
+            value={clubName}
+            onChange={setClubName}
+          />
+          {error ? <p className="text-sm font-semibold text-red-300">{error}</p> : null}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-orange-500 px-5 py-4 font-black text-gray-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmitting ? "Opretter..." : "Opret klub"}
+          </button>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => signIn("google", { callbackUrl: "/opret-klub" })}
+            className="w-full rounded-xl bg-orange-500 px-5 py-4 font-black text-gray-950 transition hover:bg-orange-400"
+          >
+            Log ind med Google
+          </button>
+          <p className="text-center text-xs leading-5 text-gray-500">
+            Klubben oprettes først efter login, så administratoren knyttes sikkert til din bruger.
+          </p>
+        </div>
+      )}
     </PublicAuthShell>
   );
 }
@@ -79,10 +140,14 @@ function Field({
   label,
   type,
   autoComplete,
+  value,
+  onChange,
 }: {
   label: string;
   type: string;
   autoComplete: string;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="block">
@@ -90,6 +155,8 @@ function Field({
       <input
         type={type}
         autoComplete={autoComplete}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         className="mt-2 w-full rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-white outline-none transition placeholder:text-gray-700 focus:border-orange-500"
       />
     </label>
