@@ -2,9 +2,6 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-import { DEMO_CLUB_ID } from "@/data/clubs";
-import { getPlayerRegistry } from "@/lib/playerRegistry";
-import { normalizeName } from "@/lib/playerIdentity";
 import { getPrisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
@@ -49,38 +46,12 @@ async function ensurePlayerProfileForUser(user: {
     where: { userId: user.userId },
   });
 
-  if (existingForUser) {
+  if (existingForUser && !isSeedPlayerProfile(existingForUser.id)) {
     return existingForUser;
   }
 
-  const mappedPlayer = resolveMappedClubPlayer(user.name);
-
-  if (mappedPlayer) {
-    const existingMappedProfile = await prisma.playerProfile.findUnique({
-      where: { id: mappedPlayer.id },
-    });
-
-    if (!existingMappedProfile) {
-      return prisma.playerProfile.create({
-        data: {
-          id: mappedPlayer.id,
-          userId: user.userId,
-          displayName: mappedPlayer.name,
-          primaryClubId: DEMO_CLUB_ID,
-        },
-      });
-    }
-
-    if (isSyntheticTrainingUser(existingMappedProfile.userId)) {
-      return prisma.playerProfile.update({
-        where: { id: mappedPlayer.id },
-        data: {
-          userId: user.userId,
-          displayName: mappedPlayer.name,
-          primaryClubId: existingMappedProfile.primaryClubId ?? DEMO_CLUB_ID,
-        },
-      });
-    }
+  if (existingForUser) {
+    return moveSeedProfileToDemoOwnerAndCreateAuthProfile(existingForUser, user);
   }
 
   return prisma.playerProfile.create({
@@ -92,26 +63,49 @@ async function ensurePlayerProfileForUser(user: {
   });
 }
 
-function resolveMappedClubPlayer(name?: string | null) {
-  const explicitPlayerId = process.env.HESTENG_AUTH_PLAYER_PROFILE_ID;
-  const registry = getPlayerRegistry(DEMO_CLUB_ID);
+async function moveSeedProfileToDemoOwnerAndCreateAuthProfile(
+  seedProfile: { id: string; displayName: string; primaryClubId: string | null },
+  user: { userId: string; name?: string | null; email?: string | null }
+) {
+  const prisma = getPrisma();
+  const demoUserId = `training-user-${seedProfile.id}`;
+  const authProfileId = `auth:${user.userId}`;
+  const displayName = user.name ?? user.email ?? "HESTENG Player";
 
-  if (explicitPlayerId) {
-    return registry.find((player) => player.id === explicitPlayerId) ?? null;
-  }
+  return prisma.$transaction(async (tx) => {
+    await tx.user.upsert({
+      where: { id: demoUserId },
+      create: {
+        id: demoUserId,
+        name: seedProfile.displayName,
+      },
+      update: {},
+    });
 
-  if (!name) {
-    return null;
-  }
+    await tx.playerProfile.update({
+      where: { id: seedProfile.id },
+      data: {
+        userId: demoUserId,
+      },
+    });
 
-  const normalizedName = normalizeName(name);
-  const matches = registry.filter((player) => normalizeName(player.name) === normalizedName);
-
-  return matches.length === 1 ? matches[0] : null;
+    return tx.playerProfile.upsert({
+      where: { id: authProfileId },
+      create: {
+        id: authProfileId,
+        userId: user.userId,
+        displayName,
+      },
+      update: {
+        userId: user.userId,
+        displayName,
+      },
+    });
+  });
 }
 
-function isSyntheticTrainingUser(userId: string) {
-  return userId.startsWith("training-user-");
+function isSeedPlayerProfile(playerProfileId: string) {
+  return playerProfileId.startsWith("seed:");
 }
 
 async function getUserClubMemberships(userId: string) {

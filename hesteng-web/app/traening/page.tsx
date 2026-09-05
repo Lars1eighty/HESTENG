@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 
 import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
-import { useClub } from "@/context/ClubContext";
 import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import {
   AROUND_THE_WORLD_EXERCISE_ID,
@@ -13,7 +12,6 @@ import {
   GAME_420_EXERCISE_ID,
   JDC_CHALLENGE_EXERCISE_ID,
   PRIESTLEY_TRIPLES_EXERCISE_ID,
-  RANDOM_TARGET_EXERCISE_ID,
   SCORING_EXERCISE_ID,
   TARGET_TRAINING_EXERCISE_ID,
   getTrainingExercise,
@@ -36,8 +34,7 @@ type ExerciseId =
   | typeof SCORING_EXERCISE_ID
   | typeof PRIESTLEY_TRIPLES_EXERCISE_ID
   | typeof AROUND_THE_WORLD_EXERCISE_ID
-  | typeof TARGET_TRAINING_EXERCISE_ID
-  | typeof RANDOM_TARGET_EXERCISE_ID;
+  | typeof TARGET_TRAINING_EXERCISE_ID;
 type JdcThrow = "single" | "double" | "triple" | "miss";
 type ScoringThrow = "single" | "double" | "triple" | "miss";
 type PriestleyThrow = "single" | "double" | "triple" | "miss";
@@ -54,13 +51,6 @@ type TargetTrainingDart = {
   dartNumber: number;
   round: number;
   targetHit: string | null;
-};
-type RandomTargetVariant = "SINGLES" | "DOUBLES" | "TRIPLES" | "MIXED";
-type RandomTargetDart = {
-  dartNumber: number;
-  round: number;
-  target: string;
-  hit: boolean;
 };
 type ScoringTarget = {
   variant: "T20" | "T19" | "BULL";
@@ -138,21 +128,6 @@ type TargetTrainingDetails = {
   targetSummary: TargetTrainingSummary[];
 };
 
-type RandomTargetSummary = {
-  target: string;
-  hits: number;
-  attempts: number;
-  hitPercent: number;
-};
-
-type RandomTargetDetails = {
-  variant: RandomTargetVariant;
-  rounds: number;
-  totalDarts: number;
-  darts: RandomTargetDart[];
-  targetSummary: RandomTargetSummary[];
-};
-
 const JDC_STEPS: JdcStep[] = [
   ...[10, 11, 12, 13, 14, 15].map((target) => ({
     phase: "shanghai" as const,
@@ -222,12 +197,6 @@ const TARGET_TRAINING_SEGMENTS: { id: TargetTrainingSegment; label: string }[] =
   { id: "D", label: "Double" },
   { id: "T", label: "Triple" },
   { id: "BULL", label: "Bull" },
-];
-const RANDOM_TARGET_VARIANTS: { id: RandomTargetVariant; label: string }[] = [
-  { id: "SINGLES", label: "Singles" },
-  { id: "DOUBLES", label: "Doubles" },
-  { id: "TRIPLES", label: "Triples" },
-  { id: "MIXED", label: "Blandet" },
 ];
 
 function AroundTheWorldGameplay({
@@ -336,7 +305,6 @@ function isPlayableExerciseId(exerciseId: string): exerciseId is ExerciseId {
     PRIESTLEY_TRIPLES_EXERCISE_ID,
     AROUND_THE_WORLD_EXERCISE_ID,
     TARGET_TRAINING_EXERCISE_ID,
-    RANDOM_TARGET_EXERCISE_ID,
   ].includes(exerciseId);
 }
 
@@ -380,8 +348,9 @@ export default function TrainingPage() {
 }
 
 function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNullable<ReturnType<typeof useOptionalCurrentUser>> }) {
-  const { currentClubId, currentClub } = useClub();
-  const { currentPlayer, currentPlayerId } = currentUserContext;
+  const { currentPlayer, currentPlayerId, currentUser } = currentUserContext;
+  const trainingClubId = currentUser.memberships[0]?.clubId;
+  const trainingClubName = currentUser.memberships[0]?.clubName;
   const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId | null>(null);
   const activeExercise = activeExerciseId ? getTrainingExercise(activeExerciseId) : null;
   const [results, setResults] = useState<TrainingResult[]>([]);
@@ -401,11 +370,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   const [targetTrainingSegment, setTargetTrainingSegment] = useState<TargetTrainingSegment>("T");
   const [targetTrainingStarted, setTargetTrainingStarted] = useState(false);
   const [targetTrainingDarts, setTargetTrainingDarts] = useState<TargetTrainingDart[]>([]);
-  const [randomTargetVariant, setRandomTargetVariant] = useState<RandomTargetVariant | null>(null);
-  const [randomTargetRounds, setRandomTargetRounds] = useState(20);
-  const [randomTargetStarted, setRandomTargetStarted] = useState(false);
-  const [randomTargetGeneratedTargets, setRandomTargetGeneratedTargets] = useState<TargetTrainingTarget[]>([]);
-  const [randomTargetDarts, setRandomTargetDarts] = useState<RandomTargetDart[]>([]);
   const [showDetails, setShowDetails] = useState(false);
   const [pendingBackTargetHash, setPendingBackTargetHash] = useState<string | null>(null);
 
@@ -415,8 +379,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
       ? aroundTheWorldVariant ?? undefined
       : activeExerciseId === TARGET_TRAINING_EXERCISE_ID
         ? targetTrainingTargets.length > 0 ? buildTargetTrainingVariant(targetTrainingTargets, targetTrainingRounds) : undefined
-        : activeExerciseId === RANDOM_TARGET_EXERCISE_ID
-          ? randomTargetVariant ? buildRandomTargetVariant(randomTargetVariant, randomTargetRounds) : undefined
       : undefined;
   const selectedPlayerResults = results.filter((result) => (
     result.playerId === currentPlayerId &&
@@ -450,7 +412,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   const priestleyState = calculatePriestleyState(priestleyThrows);
   const aroundTheWorldState = calculateAroundTheWorldState(aroundTheWorldInputs, aroundTheWorldVariant);
   const targetTrainingState = calculateTargetTrainingState(targetTrainingTargets, targetTrainingRounds, targetTrainingDarts);
-  const randomTargetState = calculateRandomTargetState(randomTargetGeneratedTargets, randomTargetRounds, randomTargetDarts);
   const hasActiveTrainingInput = !lastSavedResult && (
     jdcThrows.length > 0 ||
     catch40Results.length > 0 ||
@@ -459,8 +420,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     scoringThrows.length > 0 ||
     priestleyThrows.length > 0 ||
     aroundTheWorldInputs.length > 0 ||
-    targetTrainingDarts.length > 0 ||
-    randomTargetDarts.length > 0
+    targetTrainingDarts.length > 0
   );
   const currentTrainingHash = lastSavedResult && activeExerciseId
     ? getTrainingHash("result", activeExerciseId)
@@ -499,8 +459,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     setAroundTheWorldInputs([]);
     setTargetTrainingDarts([]);
     setTargetTrainingStarted(false);
-    setRandomTargetDarts([]);
-    setRandomTargetStarted(false);
   }
 
   function resetExerciseSessionState(exerciseId: ExerciseId) {
@@ -515,11 +473,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
       setTargetTrainingTargets([]);
       setTargetTrainingRounds(20);
       setTargetTrainingSegment("T");
-    }
-    if (exerciseId !== RANDOM_TARGET_EXERCISE_ID) {
-      setRandomTargetVariant(null);
-      setRandomTargetRounds(20);
-      setRandomTargetGeneratedTargets([]);
     }
   }
 
@@ -631,9 +584,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     setTargetTrainingTargets([]);
     setTargetTrainingRounds(20);
     setTargetTrainingSegment("T");
-    setRandomTargetVariant(null);
-    setRandomTargetRounds(20);
-    setRandomTargetGeneratedTargets([]);
     pushTrainingHash(getTrainingHash("dashboard"));
     refreshResults();
   }
@@ -641,7 +591,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   function buildTrainingResult(exerciseId: ExerciseId, metrics: TrainingResult["metrics"], details?: TrainingResult["details"]) {
     return {
       id: `training-${exerciseId}-${currentPlayerId}-${Date.now()}`,
-      clubId: currentClubId,
+      clubId: trainingClubId,
       playerId: currentPlayerId,
       exerciseId,
       variant: exerciseId === SCORING_EXERCISE_ID
@@ -650,8 +600,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
           ? aroundTheWorldVariant ?? undefined
           : exerciseId === TARGET_TRAINING_EXERCISE_ID
             ? buildTargetTrainingVariant(targetTrainingTargets, targetTrainingRounds)
-            : exerciseId === RANDOM_TARGET_EXERCISE_ID
-              ? randomTargetVariant ? buildRandomTargetVariant(randomTargetVariant, randomTargetRounds) : undefined
           : undefined,
       completedAt: new Date().toISOString(),
       metrics,
@@ -762,10 +710,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     if (activeExerciseId === TARGET_TRAINING_EXERCISE_ID) {
       setTargetTrainingDarts((items) => items.slice(0, -1));
     }
-
-    if (activeExerciseId === RANDOM_TARGET_EXERCISE_ID) {
-      setRandomTargetDarts((items) => items.slice(0, -1));
-    }
   }
 
   function handleAbort() {
@@ -774,7 +718,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
       return;
     }
 
-    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length && !game420Results.length && !scoringThrows.length && !priestleyThrows.length && !aroundTheWorldInputs.length && !targetTrainingDarts.length && !randomTargetDarts.length) return;
+    if (!jdcThrows.length && !catch40Results.length && !bobs27Results.length && !game420Results.length && !scoringThrows.length && !priestleyThrows.length && !aroundTheWorldInputs.length && !targetTrainingDarts.length) return;
     const confirmed = window.confirm("Afbryd træningen? Resultatet gemmes ikke.");
     if (!confirmed) return;
     setJdcThrows([]);
@@ -786,8 +730,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     setAroundTheWorldInputs([]);
     setTargetTrainingDarts([]);
     setTargetTrainingStarted(false);
-    setRandomTargetDarts([]);
-    setRandomTargetStarted(false);
     setShowDetails(false);
   }
 
@@ -953,66 +895,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     }
   }
 
-  function handleRandomTargetVariantSelect(variant: RandomTargetVariant) {
-    if (lastSavedResult || randomTargetStarted || randomTargetDarts.length > 0) return;
-    setRandomTargetVariant(variant);
-  }
-
-  function handleRandomTargetRoundsChange(rounds: number) {
-    if (lastSavedResult || randomTargetStarted) return;
-    setRandomTargetRounds(Math.max(1, Math.min(99, rounds)));
-  }
-
-  function handleRandomTargetStart() {
-    if (!randomTargetVariant || lastSavedResult) return;
-    const generatedTargets = generateRandomTargets(randomTargetVariant, randomTargetRounds * 3);
-    setRandomTargetGeneratedTargets(generatedTargets);
-    setRandomTargetStarted(true);
-  }
-
-  function handleRandomTargetInput(hit: boolean) {
-    if (!randomTargetStarted || lastSavedResult || randomTargetState.isComplete) return;
-    const target = randomTargetGeneratedTargets[randomTargetDarts.length];
-    if (!target) return;
-
-    const nextAttempt = randomTargetDarts.length + 1;
-    const nextDarts = [
-      ...randomTargetDarts,
-      {
-        dartNumber: nextAttempt,
-        round: Math.ceil(nextAttempt / 3),
-        target: target.label,
-        hit,
-      },
-    ];
-    setRandomTargetDarts(nextDarts);
-
-    const nextState = calculateRandomTargetState(randomTargetGeneratedTargets, randomTargetRounds, nextDarts);
-    if (nextState.isComplete && randomTargetVariant) {
-      saveFinishedResult(buildTrainingResult(
-        RANDOM_TARGET_EXERCISE_ID,
-        {
-          hitPercent: nextState.hitPercent,
-          hits: nextState.hits,
-          attempts: nextState.attempts,
-          misses: nextState.misses,
-          singleHits: nextState.singleHits,
-          doubleHits: nextState.doubleHits,
-          tripleHits: nextState.tripleHits,
-          bullHits: nextState.bullHits,
-        },
-        {
-          variant: randomTargetVariant,
-          rounds: randomTargetRounds,
-          totalDarts: nextState.totalDarts,
-          generatedTargets: randomTargetGeneratedTargets.map((item) => item.label),
-          darts: nextDarts,
-          targetSummary: nextState.targetSummary,
-        }
-      ));
-    }
-  }
-
   function handleDashboardDetailsToggle(exerciseId: string) {
     const nextExerciseId = selectedDashboardExerciseId === exerciseId ? null : exerciseId;
     setSelectedDashboardExerciseId(nextExerciseId);
@@ -1110,7 +992,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
             {activeExercise?.name ?? "Træning"}
           </h1>
           <p className={`${activeExerciseId === null ? "mt-2" : "mt-1 hidden sm:block"} text-base text-gray-400`}>
-            {currentClub.name} · træner som {currentPlayer.name}
+            {trainingClubName ? `${trainingClubName} · træner som ${currentPlayer.name}` : `Træner som ${currentPlayer.name}`}
           </p>
         </div>
 
@@ -1123,7 +1005,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
             onStartExercise={handleExerciseChange}
           />
         ) : (
-          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-gray-800 bg-gray-900 p-1 sm:mb-5 sm:grid-cols-3 lg:grid-cols-9 sm:gap-2 sm:p-2">
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-gray-800 bg-gray-900 p-1 sm:mb-5 sm:grid-cols-3 lg:grid-cols-8 sm:gap-2 sm:p-2">
             <ExerciseTab
               active={activeExerciseId === JDC_CHALLENGE_EXERCISE_ID}
               title="JDC Challenge"
@@ -1171,12 +1053,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
               title="Target Training"
               description="1-3 targets"
               onClick={() => handleExerciseChange(TARGET_TRAINING_EXERCISE_ID)}
-            />
-            <ExerciseTab
-              active={activeExerciseId === RANDOM_TARGET_EXERCISE_ID}
-              title="Random Target"
-              description="Tilfældige targets"
-              onClick={() => handleExerciseChange(RANDOM_TARGET_EXERCISE_ID)}
             />
           </div>
         )}
@@ -1275,20 +1151,6 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
             onUndo={handleUndo}
             onAbort={handleAbort}
           />
-        ) : activeExerciseId === RANDOM_TARGET_EXERCISE_ID ? (
-          <RandomTargetGameplay
-            variant={randomTargetVariant}
-            rounds={randomTargetRounds}
-            started={randomTargetStarted}
-            state={randomTargetState}
-            hitPercentPersonalBest={hitPercentPersonalBest}
-            onSelectVariant={handleRandomTargetVariantSelect}
-            onSetRounds={handleRandomTargetRoundsChange}
-            onStart={handleRandomTargetStart}
-            onInput={handleRandomTargetInput}
-            onUndo={handleUndo}
-            onAbort={handleAbort}
-          />
         ) : (
           <Bobs27Gameplay
             state={bobs27State}
@@ -1346,6 +1208,7 @@ function TrainingDashboard({
 }) {
   const exercises = trainingExercises.filter((exercise) => exercise.isActive && isPlayableExerciseId(exercise.id));
   const exerciseSummaries = exercises.map((exercise) => buildExerciseSummary(exercise, results, currentPlayerId));
+  const recommendation = buildTrainingRecommendation(exerciseSummaries);
   const totalThisMonth = exerciseSummaries.reduce((sum, summary) => sum + summary.monthly.completedCount, 0);
   const improving = exerciseSummaries.filter((summary) => (summary.primaryStats?.changeFromPreviousAverage ?? 0) > 0).length;
   const declining = exerciseSummaries.filter((summary) => (summary.primaryStats?.changeFromPreviousAverage ?? 0) < 0).length;
@@ -1355,6 +1218,11 @@ function TrainingDashboard({
 
   return (
     <div className="grid gap-4 sm:gap-5">
+      <RecommendedTrainingCard
+        recommendation={recommendation}
+        onStartExercise={onStartExercise}
+      />
+
       <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -1389,6 +1257,114 @@ function TrainingDashboard({
         ))}
       </section>
     </div>
+  );
+}
+
+type TrainingRecommendation = {
+  exerciseId: ExerciseId;
+  exerciseName: string;
+  reason: string;
+  reasonDetail: string;
+};
+
+const STAGNATION_AVERAGE_TOLERANCE = 1;
+
+function buildTrainingRecommendation(summaries: ReturnType<typeof buildExerciseSummary>[]): TrainingRecommendation {
+  const fallbackExercise = summaries.find((summary) => summary.exercise.id === JDC_CHALLENGE_EXERCISE_ID) ?? summaries[0];
+  const comparableSummaries = summaries.filter((summary) => (
+    typeof summary.primaryStats?.currentAverage === "number" &&
+    typeof summary.primaryStats?.previousAverage === "number" &&
+    typeof summary.primaryStats?.changeFromPreviousAverage === "number"
+  ));
+
+  const decline = comparableSummaries
+    .filter((summary) => (summary.primaryStats?.changeFromPreviousAverage ?? 0) < 0)
+    .sort((a, b) => (
+      (a.primaryStats?.changeFromPreviousAverage ?? 0) - (b.primaryStats?.changeFromPreviousAverage ?? 0)
+    ))[0];
+
+  if (decline && isPlayableExerciseId(decline.exercise.id)) {
+    const metricLabel = decline.primaryStats?.label.toLowerCase() ?? "gennemsnittet";
+    return {
+      exerciseId: decline.exercise.id,
+      exerciseName: decline.exercise.name,
+      reason: "Dit gennemsnit er faldet siden sidste måned.",
+      reasonDetail: `Størst tilbagegang er i ${metricLabel}: ${formatChange(decline.primaryStats?.changeFromPreviousAverage ?? null)}.`,
+    };
+  }
+
+  // Stagnation v1: an average movement within 1 metric unit counts as effectively flat.
+  const stagnant = comparableSummaries
+    .filter((summary) => (
+      summary.results.length >= 2 &&
+      Math.abs(summary.primaryStats?.changeFromPreviousAverage ?? Infinity) <= STAGNATION_AVERAGE_TOLERANCE
+    ))
+    .sort((a, b) => (
+      b.results.length - a.results.length ||
+      Math.abs(a.primaryStats?.changeFromPreviousAverage ?? Infinity) - Math.abs(b.primaryStats?.changeFromPreviousAverage ?? Infinity) ||
+      a.exercise.name.localeCompare(b.exercise.name, "da")
+    ))[0];
+
+  if (stagnant && isPlayableExerciseId(stagnant.exercise.id)) {
+    return {
+      exerciseId: stagnant.exercise.id,
+      exerciseName: stagnant.exercise.name,
+      reason: "Dit gennemsnit ligger næsten stille.",
+      reasonDetail: `Ændringen er inden for ${STAGNATION_AVERAGE_TOLERANCE} point/enhed siden sidste måned.`,
+    };
+  }
+
+  const leastTrained = summaries
+    .filter((summary) => summary.results.length > 0)
+    .sort((a, b) => (
+      a.results.length - b.results.length ||
+      a.exercise.name.localeCompare(b.exercise.name, "da")
+    ))[0];
+
+  if (leastTrained && isPlayableExerciseId(leastTrained.exercise.id)) {
+    return {
+      exerciseId: leastTrained.exercise.id,
+      exerciseName: leastTrained.exercise.name,
+      reason: "Det er den øvelse, du har mindst data på.",
+      reasonDetail: "Flere runder giver et bedre billede af dit niveau.",
+    };
+  }
+
+  return {
+    exerciseId: fallbackExercise && isPlayableExerciseId(fallbackExercise.exercise.id)
+      ? fallbackExercise.exercise.id
+      : JDC_CHALLENGE_EXERCISE_ID,
+    exerciseName: fallbackExercise?.exercise.name ?? "JDC Challenge",
+    reason: "Byg dit udgangspunkt",
+    reasonDetail: "Start med en basisøvelse, så HESTENG kan følge din udvikling.",
+  };
+}
+
+function RecommendedTrainingCard({
+  recommendation,
+  onStartExercise,
+}: {
+  recommendation: TrainingRecommendation;
+  onStartExercise: (exerciseId: ExerciseId) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="text-xs font-black uppercase tracking-[0.22em] text-orange-300">Anbefalet træning</div>
+          <h2 className="mt-1 truncate text-2xl font-black text-white sm:text-3xl">{recommendation.exerciseName}</h2>
+          <p className="mt-2 text-sm font-bold text-gray-200">{recommendation.reason}</p>
+          <p className="mt-1 text-sm font-semibold text-gray-400">{recommendation.reasonDetail}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onStartExercise(recommendation.exerciseId)}
+          className="min-h-11 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-gray-950 transition hover:bg-orange-400 sm:shrink-0"
+        >
+          Start træning
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -1430,7 +1406,7 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
 }
 
 function getSummaryVariant(exerciseId: string, results: TrainingResult[], currentPlayerId: string) {
-  if (exerciseId !== SCORING_EXERCISE_ID && exerciseId !== AROUND_THE_WORLD_EXERCISE_ID && exerciseId !== TARGET_TRAINING_EXERCISE_ID && exerciseId !== RANDOM_TARGET_EXERCISE_ID) return undefined;
+  if (exerciseId !== SCORING_EXERCISE_ID && exerciseId !== AROUND_THE_WORLD_EXERCISE_ID && exerciseId !== TARGET_TRAINING_EXERCISE_ID) return undefined;
   const latestVariantResult = results
     .filter((result) => result.playerId === currentPlayerId && result.exerciseId === exerciseId && result.variant)
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
@@ -1439,7 +1415,7 @@ function getSummaryVariant(exerciseId: string, results: TrainingResult[], curren
   if (exerciseId === SCORING_EXERCISE_ID) return SCORING_TARGETS[0].variant;
   if (exerciseId === AROUND_THE_WORLD_EXERCISE_ID) return AROUND_THE_WORLD_VARIANTS[0].id;
   if (exerciseId === TARGET_TRAINING_EXERCISE_ID) return "__target-training-unconfigured__";
-  return "__random-target-unconfigured__";
+  return undefined;
 }
 
 function getPrimaryMetric(exercise: TrainingExercise) {
@@ -1679,10 +1655,6 @@ function getSecondaryMetrics(result: TrainingResult) {
     return `${formatTargetTrainingVariant(result.variant, result)} · Hits ${numericMetric(result, "hits") ?? "-"}/${numericMetric(result, "attempts") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
   }
 
-  if (result.exerciseId === RANDOM_TARGET_EXERCISE_ID) {
-    return `${formatRandomTargetVariant(result.variant)} · Hits ${numericMetric(result, "hits") ?? "-"}/${numericMetric(result, "attempts") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
-  }
-
   return `Hits ${numericMetric(result, "hits") ?? "-"} · Træf ${numericMetric(result, "hitPercent") ?? "-"}%`;
 }
 
@@ -1735,47 +1707,6 @@ function formatTargetTrainingVariant(variant: string | undefined, result?: Train
   if (!variant) return "Setup";
   const [targets, roundPart] = variant.split("|");
   return `${targets.replaceAll("-", " · ")}${roundPart ? ` · ${roundPart}` : ""}`;
-}
-
-function buildRandomTargetVariant(variant: RandomTargetVariant, rounds: number) {
-  return `${variant}|${rounds}R`;
-}
-
-function formatRandomTargetVariant(variant: string | undefined) {
-  if (!variant) return "Variant";
-  const [variantId, rounds] = variant.split("|");
-  const label = RANDOM_TARGET_VARIANTS.find((item) => item.id === variantId)?.label ?? variantId;
-  return `${label}${rounds ? ` · ${rounds}` : ""}`;
-}
-
-function getRandomTargetPool(variant: RandomTargetVariant) {
-  if (variant === "SINGLES") {
-    return Array.from({ length: 20 }, (_, index) => makeTargetTrainingTarget("S", index + 1));
-  }
-
-  if (variant === "DOUBLES") {
-    return [
-      ...Array.from({ length: 20 }, (_, index) => makeTargetTrainingTarget("D", index + 1)),
-      makeTargetTrainingTarget("BULL", 50),
-    ];
-  }
-
-  if (variant === "TRIPLES") {
-    return Array.from({ length: 20 }, (_, index) => makeTargetTrainingTarget("T", index + 1));
-  }
-
-  return [
-    ...Array.from({ length: 20 }, (_, index) => makeTargetTrainingTarget("S", index + 1)),
-    ...Array.from({ length: 20 }, (_, index) => makeTargetTrainingTarget("D", index + 1)),
-    ...Array.from({ length: 20 }, (_, index) => makeTargetTrainingTarget("T", index + 1)),
-    makeTargetTrainingTarget("BULL", 25),
-    makeTargetTrainingTarget("BULL", 50),
-  ];
-}
-
-function generateRandomTargets(variant: RandomTargetVariant, totalDarts: number) {
-  const pool = getRandomTargetPool(variant);
-  return Array.from({ length: totalDarts }, () => pool[Math.floor(Math.random() * pool.length)]);
 }
 
 function calculateJdcState(throws: JdcThrow[]) {
@@ -1945,21 +1876,24 @@ function calculatePriestleyState(throws: PriestleyThrow[]) {
   const doubles = limitedThrows.filter((value) => value === "double").length;
   const triples = limitedThrows.filter((value) => value === "triple").length;
   const attempts = limitedThrows.length;
-  const hits = triples;
-  const misses = attempts - triples;
+  const misses = limitedThrows.filter((value) => value === "miss").length;
+  const hits = attempts - misses;
+  const score = singles + doubles * 2 + triples * 3;
   const details = PRIESTLEY_TARGETS.map((target, index) => {
     const targetThrows = limitedThrows.slice(index * PRIESTLEY_DARTS_PER_TARGET, (index + 1) * PRIESTLEY_DARTS_PER_TARGET);
+    const targetSingles = targetThrows.filter((value) => value === "single").length;
+    const targetDoubles = targetThrows.filter((value) => value === "double").length;
     const targetTriples = targetThrows.filter((value) => value === "triple").length;
 
     return {
       target: target.target,
       value: target.value,
-      singles: targetThrows.filter((value) => value === "single").length,
-      doubles: targetThrows.filter((value) => value === "double").length,
+      singles: targetSingles,
+      doubles: targetDoubles,
       triples: targetTriples,
-      misses: targetThrows.length - targetTriples,
+      misses: targetThrows.filter((value) => value === "miss").length,
       attempts: targetThrows.length,
-      scoreChange: targetTriples,
+      scoreChange: targetSingles + targetDoubles * 2 + targetTriples * 3,
     };
   });
   const completedTargets = Math.floor(attempts / PRIESTLEY_DARTS_PER_TARGET);
@@ -1967,7 +1901,7 @@ function calculatePriestleyState(throws: PriestleyThrow[]) {
   const currentDart = attempts % PRIESTLEY_DARTS_PER_TARGET + 1;
 
   return {
-    score: triples,
+    score,
     singles,
     doubles,
     triples,
@@ -2062,53 +1996,6 @@ function calculateTargetTrainingState(targets: TargetTrainingTarget[], rounds: n
     misses: attempts - hits,
     hitPercent: percentOneDecimal(hits, attempts),
     dartsRemaining: totalDarts - attempts,
-    isComplete: attempts >= totalDarts,
-  };
-}
-
-function calculateRandomTargetState(generatedTargets: TargetTrainingTarget[], rounds: number, darts: RandomTargetDart[]) {
-  const totalDarts = rounds * 3;
-  const limitedDarts = darts.slice(0, totalDarts);
-  const hits = limitedDarts.filter((dart) => dart.hit).length;
-  const attempts = limitedDarts.length;
-  const targetSummary = generatedTargets
-    .slice(0, totalDarts)
-    .reduce<Record<string, RandomTargetSummary>>((summary, target, index) => {
-      const dart = limitedDarts[index];
-      const existing = summary[target.label] ?? {
-        target: target.label,
-        hits: 0,
-        attempts: 0,
-        hitPercent: 0,
-      };
-
-      existing.attempts += 1;
-      existing.hits += dart?.hit ? 1 : 0;
-      existing.hitPercent = percentOneDecimal(existing.hits, existing.attempts);
-      summary[target.label] = existing;
-      return summary;
-    }, {});
-  const hitTargets = limitedDarts
-    .filter((dart) => dart.hit)
-    .map((dart) => generatedTargets[dart.dartNumber - 1])
-    .filter((target): target is TargetTrainingTarget => Boolean(target));
-
-  return {
-    rounds,
-    totalDarts,
-    currentRound: Math.min(rounds, Math.floor(attempts / 3) + 1),
-    currentDartInRound: attempts % 3 + 1,
-    currentTarget: generatedTargets[attempts] ?? null,
-    hits,
-    attempts,
-    misses: attempts - hits,
-    hitPercent: percentOneDecimal(hits, attempts),
-    singleHits: hitTargets.filter((target) => target.segment === "S").length,
-    doubleHits: hitTargets.filter((target) => target.segment === "D").length,
-    tripleHits: hitTargets.filter((target) => target.segment === "T").length,
-    bullHits: hitTargets.filter((target) => target.id === "OB" || target.id === "BULL").length,
-    dartsRemaining: totalDarts - attempts,
-    targetSummary: Object.values(targetSummary),
     isComplete: attempts >= totalDarts,
   };
 }
@@ -2210,49 +2097,6 @@ function getTargetTrainingDetails(result: TrainingResult): TargetTrainingDetails
 
   return {
     selectedTargets,
-    rounds,
-    totalDarts,
-    darts,
-    targetSummary,
-  };
-}
-
-function getRandomTargetDetails(result: TrainingResult): RandomTargetDetails {
-  const variantValue = typeof result.details?.variant === "string" ? result.details.variant : result.variant?.split("|")[0];
-  const variant: RandomTargetVariant = variantValue === "SINGLES" || variantValue === "DOUBLES" || variantValue === "TRIPLES" || variantValue === "MIXED"
-    ? variantValue
-    : "MIXED";
-  const rounds = typeof result.details?.rounds === "number" ? result.details.rounds : 0;
-  const totalDarts = typeof result.details?.totalDarts === "number" ? result.details.totalDarts : numericMetric(result, "attempts") ?? 0;
-  const rawDarts = Array.isArray(result.details?.darts) ? result.details.darts : [];
-  const darts = rawDarts.filter((dart): dart is RandomTargetDart => (
-    typeof dart === "object" &&
-    dart !== null &&
-    "dartNumber" in dart &&
-    "round" in dart &&
-    "target" in dart &&
-    "hit" in dart &&
-    typeof dart.dartNumber === "number" &&
-    typeof dart.round === "number" &&
-    typeof dart.target === "string" &&
-    typeof dart.hit === "boolean"
-  ));
-  const rawSummary = Array.isArray(result.details?.targetSummary) ? result.details.targetSummary : [];
-  const targetSummary = rawSummary.filter((target): target is RandomTargetSummary => (
-    typeof target === "object" &&
-    target !== null &&
-    "target" in target &&
-    "hits" in target &&
-    "attempts" in target &&
-    "hitPercent" in target &&
-    typeof target.target === "string" &&
-    typeof target.hits === "number" &&
-    typeof target.attempts === "number" &&
-    typeof target.hitPercent === "number"
-  ));
-
-  return {
-    variant,
     rounds,
     totalDarts,
     darts,
@@ -2939,150 +2783,6 @@ function TargetTrainingGameplay({
   );
 }
 
-function RandomTargetGameplay({
-  variant,
-  rounds,
-  started,
-  state,
-  hitPercentPersonalBest,
-  onSelectVariant,
-  onSetRounds,
-  onStart,
-  onInput,
-  onUndo,
-  onAbort,
-}: {
-  variant: RandomTargetVariant | null;
-  rounds: number;
-  started: boolean;
-  state: ReturnType<typeof calculateRandomTargetState>;
-  hitPercentPersonalBest: number | null;
-  onSelectVariant: (variant: RandomTargetVariant) => void;
-  onSetRounds: (rounds: number) => void;
-  onStart: () => void;
-  onInput: (hit: boolean) => void;
-  onUndo: () => void;
-  onAbort: () => void;
-}) {
-  if (!started) {
-    return (
-      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-        <div className="text-xs font-black uppercase tracking-[0.24em] text-orange-400">Random Target</div>
-        <h2 className="mt-2 text-3xl font-black">Vælg variant</h2>
-        <p className="mt-1 text-sm font-semibold text-gray-500">Tilfældigt target pr. pil · 3 pile pr. runde · variant adskilles i statistik</p>
-
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="rounded-2xl border border-gray-800 bg-gray-950 p-3 sm:p-4">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {RANDOM_TARGET_VARIANTS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => onSelectVariant(option.id)}
-                  className={`min-h-20 rounded-2xl px-3 py-4 text-xl font-black transition sm:min-h-28 sm:text-3xl ${
-                    variant === option.id
-                      ? "bg-orange-500 text-gray-950"
-                      : "border border-gray-800 bg-gray-900 text-white hover:border-orange-500 hover:text-orange-300"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <aside className="rounded-2xl border border-gray-800 bg-gray-950 p-3 sm:p-4">
-            <div className="text-xs font-black uppercase tracking-wide text-gray-500">Runder</div>
-            <div className="mt-2 grid grid-cols-5 gap-1">
-              {TARGET_TRAINING_ROUND_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => onSetRounds(option)}
-                  className={`rounded-lg px-2 py-2 text-sm font-black transition ${
-                    rounds === option
-                      ? "bg-orange-500 text-gray-950"
-                      : "border border-gray-800 bg-gray-900 text-gray-300 hover:border-orange-500"
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => onSetRounds(rounds - 1)}
-                className="rounded-xl border border-gray-800 px-3 py-3 font-black text-gray-300 transition hover:border-orange-500"
-              >
-                -1
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetRounds(rounds + 1)}
-                className="rounded-xl border border-gray-800 px-3 py-3 font-black text-gray-300 transition hover:border-orange-500"
-              >
-                +1
-              </button>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <CompactStat label="Pile" value={rounds * 3} />
-              <CompactStat label="Variant" value={variant ? buildRandomTargetVariant(variant, rounds) : "-"} />
-            </div>
-
-            <button
-              type="button"
-              disabled={!variant}
-              onClick={onStart}
-              className="mt-4 min-h-14 w-full rounded-2xl bg-orange-500 px-5 py-4 text-lg font-black text-gray-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Start Random Target
-            </button>
-          </aside>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <GameplayShell
-      eyebrow={`Random Target - ${variant ? RANDOM_TARGET_VARIANTS.find((item) => item.id === variant)?.label ?? variant : "Variant"}`}
-      target={state.currentTarget?.label ?? "Færdig"}
-      meta={`Runde ${state.currentRound}/${rounds} · pil ${state.attempts}/${state.totalDarts}`}
-      stats={[
-        { label: "Hits", value: `${state.hits}/${state.attempts}` },
-        { label: "Træf %", value: `${state.hitPercent}%` },
-        { label: "Misses", value: state.misses },
-        { label: "PR træf %", value: hitPercentPersonalBest !== null ? `${hitPercentPersonalBest}%` : "-" },
-      ]}
-      onUndo={onUndo}
-      onAbort={onAbort}
-      canUndo={state.attempts > 0}
-    >
-      <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 sm:grid-cols-4 xl:px-4">
-        <CompactStat label="Variant" value={variant ? RANDOM_TARGET_VARIANTS.find((item) => item.id === variant)?.label ?? variant : "-"} />
-        <CompactStat label="Runde" value={`${state.currentRound}/${rounds}`} />
-        <CompactStat label="Pil i runde" value={`${Math.min(state.currentDartInRound, 3)}/3`} />
-        <CompactStat label="Tilbage" value={state.dartsRemaining} />
-      </div>
-      {variant === "MIXED" ? (
-        <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-gray-800 bg-gray-950 px-3 py-3 sm:grid-cols-4 xl:px-4">
-          <CompactStat label="Singles" value={state.singleHits} />
-          <CompactStat label="Doubles" value={state.doubleHits} />
-          <CompactStat label="Triples" value={state.tripleHits} />
-          <CompactStat label="Bull" value={state.bullHits} />
-        </div>
-      ) : null}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
-        <TouchButton label="HIT" tone="green" onClick={() => onInput(true)} />
-        <TouchButton label="MISS" tone="red" onClick={() => onInput(false)} />
-      </div>
-    </GameplayShell>
-  );
-}
-
 function ResultScreen({
   result,
   exercise,
@@ -3126,17 +2826,13 @@ function ResultScreen({
   const isPriestley = result.exerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID;
   const isAroundTheWorld = result.exerciseId === AROUND_THE_WORLD_EXERCISE_ID;
   const isTargetTraining = result.exerciseId === TARGET_TRAINING_EXERCISE_ID;
-  const isRandomTarget = result.exerciseId === RANDOM_TARGET_EXERCISE_ID;
   const resultTitle = isScoring && result.variant
     ? `${exercise?.name ?? "Scoring"} - ${result.variant}`
     : isAroundTheWorld
       ? `${exercise?.name ?? "Around the World"} - ${formatAroundTheWorldVariant(result.variant)}`
       : isTargetTraining
         ? `${exercise?.name ?? "Target Training"} - ${formatTargetTrainingVariant(result.variant, result)}`
-        : isRandomTarget
-          ? `${exercise?.name ?? "Random Target"} - ${formatRandomTargetVariant(result.variant)}`
     : exercise?.name ?? "Træning";
-  const isMixedRandomTarget = isRandomTarget && result.variant?.startsWith("MIXED|");
 
   return (
     <div className="grid gap-4 sm:gap-5">
@@ -3145,10 +2841,10 @@ function ResultScreen({
         <h2 className="mt-1 text-3xl font-black">{resultTitle}</h2>
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
           <StatTile
-            label={isAroundTheWorld ? "Pile brugt" : isTargetTraining || isRandomTarget ? "Træf %" : "Score"}
+            label={isAroundTheWorld ? "Pile brugt" : isTargetTraining ? "Træf %" : "Score"}
             value={isAroundTheWorld
               ? numericMetric(result, "dartsUsed") ?? "-"
-              : isTargetTraining || isRandomTarget
+              : isTargetTraining
                 ? `${numericMetric(result, "hitPercent") ?? 0}%`
                 : numericMetric(result, "score") ?? "-"}
           />
@@ -3200,20 +2896,6 @@ function ResultScreen({
               <StatTile label="Misses" value={(numericMetric(result, "attempts") ?? 0) - (numericMetric(result, "hits") ?? 0)} />
               <StatTile label="Setup" value={formatTargetTrainingVariant(result.variant, result)} />
             </>
-          ) : isRandomTarget ? (
-            <>
-              <StatTile label="Hits / forsøg" value={`${numericMetric(result, "hits") ?? 0}/${numericMetric(result, "attempts") ?? 0}`} />
-              <StatTile label="Misses" value={numericMetric(result, "misses") ?? 0} />
-              <StatTile label="Variant" value={formatRandomTargetVariant(result.variant)} />
-              {isMixedRandomTarget ? (
-                <>
-                  <StatTile label="Singles" value={numericMetric(result, "singleHits") ?? 0} />
-                  <StatTile label="Doubles" value={numericMetric(result, "doubleHits") ?? 0} />
-                  <StatTile label="Triples" value={numericMetric(result, "tripleHits") ?? 0} />
-                  <StatTile label="Bull" value={numericMetric(result, "bullHits") ?? 0} />
-                </>
-              ) : null}
-            </>
           ) : null}
         </div>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
@@ -3231,7 +2913,7 @@ function ResultScreen({
           >
             Tilbage til træning
           </button>
-          {(isCatch40 || isBobs27 || isGame420 || isScoring || isPriestley || isAroundTheWorld || isTargetTraining || isRandomTarget) ? (
+          {(isCatch40 || isBobs27 || isGame420 || isScoring || isPriestley || isAroundTheWorld || isTargetTraining) ? (
             <button
               type="button"
               onClick={onToggleDetails}
@@ -3245,8 +2927,8 @@ function ResultScreen({
 
       <MonthlyStatsPanel
         monthlyStats={monthlyStats}
-        scoreStats={isTargetTraining || isRandomTarget ? hitPercentStats : scoreStats}
-        primaryLabel={isTargetTraining || isRandomTarget ? "Træf %" : "Score"}
+        scoreStats={isTargetTraining ? hitPercentStats : scoreStats}
+        primaryLabel={isTargetTraining ? "Træf %" : "Score"}
         extraStats={
           isJdc
             ? [
@@ -3310,7 +2992,6 @@ function ResultScreen({
       {showDetails && isPriestley ? <PriestleyDetailsTable details={getPriestleyDetails(result)} /> : null}
       {showDetails && isAroundTheWorld ? <AroundTheWorldDetailsTable details={getAroundTheWorldDetails(result)} /> : null}
       {showDetails && isTargetTraining ? <TargetTrainingDetailsTable details={getTargetTrainingDetails(result)} /> : null}
-      {showDetails && isRandomTarget ? <RandomTargetDetailsTable details={getRandomTargetDetails(result)} /> : null}
     </div>
   );
 }
@@ -3508,54 +3189,6 @@ function TargetTrainingDetailsTable({ details }: { details: TargetTrainingDetail
             </div>
           );
         })}
-      </div>
-    </section>
-  );
-}
-
-function RandomTargetDetailsTable({ details }: { details: RandomTargetDetails }) {
-  return (
-    <section className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h3 className="text-lg font-black">Random Target detaljer</h3>
-          <p className="mt-1 text-sm font-semibold text-gray-500">
-            {RANDOM_TARGET_VARIANTS.find((item) => item.id === details.variant)?.label ?? details.variant} · {details.rounds} runder · {details.totalDarts} pile
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:w-72">
-          <CompactStat label="Targets" value={details.targetSummary.length} />
-          <CompactStat label="Pile" value={details.totalDarts} />
-        </div>
-      </div>
-
-      <div className="mt-4 overflow-hidden rounded-xl border border-gray-800">
-        <TableHeader columns={["Target", "Hits", "Forsøg", "Træf %"]} />
-        {details.targetSummary.map((target) => (
-          <div key={target.target} className="grid grid-cols-4 border-t border-gray-800 px-3 py-3 text-sm font-bold sm:px-4">
-            <div>{target.target}</div>
-            <div>{target.hits}</div>
-            <div>{target.attempts}</div>
-            <div>{target.hitPercent}%</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 grid grid-cols-6 gap-1 sm:grid-cols-10 md:grid-cols-12">
-        {details.darts.map((dart) => (
-          <div
-            key={dart.dartNumber}
-            className={`rounded-lg border px-1 py-2 text-center text-xs font-black sm:text-sm ${
-              dart.hit
-                ? "border-emerald-900 bg-emerald-950/40 text-emerald-300"
-                : "border-red-900 bg-red-950/40 text-red-300"
-            }`}
-            title={`Pil ${dart.dartNumber}: ${dart.target} ${dart.hit ? "HIT" : "MISS"}`}
-          >
-            <div className="text-[0.6rem] text-gray-500">{dart.dartNumber}</div>
-            {dart.target}
-          </div>
-        ))}
       </div>
     </section>
   );
