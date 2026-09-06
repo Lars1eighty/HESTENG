@@ -99,6 +99,15 @@ export default function PublicHomePage() {
             </div>
           </div>
         </div>
+
+        <footer className="flex flex-wrap items-center justify-center gap-4 border-t border-gray-900 py-5 text-sm font-semibold text-gray-600 sm:justify-start">
+          <Link href="/privatliv" className="transition hover:text-orange-300">
+            Privatliv
+          </Link>
+          <Link href="/vilkaar" className="transition hover:text-orange-300">
+            Vilkår
+          </Link>
+        </footer>
       </section>
     </main>
   );

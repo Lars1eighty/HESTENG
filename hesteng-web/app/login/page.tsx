@@ -86,6 +86,14 @@ function PublicAuthShell({
             <p className="mt-3 text-sm leading-6 text-gray-400">{description}</p>
             <div className="mt-7">{children}</div>
             <div className="mt-6 border-t border-gray-800 pt-5 text-center text-sm text-gray-500">{footer}</div>
+            <div className="mt-4 flex justify-center gap-4 text-xs font-semibold text-gray-600">
+              <Link href="/privatliv" className="transition hover:text-orange-300">
+                Privatliv
+              </Link>
+              <Link href="/vilkaar" className="transition hover:text-orange-300">
+                Vilkår
+              </Link>
+            </div>
           </div>
         </div>
       </section>
