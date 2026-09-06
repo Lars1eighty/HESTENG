@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import { useClub } from "@/context/ClubContext";
+import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import { calculateRankings, type RankingRow } from "@/lib/rankingEngine";
 
 type RankingKey = "elo" | "oneEighties" | "highestCheckouts" | "fastestLegs" | "clubNightPoints";
@@ -48,9 +50,54 @@ const rankingGroups: RankingGroup[] = [
 
 export default function RanglisterPage() {
   const [activeGroupKey, setActiveGroupKey] = useState<RankingGroupKey>("club");
-  const { currentClubId, currentClub } = useClub();
-  const rankings = calculateRankings(undefined, currentClubId);
+  const { status } = useSession();
+  const currentUserContext = useOptionalCurrentUser();
+  const { currentClubId: demoClubId, currentClub: demoClub } = useClub();
+  const membership = currentUserContext?.currentUser.memberships[0];
+  const isDemoUser = currentUserContext?.currentUser.id.startsWith("demo-user-") ?? false;
+  const isAuthenticatedWithoutClub = status === "authenticated" && !membership;
+  const currentClubId = membership?.clubId ?? (isDemoUser ? demoClubId : null);
+  const currentClubName = membership?.clubName ?? (isDemoUser ? demoClub.name : "Ingen klub tilknyttet");
   const activeGroup = rankingGroups.find((group) => group.key === activeGroupKey) ?? rankingGroups[0];
+
+  if (status === "loading" || !currentUserContext) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-white">
+        <Header />
+        <section className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+          <BackButton />
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 text-center text-gray-400">
+            Henter ranglister...
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (isAuthenticatedWithoutClub || !currentClubId) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-white">
+        <Header />
+        <section className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+          <BackButton />
+
+          <div className="mb-4">
+            <h1 className="text-3xl font-black sm:text-4xl">Ranglister</h1>
+            <p className="mt-2 text-base text-gray-400">Ingen klub tilknyttet</p>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-gray-800 bg-gray-900 p-6 text-center sm:p-8">
+            <h2 className="text-2xl font-black">Ingen klub tilknyttet</h2>
+            <p className="mt-2 text-sm font-semibold text-gray-400">
+              Du skal være medlem af en klub for at se en klubrangliste.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  const rankings = calculateRankings(undefined, currentClubId);
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -60,7 +107,7 @@ export default function RanglisterPage() {
 
         <div className="mb-4">
           <h1 className="text-3xl font-black sm:text-4xl">Ranglister</h1>
-          <p className="mt-2 text-base text-gray-400">{currentClub.name} · aktuelle ranglister</p>
+          <p className="mt-2 text-base text-gray-400">{currentClubName} · aktuelle ranglister</p>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2 rounded-xl border border-gray-800 bg-gray-900 p-1.5">
