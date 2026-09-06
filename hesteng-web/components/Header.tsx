@@ -21,6 +21,14 @@ export default function Header() {
             Club
           </Link>
         </nav>
+        <nav className="hidden items-center gap-3 text-xs font-semibold text-gray-600 sm:flex">
+          <Link href="/privatliv" className="transition hover:text-orange-300">
+            Privatliv
+          </Link>
+          <Link href="/vilkaar" className="transition hover:text-orange-300">
+            Vilkår
+          </Link>
+        </nav>
         <div className="hidden text-gray-300 sm:block">
           👤 Lars
         </div>
