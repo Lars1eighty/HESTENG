@@ -56,8 +56,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function ensurePlayerProfile(playerId: string) {
-  const userId = `training-user-${playerId}`;
   const prisma = getPrisma();
+  const existingProfile = await prisma.playerProfile.findUnique({
+    where: { id: playerId },
+    select: { id: true },
+  });
+
+  if (existingProfile) return;
+
+  const userId = `training-user-${playerId}`;
 
   await prisma.user.upsert({
     where: { id: userId },
