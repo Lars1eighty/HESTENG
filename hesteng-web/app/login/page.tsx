@@ -73,7 +73,7 @@ export default function LoginPage() {
             />
             Husk mig
           </label>
-          <Link href="#" className="text-sm font-semibold text-gray-500 hover:text-orange-300">
+          <Link href="/glemt-adgangskode" className="text-sm font-semibold text-gray-500 hover:text-orange-300">
             Glemt adgangskode?
           </Link>
         </div>
