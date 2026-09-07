@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 
 export default function Header() {
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
+
   return (
     <header className="flex items-center justify-between border-b border-gray-800 px-8 py-6">
       <Link href="/">
@@ -32,6 +38,15 @@ export default function Header() {
         <div className="hidden text-gray-300 sm:block">
           👤 Lars
         </div>
+        {isAuthenticated ? (
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="rounded-full border border-gray-800 px-3 py-1.5 text-xs font-bold text-gray-400 transition hover:border-orange-500 hover:text-orange-300"
+          >
+            Log ud
+          </button>
+        ) : null}
       </div>
     </header>
   );
