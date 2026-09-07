@@ -23,10 +23,19 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           email: true,
+          emailVerified: true,
         },
       },
     },
   });
+
+  if (
+    verificationToken?.usedAt &&
+    verificationToken.user.email?.toLowerCase() === verificationToken.email.toLowerCase() &&
+    verificationToken.user.emailVerified
+  ) {
+    return NextResponse.json({ message: "Din e-mail er bekræftet." });
+  }
 
   if (
     !verificationToken ||
