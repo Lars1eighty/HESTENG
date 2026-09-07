@@ -2,10 +2,45 @@
 
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [rememberMe, setRememberMe] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !password) {
+      setError("E-mail eller adgangskode er forkert.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    const result = await signIn("credentials", {
+      email: normalizedEmail,
+      password,
+      redirect: false,
+      callbackUrl: "/dashboard",
+    });
+
+    if (result?.ok) {
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    setError("E-mail eller adgangskode er forkert.");
+    setIsSubmitting(false);
+  }
 
   return (
     <PublicAuthShell
@@ -25,9 +60,9 @@ export default function LoginPage() {
         </>
       )}
     >
-      <form className="space-y-4">
-        <Field label="E-mail" type="email" autoComplete="email" />
-        <Field label="Adgangskode" type="password" autoComplete="current-password" />
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <Field label="E-mail" type="email" autoComplete="email" value={email} onChange={setEmail} />
+        <Field label="Adgangskode" type="password" autoComplete="current-password" value={password} onChange={setPassword} />
         <div className="flex items-center justify-between gap-4">
           <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-400">
             <input
@@ -42,6 +77,14 @@ export default function LoginPage() {
             Glemt adgangskode?
           </Link>
         </div>
+        {error ? <p className="text-sm font-semibold text-red-300">{error}</p> : null}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full rounded-xl bg-gray-100 px-5 py-4 font-black text-gray-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isSubmitting ? "Logger ind..." : "Log ind"}
+        </button>
         <button
           type="button"
           onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
@@ -109,10 +152,14 @@ function Field({
   label,
   type,
   autoComplete,
+  value,
+  onChange,
 }: {
   label: string;
   type: string;
   autoComplete: string;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="block">
@@ -120,6 +167,8 @@ function Field({
       <input
         type={type}
         autoComplete={autoComplete}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         className="mt-2 w-full rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-white outline-none transition placeholder:text-gray-700 focus:border-orange-500"
       />
     </label>

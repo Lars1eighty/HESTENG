@@ -1,8 +1,10 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
 import { getPrisma } from "@/lib/prisma";
+import { verifyPassword } from "@/lib/passwordUtils";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(getPrisma()),
@@ -11,23 +13,79 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
     }),
+    CredentialsProvider({
+      name: "E-mail og adgangskode",
+      credentials: {
+        email: { label: "E-mail", type: "email" },
+        password: { label: "Adgangskode", type: "password" },
+      },
+      async authorize(credentials) {
+        const email = credentials?.email?.trim().toLowerCase() ?? "";
+        const password = credentials?.password ?? "";
+
+        if (!email || !password) return null;
+
+        const prisma = getPrisma();
+        const user = await prisma.user.findUnique({
+          where: { email },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            passwordHash: true,
+            emailVerified: true,
+          },
+        });
+
+        if (!user?.passwordHash || !user.emailVerified) return null;
+
+        const isValidPassword = await verifyPassword(password, user.passwordHash);
+        if (!isValidPassword) return null;
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        };
+      },
+    }),
   ],
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async session({ session, user }) {
-      if (session.user && user?.id) {
+    async jwt({ token, user }) {
+      if (user?.id) {
+        token.sub = user.id;
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      const userId = token.sub;
+      if (session.user && userId) {
+        const user = await getPrisma().user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        });
+
+        if (!user) return session;
+
         const playerProfile = await ensurePlayerProfileForUser({
           userId: user.id,
-          name: session.user.name ?? user.name,
-          email: session.user.email ?? user.email,
+          name: user.name,
+          email: user.email,
         });
 
         session.user.id = user.id;
         session.user.playerProfileId = playerProfile.id;
         session.user.name = playerProfile.displayName;
+        session.user.email = user.email;
         session.user.memberships = await getUserClubMemberships(user.id);
       }
 
