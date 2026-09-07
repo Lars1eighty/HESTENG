@@ -62,11 +62,25 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ account, profile }) {
       if (account?.provider === "google") {
+        const existingAccount = await getPrisma().account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+            },
+          },
+          select: {
+            userId: true,
+          },
+        });
+
         console.log("Google sign-in diagnostic", {
           provider: account.provider,
           providerAccountId: account.providerAccountId,
           email: typeof profile?.email === "string" ? profile.email : undefined,
           sub: typeof profile?.sub === "string" ? profile.sub : undefined,
+          accountFound: Boolean(existingAccount),
+          userId: existingAccount?.userId ?? null,
         });
       }
 
