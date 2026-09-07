@@ -18,6 +18,10 @@ export default function LoginPage() {
           <Link href="/opret-klub" className="font-bold text-orange-400 hover:text-orange-300">
             Opret klub
           </Link>
+          <span className="mx-2 text-gray-700">·</span>
+          <Link href="/opret-konto" className="font-bold text-orange-400 hover:text-orange-300">
+            Opret konto
+          </Link>
         </>
       )}
     >
