@@ -60,6 +60,18 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   callbacks: {
+    async signIn({ account, profile }) {
+      if (account?.provider === "google") {
+        console.log("Google sign-in diagnostic", {
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+          email: typeof profile?.email === "string" ? profile.email : undefined,
+          sub: typeof profile?.sub === "string" ? profile.sub : undefined,
+        });
+      }
+
+      return true;
+    },
     async jwt({ token, user }) {
       if (user?.id) {
         token.sub = user.id;
