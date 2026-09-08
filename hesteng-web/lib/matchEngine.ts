@@ -12,7 +12,9 @@ export type ClubMatch = {
   order: number;
   scheduleSlot: number;
   player1: string;
+  player1Id?: string;
   player2: string;
+  player2Id?: string;
   board: number;
   boardType: "normal" | "handicap";
   requiresAccessibleBoardForMatch: boolean;
@@ -43,7 +45,9 @@ type PendingClubMatch = {
   round: number;
   sequence: number;
   player1: string;
+  player1Id?: string;
   player2: string;
+  player2Id?: string;
   requiresAccessibleBoardForMatch: boolean;
   durationEstimate: MatchDurationEstimate;
 };
@@ -86,7 +90,19 @@ function getAccessiblePlayerNames(clubId?: string): Set<string> {
   );
 }
 
-function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>, bestOfLegs: number, clubId?: string): PendingClubMatch[] {
+function getPlayerIdsByName(clubId?: string): Map<string, string> {
+  return new Map(
+    getPlayerRegistry(clubId).map((player) => [normalizeName(player.name), player.id])
+  );
+}
+
+function createPendingMatches(
+  pools: Pool[],
+  accessiblePlayerNames: Set<string>,
+  playerIdsByName: Map<string, string>,
+  bestOfLegs: number,
+  clubId?: string
+): PendingClubMatch[] {
   const pending: PendingClubMatch[] = [];
   let sequence = 1;
 
@@ -103,7 +119,9 @@ function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>,
           round: roundIndex + 1,
           sequence: sequence++,
           player1,
+          player1Id: playerIdsByName.get(player1Key),
           player2,
+          player2Id: playerIdsByName.get(player2Key),
           requiresAccessibleBoardForMatch: accessiblePlayerNames.has(player1Key) || accessiblePlayerNames.has(player2Key),
           durationEstimate,
         });
@@ -216,7 +234,8 @@ export function createClubNightMatches(
   if (!Number.isInteger(bestOfLegs) || bestOfLegs < 1 || bestOfLegs % 2 === 0) throw new Error("Antal legs skal være et positivt ulige tal");
 
   const accessiblePlayerNames = getAccessiblePlayerNames(clubId);
-  const pendingMatches = createPendingMatches(pools, accessiblePlayerNames, bestOfLegs, clubId);
+  const playerIdsByName = getPlayerIdsByName(clubId);
+  const pendingMatches = createPendingMatches(pools, accessiblePlayerNames, playerIdsByName, bestOfLegs, clubId);
   const scheduledMatches = schedulePendingMatches(pendingMatches, boardCount, handicapBoards, accessiblePlayerNames);
 
   return scheduledMatches.map((match) => ({
@@ -228,7 +247,9 @@ export function createClubNightMatches(
     order: match.order,
     scheduleSlot: match.scheduleSlot,
     player1: match.player1,
+    player1Id: match.player1Id,
     player2: match.player2,
+    player2Id: match.player2Id,
     board: match.board,
     boardType: getBoardType(match.board, handicapBoards),
     requiresAccessibleBoardForMatch: match.requiresAccessibleBoardForMatch,
