@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, ReactNode, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
-import { clubs, DEMO_CLUB_ID, type Club } from "@/data/clubs";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { clubs as demoClubs, DEMO_CLUB_ID, type Club } from "@/data/clubs";
+import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 
 type ClubContextType = {
   clubs: Club[];
@@ -11,53 +12,59 @@ type ClubContextType = {
 };
 
 const STORAGE_KEY = "hesteng.currentClubId";
-const STORAGE_CHANGE_EVENT = "hesteng.currentClubChanged";
 const ClubContext = createContext<ClubContextType | undefined>(undefined);
 
-function isKnownClub(clubId: string | null) {
-  return !!clubId && clubs.some((club) => club.id === clubId);
-}
-
-function getStoredClubId() {
-  if (typeof window === "undefined") return DEMO_CLUB_ID;
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  return isKnownClub(stored) ? stored! : DEMO_CLUB_ID;
-}
-
-function subscribeToClub(callback: () => void) {
-  if (typeof window === "undefined") return () => undefined;
-
-  function handleStorage(event: StorageEvent) {
-    if (event.key === STORAGE_KEY) callback();
-  }
-
-  window.addEventListener("storage", handleStorage);
-  window.addEventListener(STORAGE_CHANGE_EVENT, callback);
-  return () => {
-    window.removeEventListener("storage", handleStorage);
-    window.removeEventListener(STORAGE_CHANGE_EVENT, callback);
-  };
-}
-
-function saveClubId(clubId: string) {
-  if (typeof window === "undefined" || !isKnownClub(clubId)) return;
-  window.localStorage.setItem(STORAGE_KEY, clubId);
-  window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
+function slugifyClubName(name: string) {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "klub";
 }
 
 export function ClubProvider({ children }: { children: ReactNode }) {
-  const currentClubId = useSyncExternalStore(subscribeToClub, getStoredClubId, () => DEMO_CLUB_ID);
+  const currentUserContext = useOptionalCurrentUser();
+  const currentUser = currentUserContext?.currentUser;
+  const authenticatedClubs = useMemo<Club[]>(() => (
+    currentUser?.memberships.map((membership) => ({
+      id: membership.clubId,
+      name: membership.clubName ?? "Klub",
+      slug: slugifyClubName(membership.clubName ?? membership.clubId),
+      createdAt: "",
+    })) ?? []
+  ), [currentUser]);
+  const availableClubs = authenticatedClubs.length > 0 ? authenticatedClubs : demoClubs;
+  const [selectedClubId, setSelectedClubId] = useState(DEMO_CLUB_ID);
+
+  useEffect(() => {
+    const storedClubId = window.localStorage.getItem(STORAGE_KEY);
+    const storedClubExists = availableClubs.some((club) => club.id === storedClubId);
+
+    if (storedClubExists && storedClubId) {
+      setSelectedClubId(storedClubId);
+      return;
+    }
+
+    setSelectedClubId(availableClubs[0]?.id ?? DEMO_CLUB_ID);
+  }, [availableClubs]);
+
   const currentClub = useMemo(
-    () => clubs.find((club) => club.id === currentClubId) ?? clubs[0],
-    [currentClubId]
+    () => availableClubs.find((club) => club.id === selectedClubId) ?? availableClubs[0] ?? demoClubs[0],
+    [availableClubs, selectedClubId]
   );
-  const setCurrentClubId = useCallback((clubId: string) => saveClubId(clubId), []);
+
+  const setCurrentClubId = useCallback((clubId: string) => {
+    setSelectedClubId(clubId);
+    window.localStorage.setItem(STORAGE_KEY, clubId);
+  }, []);
+
   const value = useMemo(() => ({
-    clubs,
+    clubs: availableClubs,
     currentClubId: currentClub.id,
     currentClub,
     setCurrentClubId,
-  }), [currentClub, setCurrentClubId]);
+  }), [availableClubs, currentClub, setCurrentClubId]);
 
   return <ClubContext.Provider value={value}>{children}</ClubContext.Provider>;
 }
