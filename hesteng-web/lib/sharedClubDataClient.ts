@@ -3,7 +3,12 @@
 import { getEloStateForSync, replaceEloStateFromSharedState } from "@/lib/eloRatingEngine";
 import { getLiveActiveSnapshotsForSync, replaceLiveActiveSnapshotsFromSharedState } from "@/lib/liveActiveEngine";
 import { getPlayerAliasStateForSync, replacePlayerAliasesFromSharedState } from "@/lib/playerAliasStore";
-import { getPlayerBoardNeedsStateForSync, replacePlayerBoardNeedsFromSharedState } from "@/lib/playerRegistry";
+import {
+  getCustomPlayersStateForSync,
+  getPlayerBoardNeedsStateForSync,
+  replaceCustomPlayersFromSharedState,
+  replacePlayerBoardNeedsFromSharedState,
+} from "@/lib/playerRegistry";
 import {
   hasSharedClubData,
   mergeSharedClubData,
@@ -36,6 +41,7 @@ function collectLocalSharedClubData(): SharedClubDataState {
     liveActiveSnapshots: getLiveActiveSnapshotsForSync(),
     playerBoardNeeds: getPlayerBoardNeedsStateForSync(),
     playerAliases: getPlayerAliasStateForSync(),
+    customPlayers: getCustomPlayersStateForSync(),
   });
 }
 
@@ -47,6 +53,7 @@ function replaceLocalSharedClubData(state: SharedClubDataState) {
   replaceLiveActiveSnapshotsFromSharedState(state.liveActiveSnapshots);
   replacePlayerBoardNeedsFromSharedState(state.playerBoardNeeds);
   replacePlayerAliasesFromSharedState(state.playerAliases);
+  replaceCustomPlayersFromSharedState(state.customPlayers);
 }
 
 async function postSharedClubData(state: SharedClubDataState, mode: "merge" | "replace" = "merge") {
