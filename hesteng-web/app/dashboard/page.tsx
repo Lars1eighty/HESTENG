@@ -7,7 +7,7 @@ import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import { dashboardCards } from "@/data/dashboard";
 
 export default function DashboardPage() {
-  const { currentClubId, currentClub } = useClub();
+  const { clubs, currentClubId, currentClub, setCurrentClubId } = useClub();
   const currentUserContext = useOptionalCurrentUser();
   const currentUser = currentUserContext?.currentUser;
   const currentMembership = currentUser?.memberships.find((membership) => membership.clubId === currentClubId);
@@ -25,13 +25,32 @@ export default function DashboardPage() {
       <Header />
 
       <section className="mx-auto max-w-7xl p-10">
-        <div className="mb-8">
-          <h2 className="text-4xl font-bold">
-            {currentUser?.name ?? "HESTENG"}
-          </h2>
-          <p className="mt-2 text-sm font-semibold uppercase tracking-[0.24em] text-gray-500">
-            {currentMembership?.clubName ?? (currentUser?.memberships.length ? currentClub.name : "Ingen klub tilknyttet")}
-          </p>
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-4xl font-bold">
+              {currentUser?.name ?? "HESTENG"}
+            </h2>
+            <p className="mt-2 text-sm font-semibold uppercase tracking-[0.24em] text-gray-500">
+              {currentMembership?.clubName ?? (currentUser?.memberships.length ? currentClub.name : "Ingen klub tilknyttet")}
+            </p>
+          </div>
+
+          {clubs.length > 1 ? (
+            <label className="text-sm font-semibold text-gray-400">
+              <span className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-gray-500">Vælg klub</span>
+              <select
+                value={currentClubId}
+                onChange={(event) => setCurrentClubId(event.target.value)}
+                className="min-w-56 rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm font-bold text-white outline-none focus:border-orange-500"
+              >
+                {clubs.map((club) => (
+                  <option key={club.id} value={club.id}>
+                    {club.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
