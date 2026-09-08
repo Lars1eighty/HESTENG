@@ -18,14 +18,14 @@ export default function RootLayout({
   return (
     <html lang="da">
       <body>
-        <ClubProvider>
-          <CurrentUserProvider>
+        <CurrentUserProvider>
+          <ClubProvider>
             <KlubaftenProvider>
               <ClubNightServerBootstrap />
               {children}
             </KlubaftenProvider>
-          </CurrentUserProvider>
-        </ClubProvider>
+          </ClubProvider>
+        </CurrentUserProvider>
       </body>
     </html>
   );
