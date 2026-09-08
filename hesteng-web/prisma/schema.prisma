@@ -30,8 +30,22 @@ model Club {
   boardCount      Int?
   handicapBoards  Int[]            @default([])
   memberships     ClubMembership[]
+  players         ClubPlayer[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+}
+
+model ClubPlayer {
+  id        String   @id @default(cuid())
+  clubId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, name])
+  @@index([clubId])
 }
 
 model ClubMembership {
@@ -64,9 +78,9 @@ model Account {
   access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
