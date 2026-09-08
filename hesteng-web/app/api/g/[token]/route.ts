@@ -10,7 +10,13 @@ type RouteContext = {
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { token } = await context.params;
-  const record = await findPublicClubNightByToken(token);
+  const publicToken = token.trim();
+
+  if (!publicToken) {
+    return NextResponse.json({ error: "Gæsteadgang mangler." }, { status: 400 });
+  }
+
+  const record = await findPublicClubNightByToken(publicToken);
 
   if (!record) {
     return NextResponse.json({ error: "Turneringen blev ikke fundet." }, { status: 404 });
