@@ -31,3 +31,23 @@ export async function findPublicClubNightById(clubNightId: string) {
 
   return rows[0] ?? null;
 }
+
+export async function findPublicClubNightByToken(publicToken: string) {
+  const rows = await getPrisma().$queryRaw<PublicClubNightRecord[]>`
+    SELECT
+      "id",
+      "clubNightId",
+      "clubId",
+      "publicToken",
+      "status",
+      "clubNight",
+      "completedMatches",
+      "createdAt",
+      "updatedAt"
+    FROM "PublicClubNight"
+    WHERE "publicToken" = ${publicToken}
+    LIMIT 1
+  `;
+
+  return rows[0] ?? null;
+}
