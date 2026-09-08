@@ -41,7 +41,7 @@ export default function NyKlubaftenPage() {
         const configuredBoardCount = Number.isInteger(body.club?.boardCount)
           ? Number(body.club.boardCount)
           : null;
-        const configuredHandicapBoards = Array.isArray(body.club?.handicapBoards)
+        const configuredHandicapBoards: number[] = Array.isArray(body.club?.handicapBoards)
           ? body.club.handicapBoards.filter((board: unknown): board is number => Number.isInteger(board))
           : [];
 
