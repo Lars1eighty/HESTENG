@@ -2,14 +2,16 @@
 
 import DashboardCard from "@/components/DashboardCard";
 import Header from "@/components/Header";
+import { useClub } from "@/context/ClubContext";
 import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import { dashboardCards } from "@/data/dashboard";
 
 export default function DashboardPage() {
+  const { currentClubId, currentClub } = useClub();
   const currentUserContext = useOptionalCurrentUser();
   const currentUser = currentUserContext?.currentUser;
-  const primaryMembership = currentUser?.memberships[0];
-  const isAdmin = primaryMembership?.role === "ADMIN";
+  const currentMembership = currentUser?.memberships.find((membership) => membership.clubId === currentClubId);
+  const isAdmin = currentMembership?.role === "ADMIN";
   const visibleCards = dashboardCards.filter((card) => {
     if (card.label === "KLUBAFTEN" || card.label === "SPILLERE") {
       return isAdmin;
@@ -28,7 +30,7 @@ export default function DashboardPage() {
             {currentUser?.name ?? "HESTENG"}
           </h2>
           <p className="mt-2 text-sm font-semibold uppercase tracking-[0.24em] text-gray-500">
-            {primaryMembership?.clubName ?? "Ingen klub tilknyttet"}
+            {currentMembership?.clubName ?? (currentUser?.memberships.length ? currentClub.name : "Ingen klub tilknyttet")}
           </p>
         </div>
 
