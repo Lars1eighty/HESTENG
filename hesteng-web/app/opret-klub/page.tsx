@@ -11,9 +11,20 @@ export default function OpretKlubPage() {
   const { status, update } = useSession();
   const { setCurrentClubId } = useClub();
   const [clubName, setClubName] = useState("");
+  const [boardCount, setBoardCount] = useState(1);
+  const [hasHandicapBoards, setHasHandicapBoards] = useState(false);
+  const [handicapBoards, setHandicapBoards] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isAuthenticated = status === "authenticated";
+
+  function toggleHandicapBoard(board: number) {
+    setHandicapBoards((current) => (
+      current.includes(board)
+        ? current.filter((item) => item !== board)
+        : [...current, board].sort((a, b) => a - b)
+    ));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,7 +43,11 @@ export default function OpretKlubPage() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        boardCount,
+        handicapBoards: hasHandicapBoards ? handicapBoards : [],
+      }),
     });
 
     const body = await response.json().catch(() => ({}));
@@ -60,7 +75,7 @@ export default function OpretKlubPage() {
       eyebrow="Opret klub"
       title="Start din klub på HESTENG"
       description={isAuthenticated
-        ? "Opret klubben og bliv automatisk administrator."
+        ? "Opret klubben, angiv banerne og bliv automatisk administrator."
         : "Log ind med Google for at oprette en klub."}
       footer={(
         <>
@@ -72,7 +87,7 @@ export default function OpretKlubPage() {
       )}
     >
       {isAuthenticated ? (
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
           <Field
             label="Klubnavn"
             type="text"
@@ -80,6 +95,58 @@ export default function OpretKlubPage() {
             value={clubName}
             onChange={setClubName}
           />
+
+          <label className="block">
+            <span className="text-sm font-bold text-gray-300">Antal baner i klubben</span>
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={boardCount}
+              onChange={(event) => {
+                const count = Math.max(1, Math.min(50, Number(event.target.value) || 1));
+                setBoardCount(count);
+                setHandicapBoards((current) => current.filter((board) => board <= count));
+              }}
+              className="mt-2 w-full rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+            />
+          </label>
+
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-800 bg-gray-950 px-4 py-4">
+            <input
+              type="checkbox"
+              checked={hasHandicapBoards}
+              onChange={(event) => {
+                setHasHandicapBoards(event.target.checked);
+                if (!event.target.checked) setHandicapBoards([]);
+              }}
+              className="h-5 w-5 accent-orange-500"
+            />
+            <span className="font-bold text-gray-300">Klubben har baner til handicapspillere</span>
+          </label>
+
+          {hasHandicapBoards ? (
+            <div>
+              <p className="mb-3 text-sm font-bold text-gray-300">Hvilke baner?</p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {Array.from({ length: boardCount }, (_, index) => index + 1).map((board) => (
+                  <label
+                    key={board}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-800 bg-gray-950 px-3 py-3 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={handicapBoards.includes(board)}
+                      onChange={() => toggleHandicapBoard(board)}
+                      className="h-4 w-4 accent-orange-500"
+                    />
+                    <span>Bane {board}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {error ? <p className="text-sm font-semibold text-red-300">{error}</p> : null}
           <button
             type="submit"
