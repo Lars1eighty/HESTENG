@@ -1,4 +1,6 @@
 import { DEMO_CLUB_ID } from "@/data/clubs";
+import { normalizeName } from "@/lib/playerIdentity";
+import { getPlayerRegistry } from "@/lib/playerRegistry";
 
 export type CompletedPlayerStats = {
   playerId?: string;
@@ -67,6 +69,23 @@ function getCompletedTimestamp(match: CompletedMatch) {
   return match.completedAt ?? match.finishedAt ?? "";
 }
 
+function attachStablePlayerIds(match: CompletedMatch): CompletedMatch {
+  const registry = getPlayerRegistry(match.clubId);
+  const idsByName = new Map(registry.map((player) => [normalizeName(player.name), player.id]));
+  const player1Id = match.player1Id ?? idsByName.get(normalizeName(match.player1));
+  const player2Id = match.player2Id ?? idsByName.get(normalizeName(match.player2));
+
+  return {
+    ...match,
+    player1Id,
+    player2Id,
+    players: [
+      { ...match.players[0], playerId: match.players[0].playerId ?? player1Id },
+      { ...match.players[1], playerId: match.players[1].playerId ?? player2Id },
+    ],
+  };
+}
+
 export function getCompletedMatches(): CompletedMatch[] {
   if (!canUseStorage()) return [];
   try {
@@ -93,12 +112,13 @@ export function getCompletedMatchesForClub(clubId: string): CompletedMatch[] {
 }
 
 export function saveCompletedMatch(match: CompletedMatch): CompletedMatch[] {
-  const matches = getCompletedMatches().filter((item) => item.id !== match.id);
-  const next = [match, ...matches];
+  const completedMatch = attachStablePlayerIds(match);
+  const matches = getCompletedMatches().filter((item) => item.id !== completedMatch.id);
+  const next = [completedMatch, ...matches];
   if (canUseStorage()) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
-  syncCompletedMatchToSharedState(match);
+  syncCompletedMatchToSharedState(completedMatch);
   return next;
 }
 
