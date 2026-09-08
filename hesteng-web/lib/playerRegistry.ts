@@ -65,6 +65,15 @@ function syncPlayerBoardNeedsToSharedStore(state: PlayerBoardNeedsState) {
   }).catch(() => undefined);
 }
 
+function syncCustomPlayersToSharedStore(state: CustomPlayersState) {
+  if (typeof window === "undefined") return;
+  void fetch(SHARED_CLUB_DATA_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ customPlayers: state }),
+  }).catch(() => undefined);
+}
+
 export function subscribeCustomPlayers(callback: () => void) {
   if (typeof window === "undefined") return () => undefined;
 
@@ -128,11 +137,13 @@ export function addPlayerToRegistry(clubId: string, name: string): PlayerProfile
     type: "player",
     requiresAccessibleBoard: false,
   };
-
-  saveCustomPlayersState({
+  const nextState = {
     ...state,
     [clubId]: [...(state[clubId] ?? []), nextPlayer],
-  });
+  };
+
+  saveCustomPlayersState(nextState);
+  syncCustomPlayersToSharedStore(nextState);
 
   return nextPlayer;
 }
