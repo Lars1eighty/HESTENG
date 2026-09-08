@@ -10,7 +10,12 @@ import {
   subscribeLiveActiveSnapshots,
 } from "@/lib/liveActiveEngine";
 import { normalizeName } from "@/lib/playerIdentity";
-import { getPlayerRegistry } from "@/lib/playerRegistry";
+import {
+  addPlayerToRegistry,
+  getCustomPlayersStorageValue,
+  getPlayerRegistry,
+  subscribeCustomPlayers,
+} from "@/lib/playerRegistry";
 
 export default function PlayerSearch() {
   const [search, setSearch] = useState("");
@@ -19,7 +24,12 @@ export default function PlayerSearch() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const { currentClubId } = useClub();
   const { clubNights, currentClubNightId, selectedPlayers, setSelectedPlayers, matches } = useKlubaften();
-  const players = useMemo(() => getPlayerRegistry(currentClubId), [currentClubId]);
+  const customPlayersStore = useSyncExternalStore(
+    subscribeCustomPlayers,
+    getCustomPlayersStorageValue,
+    () => "{}"
+  );
+  const players = useMemo(() => getPlayerRegistry(currentClubId), [currentClubId, customPlayersStore]);
   const playerByName = useMemo(() => new Map(players.map((player) => [normalizeName(player.name), player])), [players]);
   const liveActiveSnapshotStore = useSyncExternalStore(
     subscribeLiveActiveSnapshots,
@@ -41,6 +51,11 @@ export default function PlayerSearch() {
     return players.filter((player) => !query || player.name.toLowerCase().includes(query));
   }, [players, search]);
 
+  const trimmedSearch = search.trim();
+  const exactPlayerExists = trimmedSearch
+    ? players.some((player) => normalizeName(player.name) === normalizeName(trimmedSearch))
+    : false;
+
   function openPlayerSelector() {
     setDraftPlayers(selectedPlayers);
     setSearch("");
@@ -58,6 +73,19 @@ export default function PlayerSearch() {
 
       return [...current, player];
     });
+    setSaveError(null);
+  }
+
+  function createPlayerFromSearch() {
+    const player = addPlayerToRegistry(currentClubId, trimmedSearch);
+    if (!player) return;
+
+    setDraftPlayers((current) => (
+      current.some((name) => normalizeName(name) === normalizeName(player.name))
+        ? current
+        : [...current, player.name]
+    ));
+    setSearch("");
     setSaveError(null);
   }
 
@@ -168,12 +196,29 @@ export default function PlayerSearch() {
                 </button>
               </div>
 
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Søg spiller..."
-                className="mt-4 min-h-12 w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-base outline-none focus:border-orange-500"
-              />
+              <div className="mt-4 flex gap-2">
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && trimmedSearch && !exactPlayerExists) {
+                      event.preventDefault();
+                      createPlayerFromSearch();
+                    }
+                  }}
+                  placeholder="Søg eller skriv nyt spillernavn..."
+                  className="min-h-12 flex-1 rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-base outline-none focus:border-orange-500"
+                />
+                {trimmedSearch && !exactPlayerExists ? (
+                  <button
+                    type="button"
+                    onClick={createPlayerFromSearch}
+                    className="rounded-2xl bg-orange-500 px-4 py-3 text-sm font-black text-black hover:bg-orange-400"
+                  >
+                    Opret
+                  </button>
+                ) : null}
+              </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -194,6 +239,12 @@ export default function PlayerSearch() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
+              {filteredPlayers.length === 0 && !trimmedSearch ? (
+                <div className="rounded-2xl border border-dashed border-gray-700 p-6 text-center text-sm text-gray-500">
+                  Ingen spillere i klubben endnu. Skriv et navn ovenfor for at oprette den første.
+                </div>
+              ) : null}
+
               <div className="grid gap-2 sm:grid-cols-2">
                 {filteredPlayers.map((player) => {
                   const checked = draftPlayerKeys.has(normalizeName(player.name));
