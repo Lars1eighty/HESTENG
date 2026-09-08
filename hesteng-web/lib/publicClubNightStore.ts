@@ -92,3 +92,23 @@ export async function createPublicClubNight(input: {
 
   return rows[0];
 }
+
+export async function updatePublicClubNightSnapshot(input: {
+  clubNightId: string;
+  status: string;
+  clubNight: unknown;
+  completedMatches: unknown;
+}) {
+  const rows = await getPrisma().$queryRaw<PublicClubNightRecord[]>`
+    UPDATE "PublicClubNight"
+    SET
+      "status" = ${input.status},
+      "clubNight" = ${JSON.stringify(input.clubNight)}::jsonb,
+      "completedMatches" = ${JSON.stringify(input.completedMatches)}::jsonb,
+      "updatedAt" = CURRENT_TIMESTAMP
+    WHERE "clubNightId" = ${input.clubNightId}
+    RETURNING *
+  `;
+
+  return rows[0] ?? null;
+}
