@@ -6,6 +6,7 @@ import { normalizeName } from "@/lib/playerIdentity";
 const POOL_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 export type PoolMode = "draw" | "elo";
+export type PoolSizeProfile = "standard" | "compact";
 
 type SeededPoolPlayer = {
   id: string;
@@ -13,7 +14,7 @@ type SeededPoolPlayer = {
   elo: number;
 };
 
-function getPoolSizes(playerCount: number) {
+function getStandardPoolSizes(playerCount: number) {
   const poolCount = Math.max(2, Math.ceil(playerCount / 6));
   const basePoolSize = Math.floor(playerCount / poolCount);
   const poolsWithExtraPlayer = playerCount % poolCount;
@@ -24,8 +25,24 @@ function getPoolSizes(playerCount: number) {
   );
 }
 
-function createPoolsFromPlayers(players: string[]): Pool[] {
-  const poolSizes = getPoolSizes(players.length);
+function getCompactPoolSizes(playerCount: number) {
+  const fourPlayerPools = playerCount % 3;
+  const threePlayerPools = (playerCount - fourPlayerPools * 4) / 3;
+
+  return [
+    ...Array.from({ length: fourPlayerPools }, () => 4),
+    ...Array.from({ length: threePlayerPools }, () => 3),
+  ];
+}
+
+function getPoolSizes(playerCount: number, sizeProfile: PoolSizeProfile) {
+  return sizeProfile === "compact"
+    ? getCompactPoolSizes(playerCount)
+    : getStandardPoolSizes(playerCount);
+}
+
+function createPoolsFromPlayers(players: string[], sizeProfile: PoolSizeProfile): Pool[] {
+  const poolSizes = getPoolSizes(players.length, sizeProfile);
   const pools: Pool[] = poolSizes.map((_, index) => ({
     name: `Pulje ${POOL_LETTERS[index]}`,
     players: [],
@@ -55,20 +72,23 @@ function shufflePlayers(players: string[]) {
  * Creates pools for a club night.
  * draw: random draw, matching a traditional paper draw.
  * elo: level-divided pools by current club ELO, strongest pool first.
+ * compact: 3-4 players per pool, preferring 4-player pools where possible.
  */
 export function createClubNightPools(
   players: string[],
   clubId?: string,
-  mode: PoolMode = "elo"
+  mode: PoolMode = "elo",
+  sizeProfile: PoolSizeProfile = "standard"
 ): Pool[] {
   const uniquePlayers = [...new Set(players)];
+  const minimumPlayers = sizeProfile === "compact" ? 6 : 10;
 
-  if (uniquePlayers.length < 10) {
-    throw new Error("Der skal være mindst 10 spillere for at oprette puljer");
+  if (uniquePlayers.length < minimumPlayers) {
+    throw new Error(`Der skal være mindst ${minimumPlayers} spillere for at oprette puljer`);
   }
 
   if (mode === "draw") {
-    return createPoolsFromPlayers(shufflePlayers(uniquePlayers));
+    return createPoolsFromPlayers(shufflePlayers(uniquePlayers), sizeProfile);
   }
 
   const registry = getPlayerRegistry(clubId);
@@ -94,7 +114,7 @@ export function createClubNightPools(
     a.name.localeCompare(b.name)
   ));
 
-  return createPoolsFromPlayers(sortedPlayers.map((player) => player.name));
+  return createPoolsFromPlayers(sortedPlayers.map((player) => player.name), sizeProfile);
 }
 
 export const createThursdayPools = createClubNightPools;
