@@ -29,7 +29,10 @@ export default function PlayerSearch() {
     getCustomPlayersStorageValue,
     () => "{}"
   );
-  const players = useMemo(() => getPlayerRegistry(currentClubId), [currentClubId, customPlayersStore]);
+  const players = useMemo(() => {
+    void customPlayersStore;
+    return getPlayerRegistry(currentClubId);
+  }, [currentClubId, customPlayersStore]);
   const playerByName = useMemo(() => new Map(players.map((player) => [normalizeName(player.name), player])), [players]);
   const liveActiveSnapshotStore = useSyncExternalStore(
     subscribeLiveActiveSnapshots,
