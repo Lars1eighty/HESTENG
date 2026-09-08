@@ -1,6 +1,7 @@
 import { DEMO_CLUB_ID } from "@/data/clubs";
 
 export type CompletedPlayerStats = {
+  playerId?: string;
   name: string;
   legs: number;
   totalScored: number;
@@ -21,7 +22,9 @@ export type CompletedMatch = {
   clubId?: string;
   clubNightId?: string;
   player1: string;
+  player1Id?: string;
   player2: string;
+  player2Id?: string;
   winner: string;
   score1: number;
   score2: number;
