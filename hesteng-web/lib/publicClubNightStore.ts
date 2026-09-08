@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { getPrisma } from "@/lib/prisma";
 
 export type PublicClubNightRecord = {
@@ -50,4 +52,43 @@ export async function findPublicClubNightByToken(publicToken: string) {
   `;
 
   return rows[0] ?? null;
+}
+
+export async function createPublicClubNight(input: {
+  clubNightId: string;
+  clubId: string;
+  status: string;
+  clubNight: unknown;
+}) {
+  const id = randomUUID();
+  const publicToken = randomUUID();
+  const completedMatches: unknown[] = [];
+
+  const rows = await getPrisma().$queryRaw<PublicClubNightRecord[]>`
+    INSERT INTO "PublicClubNight" (
+      "id",
+      "clubNightId",
+      "clubId",
+      "publicToken",
+      "status",
+      "clubNight",
+      "completedMatches",
+      "createdAt",
+      "updatedAt"
+    )
+    VALUES (
+      ${id},
+      ${input.clubNightId},
+      ${input.clubId},
+      ${publicToken},
+      ${input.status},
+      ${JSON.stringify(input.clubNight)}::jsonb,
+      ${JSON.stringify(completedMatches)}::jsonb,
+      CURRENT_TIMESTAMP,
+      CURRENT_TIMESTAMP
+    )
+    RETURNING *
+  `;
+
+  return rows[0];
 }
