@@ -4,10 +4,12 @@ import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { useClub } from "@/context/ClubContext";
 
 export default function OpretKlubPage() {
   const router = useRouter();
-  const { status } = useSession();
+  const { status, update } = useSession();
+  const { setCurrentClubId } = useClub();
   const [clubName, setClubName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,11 +35,20 @@ export default function OpretKlubPage() {
       body: JSON.stringify({ name }),
     });
 
+    const body = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
       setError(typeof body.error === "string" ? body.error : "Klubben kunne ikke oprettes.");
       setIsSubmitting(false);
       return;
+    }
+
+    const clubId = typeof body.club?.id === "string" ? body.club.id : undefined;
+
+    await update();
+
+    if (clubId) {
+      setCurrentClubId(clubId);
     }
 
     router.push("/dashboard");
