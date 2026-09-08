@@ -54,8 +54,8 @@ type ScheduledClubMatch = PendingClubMatch & {
   scheduleSlot: number;
 };
 
-function getBoardType(board: number): "normal" | "handicap" {
-  return CLUB_NIGHT_HANDICAP_BOARDS.includes(board) ? "handicap" : "normal";
+function getBoardType(board: number, handicapBoards: number[]): "normal" | "handicap" {
+  return handicapBoards.includes(board) ? "handicap" : "normal";
 }
 
 function createRoundRobin(players: string[]): string[][] {
@@ -86,7 +86,7 @@ function getAccessiblePlayerNames(clubId?: string): Set<string> {
   );
 }
 
-function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>, clubId?: string): PendingClubMatch[] {
+function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>, bestOfLegs: number, clubId?: string): PendingClubMatch[] {
   const pending: PendingClubMatch[] = [];
   let sequence = 1;
 
@@ -96,8 +96,7 @@ function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>,
         const [player1, player2] = pair.split("|||");
         const player1Key = normalizeName(player1);
         const player2Key = normalizeName(player2);
-
-        const durationEstimate = estimateMatchDurationByPlayers(player1, player2, 5, clubId);
+        const durationEstimate = estimateMatchDurationByPlayers(player1, player2, bestOfLegs, clubId);
 
         pending.push({
           pool: pool.name,
@@ -134,7 +133,6 @@ function accessibleWaitScore(match: PendingClubMatch, accessiblePlayerNames: Set
     .map((player) => normalizeName(player))
     .filter((playerKey) => accessiblePlayerNames.has(playerKey))
     .map((playerKey) => scheduleSlot - (lastPlayedSlot.get(playerKey) ?? 0));
-
   return waits.length > 0 ? Math.max(...waits) : 0;
 }
 
@@ -146,27 +144,19 @@ function compareEstimatedDuration(a: PendingClubMatch, b: PendingClubMatch): num
   return b.durationEstimate.estimatedSeconds - a.durationEstimate.estimatedSeconds;
 }
 
-function findBestMatchIndex(
-  pending: PendingClubMatch[],
-  predicate: (match: PendingClubMatch) => boolean,
-  compare: (a: PendingClubMatch, b: PendingClubMatch) => number
-): number {
+function findBestMatchIndex(pending: PendingClubMatch[], predicate: (match: PendingClubMatch) => boolean, compare: (a: PendingClubMatch, b: PendingClubMatch) => number): number {
   let bestIndex = -1;
-
   pending.forEach((match, index) => {
     if (!predicate(match)) return;
-    if (bestIndex === -1 || compare(match, pending[bestIndex]) < 0) {
-      bestIndex = index;
-    }
+    if (bestIndex === -1 || compare(match, pending[bestIndex]) < 0) bestIndex = index;
   });
-
   return bestIndex;
 }
 
-function schedulePendingMatches(pendingMatches: PendingClubMatch[], boardCount: number, accessiblePlayerNames: Set<string>): ScheduledClubMatch[] {
+function schedulePendingMatches(pendingMatches: PendingClubMatch[], boardCount: number, handicapBoards: number[], accessiblePlayerNames: Set<string>): ScheduledClubMatch[] {
   const pending = [...pendingMatches];
   const scheduled: ScheduledClubMatch[] = [];
-  const accessibleBoards = CLUB_NIGHT_HANDICAP_BOARDS.filter((board) => board <= boardCount);
+  const accessibleBoards = handicapBoards.filter((board) => board >= 1 && board <= boardCount);
   const normalBoards = Array.from({ length: boardCount }, (_, index) => index + 1).filter((board) => !accessibleBoards.includes(board));
   const lastPlayedSlot = new Map<string, number>();
   let scheduleSlot = 1;
@@ -185,55 +175,32 @@ function schedulePendingMatches(pendingMatches: PendingClubMatch[], boardCount: 
     const unusedAccessibleBoards: number[] = [];
 
     for (const board of accessibleBoards) {
-      const matchIndex = findBestMatchIndex(
-        pending,
-        (match) => match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot),
-        (a, b) =>
-          recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
-          accessibleWaitScore(b, accessiblePlayerNames, lastPlayedSlot, scheduleSlot) - accessibleWaitScore(a, accessiblePlayerNames, lastPlayedSlot, scheduleSlot) ||
-          compareEstimatedDuration(a, b) ||
-          compareBaseMatchOrder(a, b)
-      );
-
-      if (matchIndex === -1) {
-        unusedAccessibleBoards.push(board);
-      } else {
-        scheduleMatch(matchIndex, board, playersInSlot);
-      }
+      const matchIndex = findBestMatchIndex(pending, (match) => match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot), (a, b) =>
+        recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
+        accessibleWaitScore(b, accessiblePlayerNames, lastPlayedSlot, scheduleSlot) - accessibleWaitScore(a, accessiblePlayerNames, lastPlayedSlot, scheduleSlot) ||
+        compareEstimatedDuration(a, b) || compareBaseMatchOrder(a, b));
+      if (matchIndex === -1) unusedAccessibleBoards.push(board);
+      else scheduleMatch(matchIndex, board, playersInSlot);
     }
 
     for (const board of normalBoards) {
-      const matchIndex = findBestMatchIndex(
-        pending,
-        (match) => !match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot),
-        (a, b) =>
-          recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
-          compareEstimatedDuration(a, b) ||
-          compareBaseMatchOrder(a, b)
-      );
-
+      const matchIndex = findBestMatchIndex(pending, (match) => !match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot), (a, b) =>
+        recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
+        compareEstimatedDuration(a, b) || compareBaseMatchOrder(a, b));
       if (matchIndex !== -1) scheduleMatch(matchIndex, board, playersInSlot);
     }
 
     for (const board of unusedAccessibleBoards) {
       const accessibleMatchReady = pending.some((match) => match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot));
       if (accessibleMatchReady) continue;
-
-      const matchIndex = findBestMatchIndex(
-        pending,
-        (match) => !match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot),
-        (a, b) =>
-          recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
-          compareEstimatedDuration(a, b) ||
-          compareBaseMatchOrder(a, b)
-      );
-
+      const matchIndex = findBestMatchIndex(pending, (match) => !match.requiresAccessibleBoardForMatch && !hasPlayerInSlot(match, playersInSlot), (a, b) =>
+        recentlyPlayedPenalty(a, lastPlayedSlot, scheduleSlot) - recentlyPlayedPenalty(b, lastPlayedSlot, scheduleSlot) ||
+        compareEstimatedDuration(a, b) || compareBaseMatchOrder(a, b));
       if (matchIndex !== -1) scheduleMatch(matchIndex, board, playersInSlot);
     }
 
     scheduleSlot++;
   }
-
   return scheduled;
 }
 
@@ -241,15 +208,16 @@ export function createClubNightMatches(
   pools: Pool[],
   boardCount = CLUB_NIGHT_BOARD_COUNT,
   clubNightId?: string,
-  clubId?: string
+  clubId?: string,
+  bestOfLegs = 5,
+  handicapBoards: number[] = CLUB_NIGHT_HANDICAP_BOARDS
 ): ClubMatch[] {
-  if (boardCount !== CLUB_NIGHT_BOARD_COUNT) {
-    throw new Error("Klubaften bruger præcis 13 baner");
-  }
+  if (!Number.isInteger(boardCount) || boardCount < 1) throw new Error("Klubaften skal have mindst 1 bane");
+  if (!Number.isInteger(bestOfLegs) || bestOfLegs < 1 || bestOfLegs % 2 === 0) throw new Error("Antal legs skal være et positivt ulige tal");
 
   const accessiblePlayerNames = getAccessiblePlayerNames(clubId);
-  const pendingMatches = createPendingMatches(pools, accessiblePlayerNames, clubId);
-  const scheduledMatches = schedulePendingMatches(pendingMatches, boardCount, accessiblePlayerNames);
+  const pendingMatches = createPendingMatches(pools, accessiblePlayerNames, bestOfLegs, clubId);
+  const scheduledMatches = schedulePendingMatches(pendingMatches, boardCount, handicapBoards, accessiblePlayerNames);
 
   return scheduledMatches.map((match) => ({
     id: clubNightId ? `${clubNightId}-match-${match.order}` : `thu-${match.order}`,
@@ -262,9 +230,9 @@ export function createClubNightMatches(
     player1: match.player1,
     player2: match.player2,
     board: match.board,
-    boardType: getBoardType(match.board),
+    boardType: getBoardType(match.board, handicapBoards),
     requiresAccessibleBoardForMatch: match.requiresAccessibleBoardForMatch,
-    bestOfLegs: 5,
+    bestOfLegs,
     scoringMode: "total",
     estimatedDurationSeconds: match.durationEstimate.estimatedSeconds,
     timingEstimateSource: match.durationEstimate.source,
