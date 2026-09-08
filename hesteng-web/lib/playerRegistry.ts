@@ -9,7 +9,7 @@ const CUSTOM_PLAYERS_CHANGE_EVENT = "hesteng.customPlayersChanged";
 const SHARED_CLUB_DATA_API = "/api/shared-club-data";
 
 export type PlayerBoardNeedsState = Record<string, Record<string, { requiresAccessibleBoard?: boolean }>>;
-type CustomPlayersState = Record<string, PlayerProfile[]>;
+export type CustomPlayersState = Record<string, PlayerProfile[]>;
 
 function createStablePlayerId(source: "seed" | "custom", name: string) {
   return `${source}:${normalizeName(name).replace(/\s+/g, "-")}`;
@@ -87,6 +87,14 @@ export function subscribeCustomPlayers(callback: () => void) {
 export function getCustomPlayersStorageValue() {
   if (!canUseStorage()) return "{}";
   return window.localStorage.getItem(CUSTOM_PLAYERS_STORAGE_KEY) ?? "{}";
+}
+
+export function getCustomPlayersStateForSync(): CustomPlayersState {
+  return getCustomPlayersState();
+}
+
+export function replaceCustomPlayersFromSharedState(state: CustomPlayersState) {
+  saveCustomPlayersState(state);
 }
 
 export function getPlayerBoardNeedsStateForSync(): PlayerBoardNeedsState {
