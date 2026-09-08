@@ -7,6 +7,7 @@ const PLAYER_BOARD_NEEDS_STORAGE_KEY = "hesteng.playerBoardNeeds.v1";
 const CUSTOM_PLAYERS_STORAGE_KEY = "hesteng.customPlayers.v1";
 const CUSTOM_PLAYERS_CHANGE_EVENT = "hesteng.customPlayersChanged";
 const SHARED_CLUB_DATA_API = "/api/shared-club-data";
+const CLUB_PLAYERS_API = "/api/club-players";
 
 export type PlayerBoardNeedsState = Record<string, Record<string, { requiresAccessibleBoard?: boolean }>>;
 export type CustomPlayersState = Record<string, PlayerProfile[]>;
@@ -71,6 +72,15 @@ function syncCustomPlayersToSharedStore(state: CustomPlayersState) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ customPlayers: state }),
+  }).catch(() => undefined);
+}
+
+function persistClubPlayer(clubId: string, name: string) {
+  if (typeof window === "undefined") return;
+  void fetch(CLUB_PLAYERS_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clubId, name }),
   }).catch(() => undefined);
 }
 
@@ -152,6 +162,7 @@ export function addPlayerToRegistry(clubId: string, name: string): PlayerProfile
 
   saveCustomPlayersState(nextState);
   syncCustomPlayersToSharedStore(nextState);
+  persistClubPlayer(clubId, trimmedName);
 
   return nextPlayer;
 }
