@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { findPublicClubNightByToken } from "@/lib/publicClubNightStore";
+import {
+  findPublicClubNightByToken,
+  updatePublicClubNightCompletedMatchesByToken,
+} from "@/lib/publicClubNightStore";
 
 export const runtime = "nodejs";
 
@@ -33,4 +36,38 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     clubNight: record.clubNight,
     completedMatches: record.completedMatches ?? [],
   });
+}
+
+export async function POST(request: NextRequest, context: RouteContext) {
+  const { token } = await context.params;
+  const publicToken = token.trim();
+
+  if (!publicToken) {
+    return NextResponse.json({ error: "Gæsteadgang mangler." }, { status: 400 });
+  }
+
+  const record = await findPublicClubNightByToken(publicToken);
+  if (!record) {
+    return NextResponse.json({ error: "Turneringen blev ikke fundet." }, { status: 404 });
+  }
+
+  if (record.status !== "active") {
+    return NextResponse.json({ error: "Turneringen er afsluttet." }, { status: 410 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  if (!Array.isArray(body.completedMatches)) {
+    return NextResponse.json({ error: "Kampresultater mangler." }, { status: 400 });
+  }
+
+  const updated = await updatePublicClubNightCompletedMatchesByToken({
+    publicToken,
+    completedMatches: body.completedMatches,
+  });
+
+  if (!updated) {
+    return NextResponse.json({ error: "Turneringen er ikke længere aktiv." }, { status: 410 });
+  }
+
+  return NextResponse.json({ completedMatches: updated.completedMatches ?? [] });
 }
