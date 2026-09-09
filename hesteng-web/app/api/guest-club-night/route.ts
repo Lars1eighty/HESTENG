@@ -72,6 +72,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(updated);
   }
 
-  const record = await createPublicClubNight({ clubNightId, clubId, status, clubNight });
+  const record = await createPublicClubNight({
+    clubNightId,
+    clubId,
+    status,
+    clubNight,
+    completedMatches,
+  });
   return NextResponse.json(record);
 }
