@@ -12,6 +12,7 @@ type CompletedMatchLike = MatchLike & {
   score1?: unknown;
   score2?: unknown;
   status?: unknown;
+  players?: unknown;
 };
 
 type ClubNightLike = {
@@ -27,6 +28,32 @@ function getMatches(clubNight: unknown): MatchLike[] {
   const matches = (clubNight as ClubNightLike).matches;
   if (!Array.isArray(matches)) return [];
   return matches.map(asMatch).filter((match): match is MatchLike => match !== null);
+}
+
+function hasValidPlayerStats(players: unknown, allowed: MatchLike) {
+  if (players === undefined) return true;
+  if (!Array.isArray(players) || players.length !== 2) return false;
+
+  const expected = [
+    { name: allowed.player1, playerId: allowed.player1Id },
+    { name: allowed.player2, playerId: allowed.player2Id },
+  ];
+
+  return players.every((value, index) => {
+    if (value === null || typeof value !== "object") return false;
+    const stats = value as Record<string, unknown>;
+    if (stats.name !== expected[index].name) return false;
+    if (typeof expected[index].playerId === "string" && stats.playerId !== expected[index].playerId) return false;
+
+    const nonNegativeNumbers = ["legs", "totalScored", "entries", "average", "checkouts", "checkoutAttempts", "checkoutPercent", "oneEighties"];
+    for (const field of nonNegativeNumbers) {
+      if (typeof stats[field] !== "number" || !Number.isFinite(stats[field]) || (stats[field] as number) < 0) return false;
+    }
+
+    if (stats.highestCheckout !== undefined && (typeof stats.highestCheckout !== "number" || !Number.isFinite(stats.highestCheckout) || stats.highestCheckout < 0)) return false;
+    if (stats.fastestLegDarts !== null && stats.fastestLegDarts !== undefined && (!Number.isInteger(stats.fastestLegDarts) || (stats.fastestLegDarts as number) <= 0)) return false;
+    return true;
+  });
 }
 
 function hasValidOutcome(completed: CompletedMatchLike, allowed: MatchLike) {
@@ -45,7 +72,7 @@ function hasValidOutcome(completed: CompletedMatchLike, allowed: MatchLike) {
     if (winningScore !== legsToWin) return false;
   }
 
-  return true;
+  return hasValidPlayerStats(completed.players, allowed);
 }
 
 export function validateGuestCompletedMatches(clubNight: unknown, completedMatches: unknown[]) {
