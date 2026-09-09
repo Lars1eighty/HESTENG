@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   getGuestClubNight,
-  saveGuestCompletedMatches,
+  saveGuestCompletedMatch,
   type GuestClubNightSnapshot,
 } from "@/lib/publicClubNightClient";
 
@@ -74,10 +74,9 @@ export default function GuestClubNightPage() {
       score2: winner === 2 ? legsToWin : 0,
       status: "finished",
     };
-    const nextResults = [...results.filter((result) => result.id !== match.id), completed];
     setSavingId(match.id);
     try {
-      const saved = await saveGuestCompletedMatches(publicToken, nextResults);
+      const saved = await saveGuestCompletedMatch(publicToken, completed);
       setSnapshot({ ...snapshot, completedMatches: saved.completedMatches });
       setError("");
     } catch (cause) {
