@@ -59,10 +59,11 @@ export async function createPublicClubNight(input: {
   clubId: string;
   status: string;
   clubNight: unknown;
+  completedMatches?: unknown;
 }) {
   const id = randomUUID();
   const publicToken = randomUUID();
-  const completedMatches: unknown[] = [];
+  const completedMatches = input.completedMatches ?? [];
 
   const rows = await getPrisma().$queryRaw<PublicClubNightRecord[]>`
     INSERT INTO "PublicClubNight" (
