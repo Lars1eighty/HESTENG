@@ -43,6 +43,34 @@ function getDemoCurrentPlayer() {
   return registry.find((player) => player.name === DEMO_CURRENT_PLAYER_NAME) ?? registry[0] ?? FALLBACK_DEMO_PLAYER;
 }
 
+function withLegacyJydenAdmin(
+  memberships: CurrentUser["memberships"],
+  playerId: string
+): CurrentUser["memberships"] {
+  if (memberships.some((membership) => membership.clubId === DEMO_CLUB_ID)) {
+    return memberships.map((membership) =>
+      membership.clubId === DEMO_CLUB_ID
+        ? {
+            ...membership,
+            clubName: membership.clubName ?? "Jyden Dartklub",
+            playerId: membership.playerId ?? playerId,
+            role: "ADMIN",
+          }
+        : membership
+    );
+  }
+
+  return [
+    ...memberships,
+    {
+      clubId: DEMO_CLUB_ID,
+      clubName: "Jyden Dartklub",
+      playerId,
+      role: "ADMIN",
+    },
+  ];
+}
+
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
@@ -64,7 +92,10 @@ function CurrentUserProviderInner({ children }: { children: ReactNode }) {
       name: session.user.name ?? sessionPlayer.name,
       email: session.user.email ?? undefined,
       currentPlayerId: sessionPlayer.id,
-      memberships: session.user.memberships ?? [],
+      memberships: withLegacyJydenAdmin(
+        session.user.memberships ?? [],
+        sessionPlayer.id
+      ),
     };
   } else if (demoPlayer) {
     currentUser = {
