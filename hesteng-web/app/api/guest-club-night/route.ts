@@ -17,6 +17,26 @@ async function canAccessClub(userId: string, clubId: string) {
   });
 }
 
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+
+  const clubNightId = request.nextUrl.searchParams.get("clubNightId")?.trim() ?? "";
+  if (!clubNightId) {
+    return NextResponse.json({ error: "clubNightId mangler." }, { status: 400 });
+  }
+
+  const record = await findPublicClubNightById(clubNightId);
+  if (!record) return NextResponse.json({ record: null });
+
+  if (!(await canAccessClub(userId, record.clubId))) {
+    return NextResponse.json({ error: "Ingen adgang til klubben." }, { status: 403 });
+  }
+
+  return NextResponse.json({ record });
+}
+
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
