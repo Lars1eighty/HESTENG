@@ -33,7 +33,7 @@ export default function AfslutKlubaftenPage() {
     try {
       const access = await getPublicClubNightAccess(clubNightId);
       if (!access) return;
-      const completedMatches = getCompletedMatchesForClubNightInClub(currentClubId, clubNightId, currentMatchIds);
+      const completedMatches = getCompletedMatchesForClubNightInClub(currentClubId, clubNightId);
       await syncPublicClubNight({ clubNightId, clubId: currentClubNight.clubId, status, clubNight: { ...currentClubNight, status }, completedMatches });
     } catch { /* Local afslutning må ikke blokeres af gæstesync. */ }
   }
