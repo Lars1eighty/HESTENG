@@ -4,6 +4,14 @@ type MatchLike = {
   player1Id?: unknown;
   player2?: unknown;
   player2Id?: unknown;
+  bestOfLegs?: unknown;
+};
+
+type CompletedMatchLike = MatchLike & {
+  winner?: unknown;
+  score1?: unknown;
+  score2?: unknown;
+  status?: unknown;
 };
 
 type ClubNightLike = {
@@ -21,6 +29,25 @@ function getMatches(clubNight: unknown): MatchLike[] {
   return matches.map(asMatch).filter((match): match is MatchLike => match !== null);
 }
 
+function hasValidOutcome(completed: CompletedMatchLike, allowed: MatchLike) {
+  if (!Number.isInteger(completed.score1) || !Number.isInteger(completed.score2)) return false;
+  if ((completed.score1 as number) < 0 || (completed.score2 as number) < 0) return false;
+  if (completed.score1 === completed.score2) return false;
+  if (completed.status !== "finished") return false;
+
+  const expectedWinner =
+    (completed.score1 as number) > (completed.score2 as number) ? allowed.player1 : allowed.player2;
+  if (completed.winner !== expectedWinner) return false;
+
+  if (typeof allowed.bestOfLegs === "number") {
+    const legsToWin = Math.floor(allowed.bestOfLegs / 2) + 1;
+    const winningScore = Math.max(completed.score1 as number, completed.score2 as number);
+    if (winningScore !== legsToWin) return false;
+  }
+
+  return true;
+}
+
 export function validateGuestCompletedMatches(clubNight: unknown, completedMatches: unknown[]) {
   const allowedMatches = new Map(
     getMatches(clubNight)
@@ -28,9 +55,12 @@ export function validateGuestCompletedMatches(clubNight: unknown, completedMatch
       .map((match) => [match.id as string, match]),
   );
 
+  const seenIds = new Set<string>();
+
   for (const completedValue of completedMatches) {
-    const completed = asMatch(completedValue);
-    if (!completed || typeof completed.id !== "string") return false;
+    const completed = asMatch(completedValue) as CompletedMatchLike | null;
+    if (!completed || typeof completed.id !== "string" || seenIds.has(completed.id)) return false;
+    seenIds.add(completed.id);
 
     const allowed = allowedMatches.get(completed.id);
     if (!allowed) return false;
@@ -50,6 +80,8 @@ export function validateGuestCompletedMatches(clubNight: unknown, completedMatch
     ) {
       return false;
     }
+
+    if (!hasValidOutcome(completed, allowed)) return false;
   }
 
   return true;
