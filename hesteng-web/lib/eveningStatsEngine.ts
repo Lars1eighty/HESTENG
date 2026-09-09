@@ -1,6 +1,8 @@
 import type { CompletedMatch, CompletedPlayerStats } from "@/lib/matchStore";
+import { normalizeName } from "@/lib/playerIdentity";
 
 export type EveningPlayerStats = {
+  playerId?: string;
   player: string;
   matchesPlayed: number;
   totalScored: number;
@@ -25,8 +27,9 @@ export type EveningStats = {
   fastestLeg: EveningPlayerStats | null;
 };
 
-function emptyPlayerStats(player: string): EveningPlayerStats {
+function emptyPlayerStats(player: string, playerId?: string): EveningPlayerStats {
   return {
+    playerId,
     player,
     matchesPlayed: 0,
     totalScored: 0,
@@ -64,6 +67,10 @@ function finishPlayerStats(stats: EveningPlayerStats): EveningPlayerStats {
   };
 }
 
+function getPlayerKey(stats: CompletedPlayerStats) {
+  return stats.playerId ? `id:${stats.playerId}` : `name:${normalizeName(stats.name)}`;
+}
+
 export function calculateEveningStats(matches: CompletedMatch[]): EveningStats {
   const countedMatchIds = new Set<string>();
   const playerStats = new Map<string, EveningPlayerStats>();
@@ -73,9 +80,10 @@ export function calculateEveningStats(matches: CompletedMatch[]): EveningStats {
     countedMatchIds.add(match.id);
 
     match.players.forEach((stats) => {
-      const current = playerStats.get(stats.name) ?? emptyPlayerStats(stats.name);
+      const key = getPlayerKey(stats);
+      const current = playerStats.get(key) ?? emptyPlayerStats(stats.name, stats.playerId);
       addPlayerMatch(current, stats);
-      playerStats.set(stats.name, current);
+      playerStats.set(key, current);
     });
   });
 
