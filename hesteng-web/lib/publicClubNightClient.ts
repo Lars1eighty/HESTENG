@@ -13,6 +13,14 @@ export type PublicClubNightAccess = {
   status: string;
 };
 
+export type GuestClubNightSnapshot = {
+  publicToken: string;
+  clubNightId: string;
+  clubId: string;
+  clubNight: unknown;
+  completedMatches: unknown[];
+};
+
 export async function syncPublicClubNight(snapshot: PublicClubNightSnapshot) {
   const response = await fetch("/api/guest-club-night", {
     method: "POST",
@@ -39,4 +47,33 @@ export async function getPublicClubNightAccess(clubNightId: string) {
 
   const data = (await response.json()) as { record: PublicClubNightAccess | null };
   return data.record;
+}
+
+export async function getGuestClubNight(publicToken: string) {
+  const response = await fetch(`/api/g/${encodeURIComponent(publicToken)}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Kunne ikke hente den aktive klubaften.");
+  }
+
+  return (await response.json()) as GuestClubNightSnapshot;
+}
+
+export async function saveGuestCompletedMatches(
+  publicToken: string,
+  completedMatches: unknown[],
+) {
+  const response = await fetch(`/api/g/${encodeURIComponent(publicToken)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ completedMatches }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Kunne ikke gemme kampresultatet.");
+  }
+
+  return (await response.json()) as { completedMatches: unknown[] };
 }
