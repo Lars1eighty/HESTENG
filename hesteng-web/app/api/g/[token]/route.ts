@@ -4,6 +4,7 @@ import {
   findPublicClubNightByToken,
   updatePublicClubNightCompletedMatchesByToken,
 } from "@/lib/publicClubNightStore";
+import { validateGuestCompletedMatches } from "@/lib/publicClubNightValidation";
 
 export const runtime = "nodejs";
 
@@ -58,6 +59,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const body = await request.json().catch(() => ({}));
   if (!Array.isArray(body.completedMatches)) {
     return NextResponse.json({ error: "Kampresultater mangler." }, { status: 400 });
+  }
+
+  if (!validateGuestCompletedMatches(record.clubNight, body.completedMatches)) {
+    return NextResponse.json({ error: "Et kampresultat tilhører ikke denne klubaften." }, { status: 400 });
   }
 
   const updated = await updatePublicClubNightCompletedMatchesByToken({
