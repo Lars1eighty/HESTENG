@@ -26,7 +26,43 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
     if (!access || typeof window === "undefined") return "";
     return `${window.location.origin}/g/${access.publicToken}`;
   }, [access]);
-  const qrUrl = useMemo(() => publicUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(publicUrl)}` : "", [publicUrl]);
+
+  const qrUrl = useMemo(
+    () => publicUrl
+      ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(publicUrl)}`
+      : "",
+    [publicUrl],
+  );
+
+  const publicClubNight = useMemo(() => {
+    const activeIds = new Set(clubNight.matches.map((match) => match.id));
+    const historicalMatches = completedMatches
+      .filter((match) => !activeIds.has(match.id))
+      .map((match) => ({
+        id: match.id,
+        clubId: match.clubId,
+        clubNightId: match.clubNightId,
+        pool: match.pool ?? "",
+        round: match.round ?? 0,
+        order: 0,
+        scheduleSlot: 0,
+        player1: match.player1,
+        player1Id: match.player1Id,
+        player2: match.player2,
+        player2Id: match.player2Id,
+        board: match.board ?? 0,
+        bestOfLegs: match.bestOfLegs,
+        score1: match.score1,
+        score2: match.score2,
+        status: "finished" as const,
+        winner: match.winner,
+      }));
+
+    return {
+      ...clubNight,
+      matches: [...clubNight.matches, ...historicalMatches],
+    };
+  }, [clubNight, completedMatches]);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,31 +79,63 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
   useEffect(() => {
     if (!access || !clubNight.clubId) return;
     const timer = window.setTimeout(() => {
-      void syncPublicClubNight({ clubNightId: clubNight.id, clubId: clubNight.clubId as string, status: clubNight.status, clubNight, completedMatches }).catch(() => undefined);
+      void syncPublicClubNight({
+        clubNightId: clubNight.id,
+        clubId: clubNight.clubId as string,
+        status: clubNight.status,
+        clubNight: publicClubNight,
+        completedMatches,
+      }).catch(() => undefined);
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [access, clubNight, completedMatches]);
+  }, [access, clubNight.clubId, clubNight.id, clubNight.status, completedMatches, publicClubNight]);
 
   async function enableGuestAccess() {
-    if (!clubNight.clubId) { setError("Klubaftenen mangler klubtilknytning."); return; }
-    setBusy(true); setError("");
+    if (!clubNight.clubId) {
+      setError("Klubaftenen mangler klubtilknytning.");
+      return;
+    }
+    setBusy(true);
+    setError("");
     try {
-      setAccess(await publishGuestClubNight({ clubNightId: clubNight.id, clubId: clubNight.clubId, status: clubNight.status, clubNight, completedMatches }));
-    } catch { setError("Gæsteadgang kunne ikke aktiveres."); }
-    finally { setBusy(false); }
+      setAccess(await publishGuestClubNight({
+        clubNightId: clubNight.id,
+        clubId: clubNight.clubId,
+        status: clubNight.status,
+        clubNight: publicClubNight,
+        completedMatches,
+      }));
+    } catch {
+      setError("Gæsteadgang kunne ikke aktiveres.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function copyLink() {
     if (!publicUrl) return;
-    try { await navigator.clipboard.writeText(publicUrl); setCopied(true); window.setTimeout(() => setCopied(false), 1800); }
-    catch { setError("Linket kunne ikke kopieres."); }
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError("Linket kunne ikke kopieres.");
+    }
   }
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
         {!access ? (
-          <button type="button" onClick={() => void enableGuestAccess()} disabled={busy || clubNight.status !== "active"} className="rounded-xl border border-cyan-500/60 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50" title={error || "Opret offentligt link til denne klubaften"}>{busy ? "Opretter gæsteadgang..." : "Aktivér gæsteadgang"}</button>
+          <button
+            type="button"
+            onClick={() => void enableGuestAccess()}
+            disabled={busy || clubNight.status !== "active"}
+            className="rounded-xl border border-cyan-500/60 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            title={error || "Opret offentligt link til denne klubaften"}
+          >
+            {busy ? "Opretter gæsteadgang..." : "Aktivér gæsteadgang"}
+          </button>
         ) : (
           <>
             <a href={`/g/${access.publicToken}`} target="_blank" rel="noreferrer" className="rounded-xl border border-cyan-500/60 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20">Åbn gæsteside</a>
