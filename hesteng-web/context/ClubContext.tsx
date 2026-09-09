@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, ReactNode, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import { clubs as demoClubs, DEMO_CLUB_ID, type Club } from "@/data/clubs";
 import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 
@@ -15,13 +22,9 @@ const STORAGE_KEY = "hesteng.currentClubId";
 const STORAGE_CHANGE_EVENT = "hesteng.currentClubChanged";
 const ClubContext = createContext<ClubContextType | undefined>(undefined);
 
-function slugifyClubName(name: string) {
-  return name
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "klub";
+function getStoredClubId() {
+  if (typeof window === "undefined") return DEMO_CLUB_ID;
+  return window.localStorage.getItem(STORAGE_KEY) ?? DEMO_CLUB_ID;
 }
 
 function subscribeToClub(callback: () => void) {
@@ -40,41 +43,66 @@ function subscribeToClub(callback: () => void) {
   };
 }
 
-function getStoredClubId() {
-  if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(STORAGE_KEY) ?? "";
+function saveClubId(clubId: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEY, clubId);
+  window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export function ClubProvider({ children }: { children: ReactNode }) {
   const currentUserContext = useOptionalCurrentUser();
-  const currentUser = currentUserContext?.currentUser;
-  const authenticatedClubs = useMemo<Club[]>(() => (
-    currentUser?.memberships.map((membership) => ({
+  const memberships = currentUserContext?.currentUser.memberships ?? [];
+  const storedClubId = useSyncExternalStore(
+    subscribeToClub,
+    getStoredClubId,
+    () => DEMO_CLUB_ID
+  );
+
+  const availableClubs = useMemo<Club[]>(() => {
+    if (memberships.length === 0) return demoClubs;
+
+    return memberships.map((membership) => ({
       id: membership.clubId,
-      name: membership.clubName ?? "Klub",
-      slug: slugifyClubName(membership.clubName ?? membership.clubId),
+      name: membership.clubName ?? "HESTENG klub",
+      slug: slugify(membership.clubName ?? membership.clubId),
       createdAt: "",
-    })) ?? []
-  ), [currentUser]);
-  const availableClubs = authenticatedClubs.length > 0 ? authenticatedClubs : demoClubs;
-  const storedClubId = useSyncExternalStore(subscribeToClub, getStoredClubId, () => "");
+    }));
+  }, [memberships]);
+
   const currentClub = useMemo(
-    () => availableClubs.find((club) => club.id === storedClubId) ?? availableClubs[0] ?? demoClubs[0],
+    () =>
+      availableClubs.find((club) => club.id === storedClubId) ??
+      availableClubs[0] ??
+      demoClubs[0],
     [availableClubs, storedClubId]
   );
 
-  const setCurrentClubId = useCallback((clubId: string) => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, clubId);
-    window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
-  }, []);
+  const setCurrentClubId = useCallback(
+    (clubId: string) => {
+      if (!availableClubs.some((club) => club.id === clubId)) return;
+      saveClubId(clubId);
+    },
+    [availableClubs]
+  );
 
-  const value = useMemo(() => ({
-    clubs: availableClubs,
-    currentClubId: currentClub?.id ?? DEMO_CLUB_ID,
-    currentClub: currentClub ?? demoClubs[0],
-    setCurrentClubId,
-  }), [availableClubs, currentClub, setCurrentClubId]);
+  const value = useMemo(
+    () => ({
+      clubs: availableClubs,
+      currentClubId: currentClub.id,
+      currentClub,
+      setCurrentClubId,
+    }),
+    [availableClubs, currentClub, setCurrentClubId]
+  );
 
   return <ClubContext.Provider value={value}>{children}</ClubContext.Provider>;
 }
