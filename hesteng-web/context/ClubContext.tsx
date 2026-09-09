@@ -68,14 +68,20 @@ export function ClubProvider({ children }: { children: ReactNode }) {
   );
 
   const availableClubs = useMemo<Club[]>(() => {
-    if (memberships.length === 0) return demoClubs;
+    const byId = new Map<string, Club>();
 
-    return memberships.map((membership) => ({
-      id: membership.clubId,
-      name: membership.clubName ?? "HESTENG klub",
-      slug: slugify(membership.clubName ?? membership.clubId),
-      createdAt: "",
-    }));
+    demoClubs.forEach((club) => byId.set(club.id, club));
+
+    memberships.forEach((membership) => {
+      byId.set(membership.clubId, {
+        id: membership.clubId,
+        name: membership.clubName ?? "HESTENG klub",
+        slug: slugify(membership.clubName ?? membership.clubId),
+        createdAt: "",
+      });
+    });
+
+    return Array.from(byId.values());
   }, [memberships]);
 
   const currentClub = useMemo(
