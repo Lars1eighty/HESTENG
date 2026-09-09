@@ -3,20 +3,34 @@
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import { useClub } from "@/context/ClubContext";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { calculatePoolStandings } from "@/lib/standingsEngine";
+import { createPlacementPools } from "@/lib/placementPoolEngine";
+import { normalizeName } from "@/lib/playerIdentity";
 
 export default function StillingPage() {
   const params = useParams<{ clubNightId?: string }>();
   const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
-  const { pools, matches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
+  const { currentClub } = useClub();
+  const { pools, matches, setPools, setMatches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
+  const [placementPreview, setPlacementPreview] = useState(false);
+  const isTjoerring = normalizeName(currentClub.name) === normalizeName("Tjørring Dart");
+  const placementStage = useMemo(() => createPlacementPools(pools, matches), [pools, matches]);
 
   useEffect(() => {
     if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
   }, [routeClubNightId, setCurrentClubNightId]);
+
+  function startPlacementPools() {
+    if (!placementStage.complete) return;
+    setPools(placementStage.pools);
+    setMatches([]);
+    setPlacementPreview(false);
+  }
 
   if (pools.length === 0) {
     return (
@@ -36,13 +50,46 @@ export default function StillingPage() {
       <Header />
       <section className="mx-auto max-w-6xl p-10">
         <BackButton />
-        <div className="mb-8 flex items-end justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold">🏆 Puljestilling</h1>
             <p className="mt-2 text-gray-400">Live rangering baseret på afsluttede kampe.</p>
           </div>
           <Link href={clubNightId ? `/klubaften/${clubNightId}/live` : "/klubaften/live"} className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-600">🔴 Live scoring</Link>
         </div>
+
+        {isTjoerring ? (
+          <section className="mb-8 rounded-2xl border border-orange-500/30 bg-orange-500/5 p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-black">Runde 2 · nye puljer efter placering</h2>
+                <p className="mt-1 text-sm text-gray-400">1&apos;erne går i Pulje A, 2&apos;erne i B, 3&apos;erne i C og 4&apos;erne i D.</p>
+              </div>
+              {placementStage.complete ? (
+                <button type="button" onClick={() => setPlacementPreview((value) => !value)} className="rounded-xl bg-orange-500 px-5 py-3 font-bold hover:bg-orange-600">
+                  {placementPreview ? "Skjul forslag" : "Lav runde 2"}
+                </button>
+              ) : (
+                <div className="rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-400">{placementStage.missingMatches} kampe mangler</div>
+              )}
+            </div>
+
+            {placementPreview && placementStage.complete ? (
+              <div className="mt-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {placementStage.pools.map((pool) => (
+                    <div key={pool.name} className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+                      <div className="font-black text-orange-400">{pool.name}</div>
+                      <div className="mt-3 space-y-2">{pool.players.map((player) => <div key={player} className="font-semibold">{player}</div>)}</div>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={startPlacementPools} className="mt-5 w-full rounded-xl bg-green-600 py-3 text-lg font-black hover:bg-green-700">Start runde 2 med disse puljer</button>
+                <p className="mt-2 text-center text-xs text-gray-500">Runde 1-kampene erstattes i den aktive kampplan, når runde 2 startes.</p>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <div className="space-y-8">
           {pools.map((pool) => {
@@ -55,24 +102,10 @@ export default function StillingPage() {
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
-                    <thead className="text-gray-500">
-                      <tr><th className="pb-3 pr-4">#</th><th className="pb-3 pr-4">Spiller</th><th className="pb-3 pr-4 text-center">K</th><th className="pb-3 pr-4 text-center">V</th><th className="pb-3 pr-4 text-center">T</th><th className="pb-3 pr-4 text-center">LF</th><th className="pb-3 pr-4 text-center">LI</th><th className="pb-3 pr-4 text-center">+/-</th><th className="pb-3 text-center">Point</th></tr>
-                    </thead>
-                    <tbody>
-                      {standings.map((standing, index) => (
-                        <tr key={standing.player} className="border-t border-gray-800">
-                          <td className="py-3 pr-4 font-bold">{index + 1}</td>
-                          <td className="py-3 pr-4 font-semibold">{standing.player}</td>
-                          <td className="py-3 pr-4 text-center">{standing.played}</td>
-                          <td className="py-3 pr-4 text-center text-green-400">{standing.wins}</td>
-                          <td className="py-3 pr-4 text-center text-red-400">{standing.losses}</td>
-                          <td className="py-3 pr-4 text-center">{standing.legsFor}</td>
-                          <td className="py-3 pr-4 text-center">{standing.legsAgainst}</td>
-                          <td className="py-3 pr-4 text-center">{standing.legsFor - standing.legsAgainst}</td>
-                          <td className="py-3 text-center font-bold">{standing.points}</td>
-                        </tr>
-                      ))}
-                    </tbody>
+                    <thead className="text-gray-500"><tr><th className="pb-3 pr-4">#</th><th className="pb-3 pr-4">Spiller</th><th className="pb-3 pr-4 text-center">K</th><th className="pb-3 pr-4 text-center">V</th><th className="pb-3 pr-4 text-center">T</th><th className="pb-3 pr-4 text-center">LF</th><th className="pb-3 pr-4 text-center">LI</th><th className="pb-3 pr-4 text-center">+/-</th><th className="pb-3 text-center">Point</th></tr></thead>
+                    <tbody>{standings.map((standing, index) => (
+                      <tr key={standing.player} className="border-t border-gray-800"><td className="py-3 pr-4 font-bold">{index + 1}</td><td className="py-3 pr-4 font-semibold">{standing.player}</td><td className="py-3 pr-4 text-center">{standing.played}</td><td className="py-3 pr-4 text-center text-green-400">{standing.wins}</td><td className="py-3 pr-4 text-center text-red-400">{standing.losses}</td><td className="py-3 pr-4 text-center">{standing.legsFor}</td><td className="py-3 pr-4 text-center">{standing.legsAgainst}</td><td className="py-3 pr-4 text-center">{standing.legsFor - standing.legsAgainst}</td><td className="py-3 text-center font-bold">{standing.points}</td></tr>
+                    ))}</tbody>
                   </table>
                 </div>
               </section>
