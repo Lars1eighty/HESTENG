@@ -72,8 +72,13 @@ export async function saveGuestCompletedMatches(
   });
 
   if (!response.ok) {
-    throw new Error("Kunne ikke gemme kampresultatet.");
+    const data = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(data.error ?? "Kunne ikke gemme kampresultatet.");
   }
 
   return (await response.json()) as { completedMatches: unknown[] };
+}
+
+export async function publishGuestClubNight(snapshot: PublicClubNightSnapshot) {
+  return syncPublicClubNight(snapshot);
 }
