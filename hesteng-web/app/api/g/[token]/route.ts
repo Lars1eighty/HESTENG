@@ -12,6 +12,18 @@ type RouteContext = {
   params: Promise<{ token: string }>;
 };
 
+type MatchWithId = { id?: unknown };
+
+function asCompletedMatches(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function matchId(value: unknown) {
+  return value !== null && typeof value === "object" && typeof (value as MatchWithId).id === "string"
+    ? (value as MatchWithId).id as string
+    : null;
+}
+
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { token } = await context.params;
   const publicToken = token.trim();
@@ -57,17 +69,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const body = await request.json().catch(() => ({}));
-  if (!Array.isArray(body.completedMatches)) {
-    return NextResponse.json({ error: "Kampresultater mangler." }, { status: 400 });
+  const completedMatch = body.completedMatch;
+  const completedMatchId = matchId(completedMatch);
+
+  if (!completedMatchId) {
+    return NextResponse.json({ error: "Kampresultatet mangler." }, { status: 400 });
   }
 
-  if (!validateGuestCompletedMatches(record.clubNight, body.completedMatches)) {
-    return NextResponse.json({ error: "Et kampresultat tilhører ikke denne klubaften." }, { status: 400 });
+  if (!validateGuestCompletedMatches(record.clubNight, [completedMatch])) {
+    return NextResponse.json({ error: "Kampresultatet er ikke gyldigt for denne klubaften." }, { status: 400 });
   }
+
+  const currentMatches = asCompletedMatches(record.completedMatches);
+  const mergedMatches = [
+    ...currentMatches.filter((match) => matchId(match) !== completedMatchId),
+    completedMatch,
+  ];
 
   const updated = await updatePublicClubNightCompletedMatchesByToken({
     publicToken,
-    completedMatches: body.completedMatches,
+    completedMatches: mergedMatches,
   });
 
   if (!updated) {
