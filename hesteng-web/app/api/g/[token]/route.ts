@@ -28,6 +28,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
   return NextResponse.json({
     publicToken: record.publicToken,
+    clubNightId: record.clubNightId,
+    clubId: record.clubId,
     clubNight: record.clubNight,
     completedMatches: record.completedMatches ?? [],
   });
