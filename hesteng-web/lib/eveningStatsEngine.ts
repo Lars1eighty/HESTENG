@@ -1,7 +1,7 @@
 import type { CompletedMatch, CompletedPlayerStats } from "@/lib/matchStore";
 import { normalizeName } from "@/lib/playerIdentity";
 
-type VisitStats = CompletedPlayerStats & { hundredPlus?: number; oneFortyPlus?: number };
+type VisitStats = CompletedPlayerStats & { hundredPlus?: number; oneFortyPlus?: number; darts?: number };
 
 export type EveningPlayerStats = {
   playerId?: string;
@@ -9,6 +9,7 @@ export type EveningPlayerStats = {
   matchesPlayed: number;
   totalScored: number;
   entries: number;
+  darts: number;
   average: number;
   hundredPlus: number;
   oneFortyPlus: number;
@@ -36,10 +37,11 @@ export type EveningStats = {
 type PlayerAccumulator = EveningPlayerStats & {
   weightedAveragePoints: number;
   weightedAverageEntries: number;
+  exactDartsComplete: boolean;
 };
 
 function emptyPlayerStats(player: string, playerId?: string): PlayerAccumulator {
-  return { playerId, player, matchesPlayed: 0, totalScored: 0, entries: 0, average: 0, hundredPlus: 0, oneFortyPlus: 0, oneEighties: 0, checkouts: 0, checkoutAttempts: 0, checkoutPercent: 0, fastestLegDarts: null, weightedAveragePoints: 0, weightedAverageEntries: 0 };
+  return { playerId, player, matchesPlayed: 0, totalScored: 0, entries: 0, darts: 0, average: 0, hundredPlus: 0, oneFortyPlus: 0, oneEighties: 0, checkouts: 0, checkoutAttempts: 0, checkoutPercent: 0, fastestLegDarts: null, weightedAveragePoints: 0, weightedAverageEntries: 0, exactDartsComplete: true };
 }
 
 function addPlayerMatch(target: PlayerAccumulator, stats: CompletedPlayerStats) {
@@ -49,6 +51,8 @@ function addPlayerMatch(target: PlayerAccumulator, stats: CompletedPlayerStats) 
   target.entries += stats.entries;
   target.weightedAveragePoints += stats.average * stats.entries;
   target.weightedAverageEntries += stats.entries;
+  if (typeof visitStats.darts === "number") target.darts += visitStats.darts;
+  else target.exactDartsComplete = false;
   target.hundredPlus += visitStats.hundredPlus ?? 0;
   target.oneFortyPlus += visitStats.oneFortyPlus ?? 0;
   target.oneEighties += stats.oneEighties;
@@ -58,10 +62,16 @@ function addPlayerMatch(target: PlayerAccumulator, stats: CompletedPlayerStats) 
 }
 
 function finishPlayerStats(stats: PlayerAccumulator): EveningPlayerStats {
-  const { weightedAveragePoints, weightedAverageEntries, ...result } = stats;
+  const { weightedAveragePoints, weightedAverageEntries, exactDartsComplete, ...result } = stats;
+  const average = exactDartsComplete && stats.darts > 0
+    ? (stats.totalScored / stats.darts) * 3
+    : weightedAverageEntries > 0
+      ? weightedAveragePoints / weightedAverageEntries
+      : 0;
+
   return {
     ...result,
-    average: weightedAverageEntries > 0 ? Number((weightedAveragePoints / weightedAverageEntries).toFixed(2)) : 0,
+    average: Number(average.toFixed(2)),
     checkoutPercent: stats.checkoutAttempts > 0 ? Math.round((stats.checkouts / stats.checkoutAttempts) * 100) : 0,
   };
 }
