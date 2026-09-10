@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import type { ClubNight } from "@/context/KlubaftenContext";
+import { useKlubaften, type ClubNight } from "@/context/KlubaftenContext";
 import { adaptGuestCompletedMatch } from "@/lib/guestCompletedMatchAdapter";
 import { saveCompletedMatch, type CompletedMatch } from "@/lib/matchStore";
 import {
@@ -19,6 +19,7 @@ type Props = {
 };
 
 export default function GuestAccessControl({ clubNight, completedMatches }: Props) {
+  const { updateClubNight } = useKlubaften();
   const [access, setAccess] = useState<PublicClubNightAccess | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -124,7 +125,7 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
       const guestResults = await getGuestCompletedMatches(access.publicToken);
       const matchesById = new Map(clubNight.matches.map((match) => [match.id, match]));
       const existingIds = new Set(completedMatches.map((match) => match.id));
-      let imported = 0;
+      const importedMatches: CompletedMatch[] = [];
 
       for (const value of guestResults) {
         if (!value || typeof value !== "object") continue;
@@ -136,11 +137,33 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
         if (!completed) continue;
         saveCompletedMatch(completed);
         existingIds.add(id);
-        imported += 1;
+        importedMatches.push(completed);
       }
 
+      if (importedMatches.length > 0) {
+        const importedById = new Map(importedMatches.map((match) => [match.id, match]));
+        updateClubNight(clubNight.id, (night) => ({
+          ...night,
+          matches: night.matches.map((match) => {
+            const completed = importedById.get(match.id);
+            if (!completed) return match;
+            return {
+              ...match,
+              score1: completed.score1,
+              score2: completed.score2,
+              winner: completed.winner,
+              loser: completed.winner === match.player1 ? match.player2 : match.player1,
+              status: "finished" as const,
+              finishedAt: completed.finishedAt,
+              completedAt: completed.completedAt ?? completed.finishedAt,
+              timingSource: completed.timingSource,
+            };
+          }),
+        }));
+      }
+
+      const imported = importedMatches.length;
       setImportMessage(imported > 0 ? `${imported} gæsteresultat${imported === 1 ? "" : "er"} hentet.` : "Ingen nye gæsteresultater.");
-      if (imported > 0) window.location.reload();
     } catch {
       setError("Gæsteresultater kunne ikke hentes.");
     } finally {
