@@ -32,8 +32,19 @@ export default function PlayerSearch() {
   );
   const players = useMemo(() => {
     void customPlayersStore;
-    return getPlayerRegistry(currentClubId);
-  }, [currentClubId, customPlayersStore]);
+    const registryPlayers = getPlayerRegistry(currentClubId);
+    const knownNames = new Set(registryPlayers.map((player) => normalizeName(player.name)));
+    const selectedOnlyPlayers = selectedPlayers
+      .filter((name) => !knownNames.has(normalizeName(name)))
+      .map((name) => ({
+        id: `selected:${normalizeName(name).replace(/\s+/g, "-")}`,
+        name,
+        type: "player" as const,
+        requiresAccessibleBoard: false,
+      }));
+
+    return [...registryPlayers, ...selectedOnlyPlayers].sort((a, b) => a.name.localeCompare(b.name));
+  }, [currentClubId, customPlayersStore, selectedPlayers]);
   const playerByName = useMemo(() => new Map(players.map((player) => [normalizeName(player.name), player])), [players]);
   const liveActiveSnapshotStore = useSyncExternalStore(
     subscribeLiveActiveSnapshots,
