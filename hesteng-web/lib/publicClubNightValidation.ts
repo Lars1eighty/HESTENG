@@ -36,13 +36,13 @@ function isNonNegativeInteger(value: unknown) {
   return Number.isInteger(value) && (value as number) >= 0;
 }
 
-function hasValidPlayerStats(players: unknown, allowed: MatchLike) {
+function hasValidPlayerStats(players: unknown, allowed: MatchLike, completed: CompletedMatchLike) {
   if (players === undefined) return true;
   if (!Array.isArray(players) || players.length !== 2) return false;
 
   const expected = [
-    { name: allowed.player1, playerId: allowed.player1Id },
-    { name: allowed.player2, playerId: allowed.player2Id },
+    { name: allowed.player1, playerId: allowed.player1Id, legs: completed.score1 },
+    { name: allowed.player2, playerId: allowed.player2Id, legs: completed.score2 },
   ];
 
   return players.every((value, index) => {
@@ -60,6 +60,8 @@ function hasValidPlayerStats(players: unknown, allowed: MatchLike) {
     }
 
     if (!Number.isInteger(stats.legs) || !Number.isInteger(stats.entries) || !Number.isInteger(stats.checkouts) || !Number.isInteger(stats.checkoutAttempts) || !Number.isInteger(stats.oneEighties)) return false;
+    if (stats.legs !== expected[index].legs) return false;
+    if (stats.checkouts !== stats.legs) return false;
     if ((stats.checkouts as number) > (stats.checkoutAttempts as number)) return false;
     if ((stats.checkoutPercent as number) > 100) return false;
 
@@ -95,7 +97,7 @@ function hasValidOutcome(completed: CompletedMatchLike, allowed: MatchLike) {
     if (winningScore !== legsToWin) return false;
   }
 
-  return hasValidPlayerStats(completed.players, allowed);
+  return hasValidPlayerStats(completed.players, allowed, completed);
 }
 
 export function validateGuestCompletedMatches(clubNight: unknown, completedMatches: unknown[]) {
