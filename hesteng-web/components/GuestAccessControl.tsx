@@ -116,11 +116,13 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
     }
   }
 
-  async function importGuestResults() {
+  async function importGuestResults(silent = false) {
     if (!access || !clubNight.clubId) return;
-    setBusy(true);
-    setError("");
-    setImportMessage("");
+    if (!silent) {
+      setBusy(true);
+      setError("");
+      setImportMessage("");
+    }
     try {
       const guestResults = await getGuestCompletedMatches(access.publicToken);
       const matchesById = new Map(clubNight.matches.map((match) => [match.id, match]));
@@ -166,13 +168,25 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
         }));
       }
 
-      setImportMessage(imported > 0 ? `${imported} gæsteresultat${imported === 1 ? "" : "er"} hentet.` : "Gæsteresultater er synkroniseret.");
+      if (!silent || imported > 0) {
+        setImportMessage(imported > 0 ? `${imported} gæsteresultat${imported === 1 ? "" : "er"} hentet.` : "Gæsteresultater er synkroniseret.");
+      }
     } catch {
-      setError("Gæsteresultater kunne ikke hentes.");
+      if (!silent) setError("Gæsteresultater kunne ikke hentes.");
     } finally {
-      setBusy(false);
+      if (!silent) setBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!access || !clubNight.clubId || clubNight.status !== "active") return;
+    const interval = window.setInterval(() => {
+      void importGuestResults(true);
+    }, 10000);
+    return () => window.clearInterval(interval);
+    // Polling intentionally follows the active guest access and current club night.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access?.publicToken, clubNight.clubId, clubNight.id, clubNight.status]);
 
   async function copyLink() {
     if (!publicUrl) return;
