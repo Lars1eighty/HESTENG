@@ -20,22 +20,25 @@ import {
 } from "@/lib/liveActiveEngine";
 
 const REFRESH_INTERVAL_MS = 7000;
+const DASHBOARD_LAYOUT_STORAGE_PREFIX = "hesteng.dashboardLayout.";
+
+type DashboardLayout = "social" | "performance" | "compact";
 type PerformanceRow = { id: string; player: string; value: string | number };
 
-function getPoolLayoutProfile(pools: Array<{ players: string[] }>) {
+function getPoolLayoutProfile(pools: Array<{ players: string[] }>, layout: DashboardLayout) {
   const poolCount = pools.length;
   const maxPlayers = Math.max(0, ...pools.map((pool) => pool.players.length));
   const longestName = Math.max(0, ...pools.flatMap((pool) => pool.players.map((player) => player.length)));
   const shouldPrioritizeWidth = longestName >= 24 || maxPlayers >= 7;
   const shouldSplitThreePoolNights = poolCount === 3 && maxPlayers <= 6;
-  const columns = (shouldSplitThreePoolNights || (poolCount >= 4 && maxPlayers <= 6 && !(shouldPrioritizeWidth && poolCount <= 4))) ? 2 : 1;
-  const dense = columns > 1 || poolCount >= 5;
+  const socialColumns = poolCount >= 3 ? 2 : 1;
+  const columns = layout === "social"
+    ? socialColumns
+    : (shouldSplitThreePoolNights || (poolCount >= 4 && maxPlayers <= 6 && !(shouldPrioritizeWidth && poolCount <= 4))) ? 2 : 1;
+  const dense = layout === "compact" || columns > 1 || poolCount >= 5;
 
   return {
-    columns,
-    gridStyle: {
-      "--hesteng-pool-columns": columns,
-    } as CSSProperties,
+    gridStyle: { "--hesteng-pool-columns": columns } as CSSProperties,
     cardClassName: dense
       ? "rounded-lg border border-gray-800 bg-gray-950 p-1.5"
       : "rounded-lg border border-gray-800 bg-gray-950 p-2",
@@ -47,8 +50,52 @@ function getPoolLayoutProfile(pools: Array<{ players: string[] }>) {
       : "grid grid-cols-[18px_minmax(0,1fr)_22px_22px_22px_34px] gap-1 border-b border-gray-900 pb-1 text-[11px] font-black uppercase leading-none text-gray-600",
     rowClassName: dense
       ? "grid grid-cols-[16px_minmax(0,1fr)_18px_18px_18px_28px] items-center gap-0.5 border-b border-gray-900/70 py-0.5 text-[11px] leading-none 2xl:text-xs"
-      : "grid grid-cols-[18px_minmax(0,1fr)_22px_22px_22px_34px] items-center gap-1 border-b border-gray-900/70 py-1 text-xs leading-none xl:text-sm",
+      : "grid grid-cols-[18px_minmax(0,1fr)_22px_22px_22px_34px] gap-1 items-center border-b border-gray-900/70 py-1 text-xs leading-none xl:text-sm",
   };
+}
+
+function getPersonalBestCheckoutRows(completedMatches: ReturnType<typeof getCompletedMatchesForClubNightInClub>): PerformanceRow[] {
+  const bestByPlayer = new Map<string, number>();
+
+  for (const match of completedMatches) {
+    for (const player of match.players) {
+      const values = Array.isArray(player.highCheckouts)
+        ? player.highCheckouts
+        : player.highestCheckout
+          ? [player.highestCheckout]
+          : [];
+      for (const checkout of values) {
+        if (checkout <= 0) continue;
+        bestByPlayer.set(player.name, Math.max(bestByPlayer.get(player.name) ?? 0, checkout));
+      }
+    }
+  }
+
+  return [...bestByPlayer.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([player, value]) => ({ id: `best-checkout-${player}`, player, value }));
+}
+
+function getPersonalBestLegRows(completedMatches: ReturnType<typeof getCompletedMatchesForClubNightInClub>): PerformanceRow[] {
+  const bestByPlayer = new Map<string, number>();
+
+  for (const match of completedMatches) {
+    for (const player of match.players) {
+      const values = Array.isArray(player.fastLegDarts) && player.fastLegDarts.length
+        ? player.fastLegDarts
+        : player.fastestLegDarts !== null && player.fastestLegDarts !== undefined
+          ? [player.fastestLegDarts]
+          : [];
+      for (const darts of values) {
+        if (darts <= 0) continue;
+        bestByPlayer.set(player.name, Math.min(bestByPlayer.get(player.name) ?? Number.POSITIVE_INFINITY, darts));
+      }
+    }
+  }
+
+  return [...bestByPlayer.entries()]
+    .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))
+    .map(([player, darts]) => ({ id: `best-leg-${player}`, player, value: `${darts} pile` }));
 }
 
 export default function ClubNightDashboardPage({ params }: { params: Promise<{ clubNightId: string }> }) {
@@ -56,6 +103,9 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
   const { currentClubId, clubNights, setCurrentClubNightId } = useKlubaften();
   const [refreshTick, setRefreshTick] = useState(0);
   const [lastUpdated, setLastUpdated] = useState("-");
+  const [dashboardLayout, setDashboardLayout] = useState<DashboardLayout>("performance");
+  const [layoutReady, setLayoutReady] = useState(false);
+
   const liveActiveSnapshotStore = useSyncExternalStore(
     subscribeLiveActiveSnapshots,
     getLiveActiveSnapshotStorageValue,
@@ -70,6 +120,22 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
   useEffect(() => {
     setCurrentClubNightId(clubNightId);
   }, [clubNightId, setCurrentClubNightId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(`${DASHBOARD_LAYOUT_STORAGE_PREFIX}${currentClubId}`);
+    if (saved === "social" || saved === "performance" || saved === "compact") {
+      setDashboardLayout(saved);
+    }
+    setLayoutReady(true);
+  }, [currentClubId]);
+
+  function changeDashboardLayout(layout: DashboardLayout) {
+    setDashboardLayout(layout);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(`${DASHBOARD_LAYOUT_STORAGE_PREFIX}${currentClubId}`, layout);
+    }
+  }
 
   useEffect(() => {
     if (clubNight?.status !== "active") return;
@@ -115,6 +181,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
   const completedMatches = getCompletedMatchesForClubNightInClub(currentClubId, clubNight.id, matchIds);
   const eveningStats = calculateEveningStats(completedMatches);
   void refreshTick;
+
   const liveActiveRows = calculateLiveActiveRows(clubNights, currentClubId, liveActiveSnapshot, clubNight.id);
   const liveMatches = isActive ? matches.filter((match) => match.status === "live").sort((a, b) => a.board - b.board) : [];
   const nextMatches = isActive
@@ -126,14 +193,12 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
         a.board - b.board ||
         a.id.localeCompare(b.id, undefined, { numeric: true })
       )
-      .slice(0, 9)
+      .slice(0, dashboardLayout === "compact" ? 6 : 9)
     : [];
   const lastUpdatedLabel = clubNight.status === "active" ? lastUpdated : "Read-only";
   const liveActiveSplitIndex = Math.ceil(liveActiveRows.length / 2);
-  const liveEloColumns = [
-    liveActiveRows.slice(0, liveActiveSplitIndex),
-    liveActiveRows.slice(liveActiveSplitIndex),
-  ];
+  const liveEloColumns = [liveActiveRows.slice(0, liveActiveSplitIndex), liveActiveRows.slice(liveActiveSplitIndex)];
+
   const averageRows: PerformanceRow[] = eveningStats.players
     .filter((player) => player.entries > 0)
     .sort((a, b) => b.average - a.average || a.player.localeCompare(b.player))
@@ -154,44 +219,80 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
     .filter((player) => player.oneEighties > 0)
     .sort((a, b) => b.oneEighties - a.oneEighties || a.player.localeCompare(b.player))
     .map((player) => ({ id: `180-${player.player}`, player: player.player, value: `×${player.oneEighties}` }));
-  const highCheckoutRows: PerformanceRow[] = completedMatches.flatMap((match) =>
-    match.players.flatMap((player) => {
-      const checkouts = Array.isArray(player.highCheckouts)
-        ? player.highCheckouts
-        : player.highestCheckout
-          ? [player.highestCheckout]
-          : [];
-
-      return checkouts
-        .filter((checkout) => checkout >= 100)
-        .map((checkout, index) => ({
-          id: `co-${match.id}-${player.name}-${checkout}-${index}`,
-          player: player.name,
-          value: checkout,
-        }));
-    })
-  ).sort((a, b) => Number(b.value) - Number(a.value) || a.player.localeCompare(b.player));
-  const fastLegRows: PerformanceRow[] = completedMatches.flatMap((match) =>
-    match.players.flatMap((player) => {
-      const legs = Array.isArray(player.fastLegDarts)
-        ? player.fastLegDarts
-        : player.fastestLegDarts !== null && player.fastestLegDarts !== undefined
-          ? [player.fastestLegDarts]
-          : [];
-
-      return legs
-        .filter((darts) => darts <= 21)
-        .map((darts, index) => ({
-          id: `leg-${match.id}-${player.name}-${darts}-${index}`,
-          player: player.name,
-          value: `${darts} pile`,
-        }));
-    })
-  ).sort((a, b) => Number.parseInt(String(a.value), 10) - Number.parseInt(String(b.value), 10) || a.player.localeCompare(b.player));
+  const personalCheckoutRows = getPersonalBestCheckoutRows(completedMatches);
+  const personalLegRows = getPersonalBestLegRows(completedMatches);
   const clubNightPointRows: PerformanceRow[] = calculateThursdayPoints(completedMatches)
     .filter((player) => player.totalPoints > 0)
     .map((player) => ({ id: `club-night-points-${player.player}`, player: player.player, value: player.totalPoints }));
-  const poolLayout = getPoolLayoutProfile(clubNight.pools);
+  const poolLayout = getPoolLayoutProfile(clubNight.pools, dashboardLayout);
+
+  const poolSection = (
+    <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-sm font-black uppercase tracking-wide xl:text-lg">Puljestillinger</h2>
+        <span className="text-xs font-bold text-gray-500">{progress}% · {clubNight.pools.length} puljer</span>
+      </div>
+      <div className="hesteng-pool-grid grid gap-1.5 md:grid-cols-2" style={poolLayout.gridStyle}>
+        {clubNight.pools.map((pool) => {
+          const poolMatches = matches.filter((match) => match.pool === pool.name);
+          const poolFinished = poolMatches.filter((match) => match.status === "finished").length;
+          const standings = calculatePoolStandings(pool.name, pool.players, matches);
+          return (
+            <div key={pool.name} className={poolLayout.cardClassName}>
+              <div className="mb-1 flex items-center justify-between border-b border-gray-800 pb-1">
+                <div className={poolLayout.poolTitleClassName}>{pool.name}</div>
+                <div className="text-xs font-bold text-gray-500">{poolFinished}/{poolMatches.length}</div>
+              </div>
+              <div className={poolLayout.tableHeaderClassName}>
+                <div>#</div><div>Navn</div><div className="text-right">K</div><div className="text-right">V</div><div className="text-right">T</div><div className="text-right">+/-</div>
+              </div>
+              <div>
+                {standings.map((standing, index) => (
+                  <div key={standing.player} className={poolLayout.rowClassName}>
+                    <div className="font-black text-gray-500">{index + 1}</div>
+                    <div className="truncate font-bold text-gray-100" title={standing.player}>{standing.player}</div>
+                    <div className="text-right font-bold tabular-nums text-gray-400">{standing.played}</div>
+                    <div className="text-right font-bold tabular-nums text-green-400">{standing.wins}</div>
+                    <div className="text-right font-bold tabular-nums text-red-300">{standing.losses}</div>
+                    <div className="text-right font-bold tabular-nums text-gray-300">{standing.legsFor - standing.legsAgainst > 0 ? "+" : ""}{standing.legsFor - standing.legsAgainst}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
+  const performanceSection = (
+    <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
+      <h2 className="mb-1 text-xs font-black uppercase tracking-wide text-gray-300">Dagens performance</h2>
+      <div className={`grid gap-1 sm:grid-cols-2 ${dashboardLayout === "social" ? "xl:grid-cols-2" : "xl:grid-cols-2"}`}>
+        <PerformanceList title="Gennemsnit" rows={averageRows} />
+        <PerformanceList title="Checkout %" rows={checkoutRows} />
+        <PerformanceList title="100+" rows={hundredPlusRows} />
+        <PerformanceList title="140+" rows={oneFortyPlusRows} />
+        <PerformanceList title="180'ere" rows={oneEightyRows} />
+        <PerformanceList title="Bedste luk" rows={personalCheckoutRows} />
+        <PerformanceList title="Bedste leg" rows={personalLegRows} />
+        <PerformanceList title="Torsdagspoint i dag" rows={clubNightPointRows} />
+      </div>
+    </section>
+  );
+
+  const liveActiveSection = (
+    <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-sm font-black uppercase tracking-wide text-orange-300 xl:text-lg">Live Aktiv</h2>
+        {!liveActiveSnapshot && <span className="text-[9px] font-bold uppercase text-gray-600">Aktiv-snapshot mangler</span>}
+      </div>
+      <div className="grid gap-x-3 xl:grid-cols-2">
+        <LiveEloColumn rows={liveEloColumns[0]} />
+        <LiveEloColumn rows={liveEloColumns[1]} />
+      </div>
+    </section>
+  );
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -214,121 +315,60 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
                 <div className="text-[9px] uppercase tracking-wider text-orange-300">{isActive ? "Auto" : "Status"}</div>
                 <div className="text-xs tabular-nums text-orange-100">{lastUpdatedLabel}</div>
               </div>
-              <Link href="/klubaften" className="rounded-full border border-gray-700 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-gray-400 transition hover:border-orange-500/70 hover:text-orange-300">
-                Tilbage
-              </Link>
-              <Link href={`/klubaften/${clubNight.id}/kampe`} className="rounded-full border border-orange-500/70 bg-orange-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange-200 transition hover:border-orange-400 hover:bg-orange-500/20">
-                KAMPE
-              </Link>
-              <Link href={`/klubaften/${clubNight.id}/afslut`} className="rounded-full border border-gray-700 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-gray-400 transition hover:border-orange-500/70 hover:text-orange-300">
-                Administration
-              </Link>
+              <select
+                aria-label="Dashboard-visning"
+                value={layoutReady ? dashboardLayout : "performance"}
+                onChange={(event) => changeDashboardLayout(event.target.value as DashboardLayout)}
+                className="rounded-full border border-gray-700 bg-gray-950 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-gray-300 outline-none hover:border-orange-500/70"
+              >
+                <option value="social">Klub / social</option>
+                <option value="performance">Performance</option>
+                <option value="compact">Kompakt</option>
+              </select>
+              <Link href="/klubaften" className="rounded-full border border-gray-700 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-gray-400 transition hover:border-orange-500/70 hover:text-orange-300">Tilbage</Link>
+              <Link href={`/klubaften/${clubNight.id}/kampe`} className="rounded-full border border-orange-500/70 bg-orange-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange-200 transition hover:border-orange-400 hover:bg-orange-500/20">Kampe</Link>
+              <Link href={`/klubaften/${clubNight.id}/afslut`} className="rounded-full border border-gray-700 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-gray-400 transition hover:border-orange-500/70 hover:text-orange-300">Administration</Link>
             </div>
           </div>
-          <ActiveMatchTicker
-            clubNightId={clubNight.id}
-            isActive={isActive}
-            liveMatches={liveMatches}
-            allMatchesFinished={total > 0 && finished === total}
-          />
+          <ActiveMatchTicker clubNightId={clubNight.id} isActive={isActive} liveMatches={liveMatches} allMatchesFinished={total > 0 && finished === total} />
         </div>
 
         <section className="rounded-lg border border-gray-800 bg-gray-900 px-2 py-1">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2">
-            <h2 className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.14em] text-orange-300 2xl:text-xs">
-              Næste kampe
-            </h2>
+            <h2 className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.14em] text-orange-300 2xl:text-xs">Næste kampe</h2>
             {nextMatches.length ? (
-              <div className="grid gap-1 md:grid-cols-2 xl:grid-cols-3">
+              <div className={`grid gap-1 md:grid-cols-2 ${dashboardLayout === "social" ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
                 {nextMatches.map((match) => (
-                  <Link
-                    key={match.id}
-                    href={getClubNightMatchHref(match.id, clubNight.id)}
-                    className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-1 rounded-md bg-gray-950 px-2 py-1 text-[11px] font-bold leading-none text-gray-200 transition hover:bg-gray-900 2xl:text-xs"
-                  >
+                  <Link key={match.id} href={getClubNightMatchHref(match.id, clubNight.id)} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-1 rounded-md bg-gray-950 px-2 py-1 text-[11px] font-bold leading-none text-gray-200 transition hover:bg-gray-900 2xl:text-xs">
                     <span className="font-black text-orange-300">BANE {match.board}</span>
-                    <span className="truncate">
-                      {match.player1} vs {match.player2} · {match.pool}{match.round ? ` · R${match.round}` : ""}
-                    </span>
+                    <span className="truncate">{match.player1} vs {match.player2} · {match.pool}{match.round ? ` · R${match.round}` : ""}</span>
                   </Link>
                 ))}
               </div>
             ) : (
-              <div className="truncate text-[11px] font-bold leading-none text-gray-600 2xl:text-xs">
-                {isActive ? "Ingen kommende kampe" : "Arkiv · ingen kommende kampe"}
-              </div>
+              <div className="truncate text-[11px] font-bold leading-none text-gray-600 2xl:text-xs">{isActive ? "Ingen kommende kampe" : "Arkiv · ingen kommende kampe"}</div>
             )}
           </div>
         </section>
 
-        <div className="grid min-h-0 flex-1 gap-1 xl:grid-cols-[minmax(720px,1.45fr)_minmax(440px,0.95fr)_minmax(300px,0.55fr)] xl:overflow-hidden">
-          <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
-            <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase tracking-wide text-orange-300 xl:text-lg">Live Aktiv</h2>
-              {!liveActiveSnapshot && <span className="text-[9px] font-bold uppercase text-gray-600">Aktiv-snapshot mangler</span>}
-            </div>
-            <div className="grid gap-x-3 xl:grid-cols-2">
-              <LiveEloColumn rows={liveEloColumns[0]} />
-              <LiveEloColumn rows={liveEloColumns[1]} />
-            </div>
-          </section>
-
-          <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
-            <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase tracking-wide xl:text-lg">Puljestillinger</h2>
-              <span className="text-xs font-bold text-gray-500">{progress}% · {clubNight.pools.length} puljer</span>
-            </div>
-            <div className="hesteng-pool-grid grid gap-1.5 md:grid-cols-2" style={poolLayout.gridStyle}>
-              {clubNight.pools.map((pool) => {
-                const poolMatches = matches.filter((match) => match.pool === pool.name);
-                const poolFinished = poolMatches.filter((match) => match.status === "finished").length;
-                const standings = calculatePoolStandings(pool.name, pool.players, matches);
-                return (
-                  <div key={pool.name} className={poolLayout.cardClassName}>
-                    <div className="mb-1 flex items-center justify-between border-b border-gray-800 pb-1">
-                      <div className={poolLayout.poolTitleClassName}>{pool.name}</div>
-                      <div className="text-xs font-bold text-gray-500">{poolFinished}/{poolMatches.length}</div>
-                    </div>
-                    <div className={poolLayout.tableHeaderClassName}>
-                      <div>#</div>
-                      <div>Navn</div>
-                      <div className="text-right">K</div>
-                      <div className="text-right">V</div>
-                      <div className="text-right">T</div>
-                      <div className="text-right">+/-</div>
-                    </div>
-                    <div>
-                      {standings.map((standing, index) => (
-                        <div key={standing.player} className={poolLayout.rowClassName}>
-                          <div className="font-black text-gray-500">{index + 1}</div>
-                          <div className="truncate font-bold text-gray-100" title={standing.player}>{standing.player}</div>
-                          <div className="text-right font-bold tabular-nums text-gray-400">{standing.played}</div>
-                          <div className="text-right font-bold tabular-nums text-green-400">{standing.wins}</div>
-                          <div className="text-right font-bold tabular-nums text-red-300">{standing.losses}</div>
-                          <div className="text-right font-bold tabular-nums text-gray-300">{standing.legsFor - standing.legsAgainst > 0 ? "+" : ""}{standing.legsFor - standing.legsAgainst}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
-              <h2 className="mb-1 text-xs font-black uppercase tracking-wide text-gray-300">Dagens performance</h2>
-              <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-2">
-                <PerformanceList title="Gennemsnit" rows={averageRows} />
-                <PerformanceList title="Checkout %" rows={checkoutRows} />
-                <PerformanceList title="100+" rows={hundredPlusRows} />
-                <PerformanceList title="140+" rows={oneFortyPlusRows} />
-                <PerformanceList title="180'ere" rows={oneEightyRows} />
-                <PerformanceList title="Høje luk" rows={highCheckoutRows} />
-                <PerformanceList title="Hurtige legs" rows={fastLegRows} />
-                <PerformanceList title="Torsdagspoint i dag" rows={clubNightPointRows} />
-              </div>
-          </section>
-        </div>
+        {dashboardLayout === "social" ? (
+          <div className="grid min-h-0 flex-1 gap-1 xl:grid-cols-[minmax(0,1.8fr)_minmax(360px,0.8fr)] xl:overflow-hidden">
+            {poolSection}
+            {performanceSection}
+          </div>
+        ) : dashboardLayout === "compact" ? (
+          <div className="grid min-h-0 flex-1 gap-1 xl:grid-cols-[minmax(560px,1.2fr)_minmax(620px,1.35fr)_minmax(300px,0.65fr)] xl:overflow-hidden">
+            {liveActiveSection}
+            {poolSection}
+            {performanceSection}
+          </div>
+        ) : (
+          <div className="grid min-h-0 flex-1 gap-1 xl:grid-cols-[minmax(720px,1.45fr)_minmax(440px,0.95fr)_minmax(300px,0.55fr)] xl:overflow-hidden">
+            {liveActiveSection}
+            {poolSection}
+            {performanceSection}
+          </div>
+        )}
       </section>
     </main>
   );
@@ -345,38 +385,20 @@ function RankDelta({ value }: { value: number | null }) {
   return <span className="text-red-400">↓{Math.abs(value)}</span>;
 }
 
-function ActiveMatchTicker({
-  clubNightId,
-  isActive,
-  liveMatches,
-  allMatchesFinished,
-}: {
-  clubNightId: string;
-  isActive: boolean;
-  liveMatches: ClubMatch[];
-  allMatchesFinished: boolean;
-}) {
+function ActiveMatchTicker({ clubNightId, isActive, liveMatches, allMatchesFinished }: { clubNightId: string; isActive: boolean; liveMatches: ClubMatch[]; allMatchesFinished: boolean }) {
   const shouldScroll = liveMatches.length > 4;
-  const emptyText = isActive
-    ? allMatchesFinished ? "Alle kampe er færdigspillet" : "Ingen aktive kampe"
-    : "Arkiv · read-only";
+  const emptyText = isActive ? allMatchesFinished ? "Alle kampe er færdigspillet" : "Ingen aktive kampe" : "Arkiv · read-only";
   const tickerItems = shouldScroll ? [...liveMatches, ...liveMatches] : liveMatches;
 
   return (
     <div className="mt-1 overflow-hidden rounded-md border border-orange-500/25 bg-gray-950/90 px-2 py-1">
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
-        <div className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.14em] text-orange-300 2xl:text-xs">
-          Aktive kampe
-        </div>
+        <div className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.14em] text-orange-300 2xl:text-xs">Aktive kampe</div>
         {liveMatches.length ? (
           <div className="overflow-hidden">
             <div className={shouldScroll ? "hesteng-live-ticker-track flex gap-2" : "flex flex-wrap gap-1.5"}>
               {tickerItems.map((match, index) => (
-                <Link
-                  key={`${match.id}-${index}`}
-                  href={getClubNightMatchHref(match.id, clubNightId)}
-                  className="inline-flex min-w-max items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-[clamp(0.78rem,0.55vw+0.62rem,1rem)] font-black leading-none text-gray-100 transition hover:border-orange-400"
-                >
+                <Link key={`${match.id}-${index}`} href={getClubNightMatchHref(match.id, clubNightId)} className="inline-flex min-w-max items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-[clamp(0.78rem,0.55vw+0.62rem,1rem)] font-black leading-none text-gray-100 transition hover:border-orange-400">
                   <span className="text-orange-300">BANE {match.board}</span>
                   <span className="max-w-[13rem] truncate">{match.player1}</span>
                   <span className="rounded bg-orange-500 px-1.5 py-0.5 text-black tabular-nums">{match.score1}-{match.score2}</span>
@@ -385,9 +407,7 @@ function ActiveMatchTicker({
               ))}
             </div>
           </div>
-        ) : (
-          <div className="truncate text-sm font-black text-gray-500 2xl:text-base">{emptyText}</div>
-        )}
+        ) : <div className="truncate text-sm font-black text-gray-500 2xl:text-base">{emptyText}</div>}
       </div>
     </div>
   );
@@ -397,11 +417,7 @@ function LiveEloColumn({ rows }: { rows: Array<{ rank: number; rankDelta: number
   return (
     <div>
       <div className="grid grid-cols-[28px_24px_160px_42px_36px] gap-1 border-b border-gray-800 pb-0.5 text-[10px] font-black uppercase text-gray-600 2xl:grid-cols-[28px_24px_184px_42px_36px]">
-        <div>#</div>
-        <div>ΔR</div>
-        <div>Navn</div>
-        <div className="text-right">ELO</div>
-        <div className="text-right">Δ</div>
+        <div>#</div><div>ΔR</div><div>Navn</div><div className="text-right">ELO</div><div className="text-right">Δ</div>
       </div>
       {rows.map((row) => (
         <div key={row.player} className="grid grid-cols-[28px_24px_160px_42px_36px] items-center gap-1 border-b border-gray-800/70 py-0.5 text-xs leading-none 2xl:grid-cols-[28px_24px_184px_42px_36px] 2xl:text-[13px]">
@@ -422,7 +438,6 @@ function TopPill({ label, value, tone }: { label: string; value: string | number
     orange: "border-orange-500/40 bg-orange-500/10 text-orange-300",
     gray: "border-gray-700 bg-gray-950 text-gray-200",
   };
-
   return (
     <div className={`rounded-md border px-2 py-1 ${toneClasses[tone]}`}>
       <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
@@ -442,29 +457,17 @@ function PerformanceList({ title, rows }: { title: string; rows: PerformanceRow[
       {rows.length ? (
         <>
           <div className="space-y-0.5">
-            {topRows.map((row, index) => (
-              <PerformanceRowView key={row.id} rank={index + 1} row={row} strong />
-            ))}
+            {topRows.map((row, index) => <PerformanceRowView key={row.id} rank={index + 1} row={row} strong />)}
           </div>
           {restRows.length > 0 && (
             <div className={`mt-1 overflow-hidden ${shouldScroll ? "h-[4.9rem]" : ""}`}>
-              <div
-                className={shouldScroll ? "hesteng-performance-scroll-track space-y-0.5" : "space-y-0.5"}
-                style={shouldScroll ? {
-                  "--hesteng-performance-scroll-distance": `-${(restRows.length - 5) * 0.98}rem`,
-                  animationDuration: `${Math.max(18, restRows.length * 3.2)}s`,
-                } as CSSProperties : undefined}
-              >
-                {restRows.map((row, index) => (
-                  <PerformanceRowView key={row.id} rank={index + 4} row={row} />
-                ))}
+              <div className={shouldScroll ? "hesteng-performance-scroll-track space-y-0.5" : "space-y-0.5"} style={shouldScroll ? { "--hesteng-performance-scroll-distance": `-${(restRows.length - 5) * 0.98}rem`, animationDuration: `${Math.max(18, restRows.length * 3.2)}s` } as CSSProperties : undefined}>
+                {restRows.map((row, index) => <PerformanceRowView key={row.id} rank={index + 4} row={row} />)}
               </div>
             </div>
           )}
         </>
-      ) : (
-        <div className="text-[11px] font-bold text-gray-600">Ingen endnu</div>
-      )}
+      ) : <div className="text-[11px] font-bold text-gray-600">Ingen endnu</div>}
     </div>
   );
 }
