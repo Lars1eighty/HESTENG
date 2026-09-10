@@ -8,6 +8,7 @@ export type CompletedPlayerStats = {
   legs: number;
   totalScored: number;
   entries: number;
+  darts?: number;
   average: number;
   hundredPlus?: number;
   oneFortyPlus?: number;
