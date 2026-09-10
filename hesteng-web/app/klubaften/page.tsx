@@ -3,7 +3,7 @@
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useKlubaften, type ClubNight } from "@/context/KlubaftenContext";
 
 function formatDate(date: string) {
@@ -20,6 +20,25 @@ type ServerClubNightState = {
   clubNights?: ClubNight[];
   currentClubNightId?: string | null;
 };
+
+function mergeClubNights(server: ClubNight[] | null, local: ClubNight[]) {
+  const byId = new Map<string, ClubNight>();
+
+  for (const clubNight of server ?? []) {
+    byId.set(clubNight.id, clubNight);
+  }
+
+  // Keep a local unfinished club night visible even if the shared server has
+  // not received it yet. Local data also wins for an existing id because it is
+  // the admin browser's latest state while the club night is being edited.
+  for (const clubNight of local) {
+    byId.set(clubNight.id, clubNight);
+  }
+
+  return [...byId.values()].sort((a, b) =>
+    (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
+  );
+}
 
 export default function KlubaftenPage() {
   const {
@@ -56,16 +75,12 @@ export default function KlubaftenPage() {
     };
   }, []);
 
-  // The shared server is authoritative for this overview. Do not apply a
-  // device-local currentClubId filter here: a fresh mobile browser may have a
-  // stale/different local club selection even though the server has the valid
-  // club night.
-  const activeClubNights = serverClubNights
-    ? serverClubNights.filter((clubNight) => clubNight.status === "active")
-    : contextActiveClubNights;
-  const archivedClubNights = serverClubNights
-    ? serverClubNights.filter((clubNight) => clubNight.status !== "active")
-    : contextArchivedClubNights;
+  const allClubNights = useMemo(
+    () => mergeClubNights(serverClubNights, [...contextActiveClubNights, ...contextArchivedClubNights]),
+    [serverClubNights, contextActiveClubNights, contextArchivedClubNights]
+  );
+  const activeClubNights = allClubNights.filter((clubNight) => clubNight.status === "active");
+  const archivedClubNights = allClubNights.filter((clubNight) => clubNight.status !== "active");
   const pageReady = serverClubNights !== null || isSharedStateReady;
 
   return (
@@ -100,27 +115,45 @@ export default function KlubaftenPage() {
                 const live = clubNight.matches.filter((match) => match.status === "live").length;
                 const pending = clubNight.matches.filter((match) => match.status === "pending").length;
                 return (
-                  <Link
-                    key={clubNight.id}
-                    href={`/klubaften/${clubNight.id}`}
-                    onClick={() => setCurrentClubNightId(clubNight.id)}
-                    className="rounded-2xl border border-gray-800 bg-gray-900 p-6 transition hover:border-orange-500 hover:bg-gray-800"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-2xl font-bold">{clubNight.name}</h3>
-                        <p className="mt-1 text-sm text-gray-400">{formatDate(clubNight.date)} · {clubNight.selectedPlayers.length} spillere</p>
+                  <div key={clubNight.id} className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+                    <Link
+                      href={`/klubaften/${clubNight.id}`}
+                      onClick={() => setCurrentClubNightId(clubNight.id)}
+                      className="block p-6 transition hover:bg-gray-800"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-2xl font-bold">{clubNight.name}</h3>
+                          <p className="mt-1 text-sm text-gray-400">{formatDate(clubNight.date)} · {clubNight.selectedPlayers.length} spillere</p>
+                        </div>
+                        <span className="rounded-full border border-green-700 bg-green-500/10 px-3 py-1 text-xs font-bold uppercase text-green-300">
+                          {statusLabel(clubNight.status)}
+                        </span>
                       </div>
-                      <span className="rounded-full border border-green-700 bg-green-500/10 px-3 py-1 text-xs font-bold uppercase text-green-300">
-                        {statusLabel(clubNight.status)}
-                      </span>
+                      <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+                        <div className="rounded-xl bg-gray-950 p-3"><div className="text-2xl font-black text-green-400">{finished}</div><div className="text-xs text-gray-500">Færdige</div></div>
+                        <div className="rounded-xl bg-gray-950 p-3"><div className="text-2xl font-black text-orange-400">{live}</div><div className="text-xs text-gray-500">I gang</div></div>
+                        <div className="rounded-xl bg-gray-950 p-3"><div className="text-2xl font-black text-gray-300">{pending}</div><div className="text-xs text-gray-500">Mangler</div></div>
+                      </div>
+                    </Link>
+                    <div className="flex gap-3 border-t border-gray-800 p-4">
+                      <Link
+                        href={`/klubaften/${clubNight.id}`}
+                        onClick={() => setCurrentClubNightId(clubNight.id)}
+                        className="flex-1 rounded-xl border border-gray-700 px-4 py-2 text-center text-sm font-semibold text-gray-200 hover:border-gray-500 hover:bg-gray-800"
+                      >
+                        Åbn klubaften
+                      </Link>
+                      <Link
+                        href={`/klubaften/${clubNight.id}`}
+                        target="_blank"
+                        onClick={() => setCurrentClubNightId(clubNight.id)}
+                        className="flex-1 rounded-xl bg-orange-500 px-4 py-2 text-center text-sm font-bold text-black hover:bg-orange-400"
+                      >
+                        Åbn Live TV
+                      </Link>
                     </div>
-                    <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-                      <div className="rounded-xl bg-gray-950 p-3"><div className="text-2xl font-black text-green-400">{finished}</div><div className="text-xs text-gray-500">Færdige</div></div>
-                      <div className="rounded-xl bg-gray-950 p-3"><div className="text-2xl font-black text-orange-400">{live}</div><div className="text-xs text-gray-500">I gang</div></div>
-                      <div className="rounded-xl bg-gray-950 p-3"><div className="text-2xl font-black text-gray-300">{pending}</div><div className="text-xs text-gray-500">Mangler</div></div>
-                    </div>
-                  </Link>
+                  </div>
                 );
               })}
             </div>
