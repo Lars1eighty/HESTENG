@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { ClubNight } from "@/context/KlubaftenContext";
-import type { CompletedMatch } from "@/lib/matchStore";
+import { adaptGuestCompletedMatch } from "@/lib/guestCompletedMatchAdapter";
+import { saveCompletedMatch, type CompletedMatch } from "@/lib/matchStore";
 import {
+  getGuestCompletedMatches,
   getPublicClubNightAccess,
   publishGuestClubNight,
   syncPublicClubNight,
@@ -21,6 +23,7 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [importMessage, setImportMessage] = useState("");
 
   const publicUrl = useMemo(() => {
     if (!access || typeof window === "undefined") return "";
@@ -112,6 +115,39 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
     }
   }
 
+  async function importGuestResults() {
+    if (!access || !clubNight.clubId) return;
+    setBusy(true);
+    setError("");
+    setImportMessage("");
+    try {
+      const guestResults = await getGuestCompletedMatches(access.publicToken);
+      const matchesById = new Map(clubNight.matches.map((match) => [match.id, match]));
+      const existingIds = new Set(completedMatches.map((match) => match.id));
+      let imported = 0;
+
+      for (const value of guestResults) {
+        if (!value || typeof value !== "object") continue;
+        const id = (value as { id?: unknown }).id;
+        if (typeof id !== "string" || existingIds.has(id)) continue;
+        const authoritativeMatch = matchesById.get(id);
+        if (!authoritativeMatch) continue;
+        const completed = adaptGuestCompletedMatch(value, authoritativeMatch, clubNight.clubId, clubNight.id);
+        if (!completed) continue;
+        saveCompletedMatch(completed);
+        existingIds.add(id);
+        imported += 1;
+      }
+
+      setImportMessage(imported > 0 ? `${imported} gæsteresultat${imported === 1 ? "" : "er"} hentet.` : "Ingen nye gæsteresultater.");
+      if (imported > 0) window.location.reload();
+    } catch {
+      setError("Gæsteresultater kunne ikke hentes.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function copyLink() {
     if (!publicUrl) return;
     try {
@@ -140,9 +176,11 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
           <>
             <a href={`/g/${access.publicToken}`} target="_blank" rel="noreferrer" className="rounded-xl border border-cyan-500/60 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20">Åbn gæsteside</a>
             <button type="button" onClick={() => void copyLink()} className="rounded-xl border border-gray-700 px-4 py-3 text-sm font-black text-gray-300 transition hover:border-cyan-500/70 hover:text-cyan-200" title={publicUrl}>{copied ? "Link kopieret" : "Kopiér gæstelink"}</button>
+            <button type="button" onClick={() => void importGuestResults()} disabled={busy} className="rounded-xl border border-orange-500/60 bg-orange-500/10 px-4 py-3 text-sm font-black text-orange-200 transition hover:border-orange-400 hover:bg-orange-500/20 disabled:opacity-50">{busy ? "Henter..." : "Hent gæsteresultater"}</button>
           </>
         )}
         {error && <span className="text-sm font-semibold text-red-300">{error}</span>}
+        {importMessage && <span className="text-sm font-semibold text-green-300">{importMessage}</span>}
       </div>
 
       {access && qrUrl ? (
