@@ -55,7 +55,7 @@ function hasValidPlayerStats(players: unknown, allowed: MatchLike) {
       if (!isNonNegativeNumber(stats[field])) return false;
     }
 
-    for (const field of ["hundredPlus", "oneFortyPlus"]) {
+    for (const field of ["hundredPlus", "oneFortyPlus", "darts"]) {
       if (stats[field] !== undefined && !isNonNegativeInteger(stats[field])) return false;
     }
 
