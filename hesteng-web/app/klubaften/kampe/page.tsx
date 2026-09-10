@@ -22,10 +22,11 @@ function getTimingSourceLabel(source?: string) { if (source === "hesteng") retur
 export default function KampePage() {
   const params = useParams<{ clubNightId?: string }>();
   const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
-  const { currentClub } = useClub();
+  const { clubs, currentClub } = useClub();
   const { currentClubId, pools, matches, setMatches, currentClubNightId, currentClubNight, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
-  const isTjoerring = normalizeName(currentClub.name) === normalizeName("Tjørring Dart");
+  const effectiveClub = (currentClubNight?.clubId ? clubs.find((club) => club.id === currentClubNight.clubId) : null) ?? currentClub;
+  const isTjoerring = normalizeName(effectiveClub.name).includes(normalizeName("Tjørring"));
   const [bestOfLegs, setBestOfLegs] = useState(isTjoerring ? 1 : 5);
 
   useEffect(() => { if (routeClubNightId) setCurrentClubNightId(routeClubNightId); }, [routeClubNightId, setCurrentClubNightId]);
@@ -33,7 +34,7 @@ export default function KampePage() {
 
   function createMatches() {
     if (pools.length === 0 || !clubNightId || currentClubNight?.status !== "active") return;
-    setMatches(createClubNightMatches(pools, currentClubNight.boardCount, clubNightId, currentClubId, bestOfLegs, currentClubNight.handicapBoards));
+    setMatches(createClubNightMatches(pools, currentClubNight.boardCount, clubNightId, currentClubId, bestOfLegs, currentClubNight.handicapBoards, undefined, isTjoerring));
   }
 
   if (pools.length === 0) return <main className="min-h-screen bg-gray-950 text-white"><Header /><section className="mx-auto max-w-5xl p-10"><BackButton /><h1 className="mb-8 text-4xl font-bold">🎯 Kampe</h1><div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">Opret først puljerne.</div></section></main>;
