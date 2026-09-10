@@ -11,7 +11,7 @@ import { getCompletedMatchInClub, type CompletedMatch } from "@/lib/matchStore";
 import { applyEloForCompletedMatch } from "@/lib/eloRatingEngine";
 import type { ClubMatch } from "@/lib/matchEngine";
 
-const LEG_OPTIONS = [3, 5, 7, 9];
+const LEG_OPTIONS = [1, 3, 5, 7, 9];
 const SCORING_MODE_OPTIONS: Array<{ value: NonNullable<ClubMatch["scoringMode"]>; label: string }> = [
   { value: "total", label: "Samlet score" },
   { value: "dart-by-dart", label: "Pil for pil" },

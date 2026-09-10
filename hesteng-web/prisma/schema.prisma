@@ -24,12 +24,28 @@ model User {
 }
 
 model Club {
-  id          String           @id @default(cuid())
-  name        String
-  slug        String           @unique
-  memberships ClubMembership[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  boardCount      Int?
+  handicapBoards  Int[]            @default([])
+  memberships     ClubMembership[]
+  players         ClubPlayer[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model ClubPlayer {
+  id        String   @id @default(cuid())
+  clubId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, name])
+  @@index([clubId])
 }
 
 model ClubMembership {
@@ -52,19 +68,33 @@ enum ClubMembershipRole {
   ADMIN
 }
 
+model PublicClubNight {
+  id               String   @id @default(cuid())
+  clubNightId      String   @unique
+  clubId            String
+  publicToken       String   @unique @default(cuid())
+  status            String
+  clubNight         Json
+  completedMatches  Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([clubId, status])
+}
+
 model Account {
   id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
+  userId             String
+  type                String
+  provider            String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+  refresh_token       String? @db.Text
+  access_token        String? @db.Text
+  expires_at          Int?
+  token_type           String?
+  scope                String?
+  id_token             String? @db.Text
+  session_state       String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

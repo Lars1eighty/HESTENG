@@ -5,22 +5,90 @@ import { normalizeName } from "@/lib/playerIdentity";
 
 const POOL_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+export type PoolMode = "draw" | "elo";
+export type PoolSizeProfile = "standard" | "compact";
+
 type SeededPoolPlayer = {
   id: string;
   name: string;
   elo: number;
 };
 
-/**
- * Creates balanced pools for a club night.
- * The MVP keeps pools at roughly 5-6 players where possible.
- * Pools are level-divided by current club ELO: A is strongest, then B, C, etc.
- */
-export function createClubNightPools(players: string[], clubId?: string): Pool[] {
-  const uniquePlayers = [...new Set(players)];
+function getStandardPoolSizes(playerCount: number) {
+  const poolCount = Math.max(2, Math.ceil(playerCount / 6));
+  const basePoolSize = Math.floor(playerCount / poolCount);
+  const poolsWithExtraPlayer = playerCount % poolCount;
 
-  if (uniquePlayers.length < 10) {
-    throw new Error("Der skal være mindst 10 spillere for at oprette puljer");
+  return Array.from(
+    { length: poolCount },
+    (_, index) => basePoolSize + (index < poolsWithExtraPlayer ? 1 : 0)
+  );
+}
+
+function getCompactPoolSizes(playerCount: number) {
+  const fourPlayerPools = playerCount % 3;
+  const threePlayerPools = (playerCount - fourPlayerPools * 4) / 3;
+
+  return [
+    ...Array.from({ length: fourPlayerPools }, () => 4),
+    ...Array.from({ length: threePlayerPools }, () => 3),
+  ];
+}
+
+function getPoolSizes(playerCount: number, sizeProfile: PoolSizeProfile) {
+  return sizeProfile === "compact"
+    ? getCompactPoolSizes(playerCount)
+    : getStandardPoolSizes(playerCount);
+}
+
+function createPoolsFromPlayers(players: string[], sizeProfile: PoolSizeProfile): Pool[] {
+  const poolSizes = getPoolSizes(players.length, sizeProfile);
+  const pools: Pool[] = poolSizes.map((_, index) => ({
+    name: `Pulje ${POOL_LETTERS[index]}`,
+    players: [],
+  }));
+
+  let startIndex = 0;
+  poolSizes.forEach((poolSize, poolIndex) => {
+    pools[poolIndex].players = players.slice(startIndex, startIndex + poolSize);
+    startIndex += poolSize;
+  });
+
+  return pools;
+}
+
+function shufflePlayers(players: string[]) {
+  const shuffled = [...players];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
+/**
+ * Creates pools for a club night.
+ * draw: random draw, matching a traditional paper draw.
+ * elo: level-divided pools by current club ELO, strongest pool first.
+ * compact: 3-4 players per pool, preferring 4-player pools where possible.
+ */
+export function createClubNightPools(
+  players: string[],
+  clubId?: string,
+  mode: PoolMode = "elo",
+  sizeProfile: PoolSizeProfile = "standard"
+): Pool[] {
+  const uniquePlayers = [...new Set(players)];
+  const minimumPlayers = sizeProfile === "compact" ? 6 : 10;
+
+  if (uniquePlayers.length < minimumPlayers) {
+    throw new Error(`Der skal være mindst ${minimumPlayers} spillere for at oprette puljer`);
+  }
+
+  if (mode === "draw") {
+    return createPoolsFromPlayers(shufflePlayers(uniquePlayers), sizeProfile);
   }
 
   const registry = getPlayerRegistry(clubId);
@@ -45,23 +113,8 @@ export function createClubNightPools(players: string[], clubId?: string): Pool[]
     a.id.localeCompare(b.id) ||
     a.name.localeCompare(b.name)
   ));
-  const poolCount = Math.max(2, Math.ceil(uniquePlayers.length / 6));
-  const basePoolSize = Math.floor(sortedPlayers.length / poolCount);
-  const poolsWithExtraPlayer = sortedPlayers.length % poolCount;
-  const poolSizes = Array.from({ length: poolCount }, (_, index) => basePoolSize + (index < poolsWithExtraPlayer ? 1 : 0));
-  const pools: Pool[] = Array.from({ length: poolCount }, (_, index) => ({
-    name: `Pulje ${POOL_LETTERS[index]}`,
-    players: [],
-  }));
 
-  let startIndex = 0;
-  poolSizes.forEach((poolSize, poolIndex) => {
-    const poolPlayers = sortedPlayers.slice(startIndex, startIndex + poolSize);
-    pools[poolIndex].players = poolPlayers.map((player) => player.name);
-    startIndex += poolSize;
-  });
-
-  return pools;
+  return createPoolsFromPlayers(sortedPlayers.map((player) => player.name), sizeProfile);
 }
 
 export const createThursdayPools = createClubNightPools;

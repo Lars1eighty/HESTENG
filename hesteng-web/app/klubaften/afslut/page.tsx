@@ -9,8 +9,9 @@ import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { calculatePoolStandings } from "@/lib/standingsEngine";
-import { deleteCompletedMatchesForClubNightInClub } from "@/lib/matchStore";
+import { deleteCompletedMatchesForClubNightInClub, getCompletedMatchesForClubNightInClub } from "@/lib/matchStore";
 import { removeEloEventsForClubNightInClubAndRebuildRatings } from "@/lib/eloRatingEngine";
+import { getPublicClubNightAccess, syncPublicClubNight } from "@/lib/publicClubNightClient";
 
 export default function AfslutKlubaftenPage() {
   const router = useRouter();
@@ -25,274 +26,43 @@ export default function AfslutKlubaftenPage() {
   const currentFinishedMatchIds = matches.filter((match) => match.status === "finished" && (!clubNightId || match.clubNightId === clubNightId)).map((match) => match.id);
   const currentMatchIds = matches.map((match) => match.id);
 
-  useEffect(() => {
-    if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
-  }, [routeClubNightId, setCurrentClubNightId]);
+  useEffect(() => { if (routeClubNightId) setCurrentClubNightId(routeClubNightId); }, [routeClubNightId, setCurrentClubNightId]);
 
-  function abortAndKeepResults() {
-    abortClubNight(clubNightId ?? undefined);
-    router.push("/");
+  async function closeGuestAccess(status: "finished" | "aborted") {
+    if (!clubNightId || !currentClubNight?.clubId) return;
+    try {
+      const access = await getPublicClubNightAccess(clubNightId);
+      if (!access) return;
+      const completedMatches = getCompletedMatchesForClubNightInClub(currentClubId, clubNightId);
+      await syncPublicClubNight({ clubNightId, clubId: currentClubNight.clubId, status, clubNight: { ...currentClubNight, status }, completedMatches });
+    } catch { /* Local afslutning må ikke blokeres af gæstesync. */ }
   }
 
-  function abortAndDeleteResults() {
-    if (!clubNightId) return;
-    const ids = new Set(currentFinishedMatchIds);
-
-    deleteCompletedMatchesForClubNightInClub(currentClubId, clubNightId, currentFinishedMatchIds);
-    removeEloEventsForClubNightInClubAndRebuildRatings(currentClubId, clubNightId, currentFinishedMatchIds);
-    setMatches(matches.map((match) => {
-      if (!ids.has(match.id)) return match;
-      const { winner, loser, startedAt, completedAt, finishedAt, durationSeconds, legsPlayed, avgSecondsPerLeg, timingSource, ...rest } = match;
-      void winner;
-      void loser;
-      void startedAt;
-      void completedAt;
-      void finishedAt;
-      void durationSeconds;
-      void legsPlayed;
-      void avgSecondsPerLeg;
-      void timingSource;
-      return {
-        ...rest,
-        score1: 0,
-        score2: 0,
-        status: "pending",
-      };
-    }));
-    abortClubNight(clubNightId);
-    router.push("/");
+  async function abortAndKeepResults() { await closeGuestAccess("aborted"); abortClubNight(clubNightId ?? undefined); router.push("/"); }
+  async function abortAndDeleteResults() {
+    if (!clubNightId) return; const ids = new Set(currentFinishedMatchIds);
+    deleteCompletedMatchesForClubNightInClub(currentClubId, clubNightId, currentFinishedMatchIds); removeEloEventsForClubNightInClubAndRebuildRatings(currentClubId, clubNightId, currentFinishedMatchIds);
+    setMatches(matches.map((match) => { if (!ids.has(match.id)) return match; const { winner, loser, startedAt, completedAt, finishedAt, durationSeconds, legsPlayed, avgSecondsPerLeg, timingSource, ...rest } = match; void winner; void loser; void startedAt; void completedAt; void finishedAt; void durationSeconds; void legsPlayed; void avgSecondsPerLeg; void timingSource; return { ...rest, score1: 0, score2: 0, status: "pending" }; }));
+    await closeGuestAccess("aborted"); abortClubNight(clubNightId); router.push("/");
   }
+  async function finishCurrentClubNight() { await closeGuestAccess("finished"); finishClubNight(clubNightId ?? undefined); }
+  function deleteCurrentClubNightPermanently() { if (!clubNightId) return; deleteCompletedMatchesForClubNightInClub(currentClubId, clubNightId, currentMatchIds); removeEloEventsForClubNightInClubAndRebuildRatings(currentClubId, clubNightId, currentMatchIds); deleteClubNight(clubNightId); router.push("/klubaften"); }
 
-  function finishCurrentClubNight() {
-    finishClubNight(clubNightId ?? undefined);
-  }
+  const deleteDangerZone = <section className="mt-8 rounded-2xl border border-red-900 bg-red-950/20 p-6"><div className="text-sm font-bold uppercase tracking-wide text-red-300">Test/admin: permanent sletning</div><h2 className="mt-2 text-2xl font-bold text-red-200">Slet klubaften</h2><p className="mt-2 text-sm text-gray-400">Fjerner denne klubaften permanent fra både aktive klubaftner og arkiv. Spillerregister og ELO-seed bevares.</p><button type="button" onClick={() => setDeleteStep("choice")} className="mt-5 rounded-xl border border-red-700 bg-red-500/10 px-5 py-3 font-bold text-red-300 hover:bg-red-500/20">Slet klubaften</button></section>;
 
-  function deleteCurrentClubNightPermanently() {
-    if (!clubNightId) return;
-    deleteCompletedMatchesForClubNightInClub(currentClubId, clubNightId, currentMatchIds);
-    removeEloEventsForClubNightInClubAndRebuildRatings(currentClubId, clubNightId, currentMatchIds);
-    deleteClubNight(clubNightId);
-    router.push("/klubaften");
-  }
+  if (isFinished || isArchived) return <main className="min-h-screen bg-gray-950 text-white"><Header /><section className="mx-auto max-w-5xl p-10"><BackButton /><div className="rounded-2xl border border-green-800 bg-green-950/30 p-10 text-center"><div className="text-5xl">🏁</div><h1 className="mt-4 text-4xl font-bold">Klubaften arkiveret</h1><p className="mt-3 text-gray-400">Resultaterne er låst for denne klubaften.</p><Link href={clubNightId ? `/klubaften/${clubNightId}/stilling` : "/klubaften/stilling"} className="mt-8 inline-block rounded-xl bg-orange-500 px-6 py-3 font-semibold hover:bg-orange-600">Se endelig stilling</Link></div>{deleteDangerZone}<DeleteClubNightDialog step={deleteStep} onAskConfirm={() => setDeleteStep("confirmDelete")} onCancel={() => setDeleteStep("closed")} onDelete={deleteCurrentClubNightPermanently} /></section></main>;
 
-  const deleteDangerZone = (
-    <section className="mt-8 rounded-2xl border border-red-900 bg-red-950/20 p-6">
-      <div className="text-sm font-bold uppercase tracking-wide text-red-300">Test/admin: permanent sletning</div>
-      <h2 className="mt-2 text-2xl font-bold text-red-200">Slet klubaften</h2>
-      <p className="mt-2 text-sm text-gray-400">
-        Fjerner denne klubaften permanent fra både aktive klubaftner og arkiv. Spillerregister og ELO-seed bevares.
-      </p>
-      <button
-        type="button"
-        onClick={() => setDeleteStep("choice")}
-        className="mt-5 rounded-xl border border-red-700 bg-red-500/10 px-5 py-3 font-bold text-red-300 hover:bg-red-500/20"
-      >
-        Slet klubaften
-      </button>
-    </section>
-  );
-
-  if (isFinished || isArchived) {
-    return (
-      <main className="min-h-screen bg-gray-950 text-white">
-        <Header />
-        <section className="mx-auto max-w-5xl p-10">
-          <BackButton />
-          <div className="rounded-2xl border border-green-800 bg-green-950/30 p-10 text-center">
-            <div className="text-5xl">🏁</div>
-            <h1 className="mt-4 text-4xl font-bold">Klubaften arkiveret</h1>
-            <p className="mt-3 text-gray-400">Resultaterne er låst for denne klubaften.</p>
-            <Link href={clubNightId ? `/klubaften/${clubNightId}/stilling` : "/klubaften/stilling"} className="mt-8 inline-block rounded-xl bg-orange-500 px-6 py-3 font-semibold hover:bg-orange-600">
-              Se endelig stilling
-            </Link>
-          </div>
-          {deleteDangerZone}
-          <DeleteClubNightDialog
-            step={deleteStep}
-            onAskConfirm={() => setDeleteStep("confirmDelete")}
-            onCancel={() => setDeleteStep("closed")}
-            onDelete={deleteCurrentClubNightPermanently}
-          />
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      <Header />
-      <section className="mx-auto max-w-6xl p-10">
-        <BackButton />
-        <h1 className="mb-2 text-4xl font-bold">🏁 Afslut klubaften</h1>
-        <p className="mb-8 text-gray-400">Gennemgå resultaterne og afslut aftenen.</p>
-
-        {unfinished > 0 && (
-          <div className="mb-8 rounded-2xl border border-yellow-800 bg-yellow-950/30 p-6 text-yellow-300">
-            Der mangler stadig {unfinished} kampe. Du kan afslutte alligevel, men de manglende kampe kommer ikke med i den endelige stilling.
-          </div>
-        )}
-
-        <div className="mb-8 grid gap-6 md:grid-cols-2">
-          {pools.map((pool) => {
-            const standings = calculatePoolStandings(pool.name, pool.players, matches);
-            return (
-              <section key={pool.name} className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
-                <h2 className="mb-4 text-2xl font-bold">{pool.name}</h2>
-                <div className="space-y-2">
-                  {standings.map((standing, index) => (
-                    <div key={standing.player} className="flex items-center justify-between rounded-lg bg-gray-800 px-4 py-3">
-                      <span><strong className="mr-3">{index + 1}.</strong>{standing.player}</span>
-                      <span className="font-bold">{standing.points} point</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-
-        <button
-          type="button"
-          onClick={finishCurrentClubNight}
-          className="w-full rounded-xl bg-red-600 py-4 text-lg font-bold hover:bg-red-700"
-        >
-          🏁 Afslut klubaften
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setAbortStep("choice")}
-          className="mt-4 w-full rounded-xl border border-red-800 bg-red-950/30 py-4 text-lg font-bold text-red-300 hover:bg-red-900/40"
-        >
-          Afbryd klubaften
-        </button>
-
-        {deleteDangerZone}
-
-        {abortStep !== "closed" && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
-            <div className="w-full max-w-xl rounded-2xl border border-gray-800 bg-gray-950 p-7 shadow-2xl">
-              {abortStep === "choice" ? (
-                <>
-                  <h2 className="text-3xl font-bold">Vil du afbryde klubaftenen?</h2>
-                  <p className="mt-3 text-gray-400">
-                    Vælg om færdige resultater fra denne klubaften skal blive stående, eller om de skal fjernes og ELO genberegnes.
-                  </p>
-                  <div className="mt-6 space-y-3">
-                    <button
-                      type="button"
-                      onClick={abortAndKeepResults}
-                      className="w-full rounded-xl border border-green-700 bg-green-500/10 px-5 py-4 text-left font-bold text-green-300 hover:bg-green-500/20"
-                    >
-                      AFBRYD OG BEHOLD RESULTATER
-                      <span className="mt-1 block text-sm font-normal text-gray-400">
-                        Færdige kampe, statistik, puljeresultater og ELO-events bevares.
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAbortStep("confirmDelete")}
-                      className="w-full rounded-xl border border-red-700 bg-red-500/10 px-5 py-4 text-left font-bold text-red-300 hover:bg-red-500/20"
-                    >
-                      AFBRYD OG SLET AFTENENS RESULTATER
-                      <span className="mt-1 block text-sm font-normal text-gray-400">
-                        {currentFinishedMatchIds.length} færdige kampe fra denne klubaften fjernes.
-                      </span>
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-3xl font-bold text-red-300">Er du sikker?</h2>
-                  <p className="mt-3 text-gray-300">
-                    Kampresultater, statistik og ELO fra denne klubaften føres tilbage. Handlingen påvirker kun de færdige kampe i den aktuelle klubaften.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={abortAndDeleteResults}
-                    className="mt-6 w-full rounded-xl bg-red-600 px-5 py-4 font-bold text-white hover:bg-red-700"
-                  >
-                    Ja, slet aftenens resultater og afbryd
-                  </button>
-                </>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setAbortStep("closed")}
-                className="mt-4 w-full rounded-xl border border-gray-700 px-5 py-3 font-semibold text-gray-300 hover:bg-gray-800"
-              >
-                Annuller
-              </button>
-            </div>
-          </div>
-        )}
-
-        <DeleteClubNightDialog
-          step={deleteStep}
-          onAskConfirm={() => setDeleteStep("confirmDelete")}
-          onCancel={() => setDeleteStep("closed")}
-          onDelete={deleteCurrentClubNightPermanently}
-        />
-      </section>
-    </main>
-  );
+  return <main className="min-h-screen bg-gray-950 text-white"><Header /><section className="mx-auto max-w-6xl p-10"><BackButton /><h1 className="mb-2 text-4xl font-bold">🏁 Afslut klubaften</h1><p className="mb-8 text-gray-400">Gennemgå resultaterne og afslut aftenen.</p>
+    {unfinished > 0 && <div className="mb-8 rounded-2xl border border-yellow-800 bg-yellow-950/30 p-6 text-yellow-300">Der mangler stadig {unfinished} kampe. Du kan afslutte alligevel, men de manglende kampe kommer ikke med i den endelige stilling.</div>}
+    <div className="mb-8 grid gap-6 md:grid-cols-2">{pools.map((pool) => { const standings = calculatePoolStandings(pool.name, pool.players, matches); return <section key={pool.name} className="rounded-2xl border border-gray-800 bg-gray-900 p-6"><h2 className="mb-4 text-2xl font-bold">{pool.name}</h2><div className="space-y-2">{standings.map((standing, index) => <div key={standing.player} className="flex items-center justify-between rounded-lg bg-gray-800 px-4 py-3"><span><strong className="mr-3">{index + 1}.</strong>{standing.player}</span><span className="font-bold">{standing.points} point</span></div>)}</div></section>; })}</div>
+    <button type="button" onClick={() => void finishCurrentClubNight()} className="w-full rounded-xl bg-red-600 py-4 text-lg font-bold hover:bg-red-700">🏁 Afslut klubaften</button>
+    <button type="button" onClick={() => setAbortStep("choice")} className="mt-4 w-full rounded-xl border border-red-800 bg-red-950/30 py-4 text-lg font-bold text-red-300 hover:bg-red-900/40">Afbryd klubaften</button>{deleteDangerZone}
+    {abortStep !== "closed" && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"><div className="w-full max-w-xl rounded-2xl border border-gray-800 bg-gray-950 p-7 shadow-2xl">{abortStep === "choice" ? <><h2 className="text-3xl font-bold">Vil du afbryde klubaftenen?</h2><p className="mt-3 text-gray-400">Vælg om færdige resultater fra denne klubaften skal blive stående, eller om de skal fjernes og ELO genberegnes.</p><div className="mt-6 space-y-3"><button type="button" onClick={() => void abortAndKeepResults()} className="w-full rounded-xl border border-green-700 bg-green-500/10 px-5 py-4 text-left font-bold text-green-300 hover:bg-green-500/20">AFBRYD OG BEHOLD RESULTATER<span className="mt-1 block text-sm font-normal text-gray-400">Færdige kampe, statistik, puljeresultater og ELO-events bevares.</span></button><button type="button" onClick={() => setAbortStep("confirmDelete")} className="w-full rounded-xl border border-red-700 bg-red-500/10 px-5 py-4 text-left font-bold text-red-300 hover:bg-red-500/20">AFBRYD OG SLET AFTENENS RESULTATER<span className="mt-1 block text-sm font-normal text-gray-400">{currentFinishedMatchIds.length} færdige kampe fra denne klubaften fjernes.</span></button></div></> : <><h2 className="text-3xl font-bold text-red-300">Er du sikker?</h2><p className="mt-3 text-gray-300">Kampresultater, statistik og ELO fra denne klubaften føres tilbage. Handlingen påvirker kun de færdige kampe i den aktuelle klubaften.</p><button type="button" onClick={() => void abortAndDeleteResults()} className="mt-6 w-full rounded-xl bg-red-600 px-5 py-4 font-bold text-white hover:bg-red-700">Ja, slet aftenens resultater og afbryd</button></>}<button type="button" onClick={() => setAbortStep("closed")} className="mt-4 w-full rounded-xl border border-gray-700 px-5 py-3 font-semibold text-gray-300 hover:bg-gray-800">Annuller</button></div></div>}
+    <DeleteClubNightDialog step={deleteStep} onAskConfirm={() => setDeleteStep("confirmDelete")} onCancel={() => setDeleteStep("closed")} onDelete={deleteCurrentClubNightPermanently} />
+  </section></main>;
 }
 
-function DeleteClubNightDialog({
-  step,
-  onAskConfirm,
-  onCancel,
-  onDelete,
-}: {
-  step: "closed" | "choice" | "confirmDelete";
-  onAskConfirm: () => void;
-  onCancel: () => void;
-  onDelete: () => void;
-}) {
+function DeleteClubNightDialog({ step, onAskConfirm, onCancel, onDelete }: { step: "closed" | "choice" | "confirmDelete"; onAskConfirm: () => void; onCancel: () => void; onDelete: () => void }) {
   if (step === "closed") return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
-      <div className="w-full max-w-xl rounded-2xl border border-red-900 bg-gray-950 p-7 shadow-2xl">
-        {step === "choice" ? (
-          <>
-            <h2 className="text-3xl font-bold text-red-200">Slet klubaften?</h2>
-            <p className="mt-3 text-gray-400">
-              Denne handling er kun til test/admin og fjerner hele klubaftenen fra HESTENG.
-            </p>
-            <button
-              type="button"
-              onClick={onAskConfirm}
-              className="mt-6 w-full rounded-xl border border-red-700 bg-red-500/10 px-5 py-4 text-left font-bold text-red-300 hover:bg-red-500/20"
-            >
-              Fortsæt til permanent sletning
-            </button>
-          </>
-        ) : (
-          <>
-            <h2 className="text-3xl font-bold text-red-300">Er du sikker?</h2>
-            <p className="mt-3 text-gray-300">
-              Denne klubaften fjernes permanent. Kampdata, MatchStore-resultater og tilhørende ELO-events for denne klubaften slettes.
-            </p>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="mt-6 w-full rounded-xl bg-red-600 px-5 py-4 font-bold text-white hover:bg-red-700"
-            >
-              Ja, slet klubaftenen permanent
-            </button>
-          </>
-        )}
-
-        <button
-          type="button"
-          onClick={onCancel}
-          className="mt-4 w-full rounded-xl border border-gray-700 px-5 py-3 font-semibold text-gray-300 hover:bg-gray-800"
-        >
-          Annuller
-        </button>
-      </div>
-    </div>
-  );
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"><div className="w-full max-w-xl rounded-2xl border border-red-900 bg-gray-950 p-7 shadow-2xl">{step === "choice" ? <><h2 className="text-3xl font-bold text-red-200">Slet klubaften?</h2><p className="mt-3 text-gray-400">Denne handling er kun til test/admin og fjerner hele klubaftenen fra HESTENG.</p><button type="button" onClick={onAskConfirm} className="mt-6 w-full rounded-xl border border-red-700 bg-red-500/10 px-5 py-4 text-left font-bold text-red-300 hover:bg-red-500/20">Fortsæt til permanent sletning</button></> : <><h2 className="text-3xl font-bold text-red-300">Er du sikker?</h2><p className="mt-3 text-gray-300">Denne klubaften fjernes permanent. Kampdata, MatchStore-resultater og tilhørende ELO-events for denne klubaften slettes.</p><button type="button" onClick={onDelete} className="mt-6 w-full rounded-xl bg-red-600 px-5 py-4 font-bold text-white hover:bg-red-700">Ja, slet klubaftenen permanent</button></>}<button type="button" onClick={onCancel} className="mt-4 w-full rounded-xl border border-gray-700 px-5 py-3 font-semibold text-gray-300 hover:bg-gray-800">Annuller</button></div></div>;
 }

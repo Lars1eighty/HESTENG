@@ -2,7 +2,7 @@ import { DEMO_CLUB_ID } from "@/data/clubs";
 import type { PlayerEloRating, EloRatingEvent } from "@/lib/eloRatingEngine";
 import type { LiveActiveSnapshot } from "@/lib/liveActiveEngine";
 import type { PlayerAliasMapping } from "@/lib/playerAliasStore";
-import { normalizeName } from "@/lib/playerIdentity";
+import { normalizeName, type PlayerProfile } from "@/lib/playerIdentity";
 import type { PlayerBoardNeedsState } from "@/lib/playerRegistry";
 
 export type SharedClubDataState = {
@@ -12,6 +12,7 @@ export type SharedClubDataState = {
   liveActiveSnapshots: LiveActiveSnapshot[];
   playerBoardNeeds: PlayerBoardNeedsState;
   playerAliases: Record<string, PlayerAliasMapping[]>;
+  customPlayers: Record<string, PlayerProfile[]>;
   updatedAt: string;
 };
 
@@ -22,6 +23,7 @@ export const EMPTY_SHARED_CLUB_DATA_STATE: SharedClubDataState = {
   liveActiveSnapshots: [],
   playerBoardNeeds: {},
   playerAliases: {},
+  customPlayers: {},
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -47,6 +49,7 @@ export function normalizeSharedClubDataState(input: Partial<SharedClubDataState>
   const snapshots = new Map<string, LiveActiveSnapshot>();
   const aliasesByClub: Record<string, PlayerAliasMapping[]> = {};
   const aliases = new Map<string, PlayerAliasMapping>();
+  const customPlayers: Record<string, PlayerProfile[]> = {};
 
   (Array.isArray(input.eloRatings) ? input.eloRatings : []).forEach((rating) => {
     if (!rating?.player) return;
@@ -81,6 +84,16 @@ export function normalizeSharedClubDataState(input: Partial<SharedClubDataState>
     });
   });
 
+  Object.entries(input.customPlayers ?? {}).forEach(([clubId, players]) => {
+    if (!Array.isArray(players)) return;
+    const uniquePlayers = new Map<string, PlayerProfile>();
+    players.forEach((player) => {
+      if (!player?.id || !player.name) return;
+      uniquePlayers.set(player.id, player);
+    });
+    customPlayers[clubId] = [...uniquePlayers.values()].sort((a, b) => a.name.localeCompare(b.name));
+  });
+
   [...aliases.values()].forEach((alias) => {
     aliasesByClub[alias.clubId] = [...(aliasesByClub[alias.clubId] ?? []), alias];
   });
@@ -100,6 +113,7 @@ export function normalizeSharedClubDataState(input: Partial<SharedClubDataState>
       ? input.playerBoardNeeds
       : {},
     playerAliases: aliasesByClub,
+    customPlayers,
     updatedAt: input.updatedAt ?? new Date().toISOString(),
   };
 }
@@ -110,7 +124,8 @@ export function hasSharedClubData(state: Partial<SharedClubDataState>) {
     state.eloEvents?.length ||
     state.liveActiveSnapshots?.length ||
     Object.keys(state.playerBoardNeeds ?? {}).length ||
-    Object.keys(state.playerAliases ?? {}).length
+    Object.keys(state.playerAliases ?? {}).length ||
+    Object.keys(state.customPlayers ?? {}).length
   );
 }
 
@@ -121,6 +136,7 @@ export function mergeSharedClubData(serverState: Partial<SharedClubDataState>, l
   const serverEventKeys = new Set(server.eloEvents.map(eventKey));
   const serverSnapshotKeys = new Set(server.liveActiveSnapshots.map(snapshotKey));
   const aliasesByClub: Record<string, PlayerAliasMapping[]> = {};
+  const customPlayers: Record<string, PlayerProfile[]> = {};
 
   Object.keys({ ...local.playerAliases, ...server.playerAliases }).forEach((clubId) => {
     const serverAliases = server.playerAliases[clubId] ?? [];
@@ -129,6 +145,15 @@ export function mergeSharedClubData(serverState: Partial<SharedClubDataState>, l
       ...serverAliases,
       ...(local.playerAliases[clubId] ?? []).filter((alias) => !serverAliasKeys.has(aliasKey(alias))),
     ];
+  });
+
+  Object.keys({ ...local.customPlayers, ...server.customPlayers }).forEach((clubId) => {
+    const players = new Map<string, PlayerProfile>();
+    (server.customPlayers[clubId] ?? []).forEach((player) => players.set(player.id, player));
+    (local.customPlayers[clubId] ?? []).forEach((player) => {
+      if (!players.has(player.id)) players.set(player.id, player);
+    });
+    customPlayers[clubId] = [...players.values()];
   });
 
   return normalizeSharedClubDataState({
@@ -149,6 +174,7 @@ export function mergeSharedClubData(serverState: Partial<SharedClubDataState>, l
       ...server.playerBoardNeeds,
     },
     playerAliases: aliasesByClub,
+    customPlayers,
     updatedAt: server.updatedAt,
   });
 }

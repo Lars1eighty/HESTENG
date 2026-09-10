@@ -134,6 +134,22 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
     liveActiveRows.slice(0, liveActiveSplitIndex),
     liveActiveRows.slice(liveActiveSplitIndex),
   ];
+  const averageRows: PerformanceRow[] = eveningStats.players
+    .filter((player) => player.entries > 0)
+    .sort((a, b) => b.average - a.average || a.player.localeCompare(b.player))
+    .map((player) => ({ id: `avg-${player.player}`, player: player.player, value: player.average.toFixed(1) }));
+  const checkoutRows: PerformanceRow[] = eveningStats.players
+    .filter((player) => player.checkoutAttempts > 0)
+    .sort((a, b) => b.checkoutPercent - a.checkoutPercent || b.checkouts - a.checkouts || a.player.localeCompare(b.player))
+    .map((player) => ({ id: `checkout-${player.player}`, player: player.player, value: `${player.checkoutPercent}%` }));
+  const hundredPlusRows: PerformanceRow[] = eveningStats.players
+    .filter((player) => player.hundredPlus > 0)
+    .sort((a, b) => b.hundredPlus - a.hundredPlus || a.player.localeCompare(b.player))
+    .map((player) => ({ id: `100-${player.player}`, player: player.player, value: `×${player.hundredPlus}` }));
+  const oneFortyPlusRows: PerformanceRow[] = eveningStats.players
+    .filter((player) => player.oneFortyPlus > 0)
+    .sort((a, b) => b.oneFortyPlus - a.oneFortyPlus || a.player.localeCompare(b.player))
+    .map((player) => ({ id: `140-${player.player}`, player: player.player, value: `×${player.oneFortyPlus}` }));
   const oneEightyRows: PerformanceRow[] = eveningStats.players
     .filter((player) => player.oneEighties > 0)
     .sort((a, b) => b.oneEighties - a.oneEighties || a.player.localeCompare(b.player))
@@ -302,6 +318,10 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
           <section className="min-h-0 rounded-lg border border-gray-800 bg-gray-900 p-1.5 xl:overflow-hidden">
               <h2 className="mb-1 text-xs font-black uppercase tracking-wide text-gray-300">Dagens performance</h2>
               <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-2">
+                <PerformanceList title="Gennemsnit" rows={averageRows} />
+                <PerformanceList title="Checkout %" rows={checkoutRows} />
+                <PerformanceList title="100+" rows={hundredPlusRows} />
+                <PerformanceList title="140+" rows={oneFortyPlusRows} />
                 <PerformanceList title="180'ere" rows={oneEightyRows} />
                 <PerformanceList title="Høje luk" rows={highCheckoutRows} />
                 <PerformanceList title="Hurtige legs" rows={fastLegRows} />
