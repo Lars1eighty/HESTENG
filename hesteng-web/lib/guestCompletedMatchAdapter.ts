@@ -39,14 +39,24 @@ export function adaptGuestCompletedMatch(
   const guest = asRecord(value);
   if (!guest || guest.id !== authoritativeMatch.id || guest.status !== "finished") return null;
   if (guest.player1 !== authoritativeMatch.player1 || guest.player2 !== authoritativeMatch.player2) return null;
-  if (typeof guest.score1 !== "number" || typeof guest.score2 !== "number") return null;
-  if (typeof guest.winner !== "string" || ![authoritativeMatch.player1, authoritativeMatch.player2].includes(guest.winner)) return null;
+  if (!Number.isInteger(guest.score1) || !Number.isInteger(guest.score2)) return null;
+
+  const score1 = guest.score1 as number;
+  const score2 = guest.score2 as number;
+  if (score1 < 0 || score2 < 0 || score1 === score2) return null;
+
+  const legsToWin = Math.floor(authoritativeMatch.bestOfLegs / 2) + 1;
+  if (Math.max(score1, score2) !== legsToWin) return null;
+
+  const expectedWinner = score1 > score2 ? authoritativeMatch.player1 : authoritativeMatch.player2;
+  if (guest.winner !== expectedWinner) return null;
   if (!Array.isArray(guest.players) || guest.players.length !== 2) return null;
 
   const player1Stats = asPlayerStats(guest.players[0]);
   const player2Stats = asPlayerStats(guest.players[1]);
   if (!player1Stats || !player2Stats) return null;
   if (player1Stats.name !== authoritativeMatch.player1 || player2Stats.name !== authoritativeMatch.player2) return null;
+  if (player1Stats.legs !== score1 || player2Stats.legs !== score2) return null;
 
   const finishedAt = typeof guest.finishedAt === "string" ? guest.finishedAt : new Date().toISOString();
 
@@ -58,9 +68,9 @@ export function adaptGuestCompletedMatch(
     player1Id: authoritativeMatch.player1Id,
     player2: authoritativeMatch.player2,
     player2Id: authoritativeMatch.player2Id,
-    winner: guest.winner,
-    score1: guest.score1,
-    score2: guest.score2,
+    winner: expectedWinner,
+    score1,
+    score2,
     bestOfLegs: authoritativeMatch.bestOfLegs,
     board: authoritativeMatch.board ?? null,
     pool: authoritativeMatch.pool ?? null,
