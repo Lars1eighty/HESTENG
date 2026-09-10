@@ -61,6 +61,11 @@ export async function getGuestClubNight(publicToken: string) {
   return (await response.json()) as GuestClubNightSnapshot;
 }
 
+export async function getGuestCompletedMatches(publicToken: string) {
+  const snapshot = await getGuestClubNight(publicToken);
+  return snapshot.completedMatches;
+}
+
 export async function saveGuestCompletedMatch(publicToken: string, completedMatch: unknown) {
   const response = await fetch(`/api/g/${encodeURIComponent(publicToken)}`, {
     method: "POST",
