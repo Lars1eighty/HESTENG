@@ -10,6 +10,7 @@ import { useKlubaften } from "@/context/KlubaftenContext";
 import { calculatePoolStandings } from "@/lib/standingsEngine";
 import { createPlacementPools } from "@/lib/placementPoolEngine";
 import { createClubNightMatches } from "@/lib/matchEngine";
+import { getCompletedMatchesForClubNightInClub, type CompletedMatch } from "@/lib/matchStore";
 import { normalizeName } from "@/lib/playerIdentity";
 
 export default function StillingPage() {
@@ -19,10 +20,26 @@ export default function StillingPage() {
   const { currentClubId, pools, matches, setPools, setMatches, currentClubNightId, currentClubNight, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
   const [placementPreview, setPlacementPreview] = useState(false);
+  const [completedMatches, setCompletedMatches] = useState<CompletedMatch[]>([]);
   const isTjoerring = normalizeName(currentClub.name) === normalizeName("Tjørring Dart");
   const placementStage = useMemo(() => createPlacementPools(pools, matches), [pools, matches]);
 
   useEffect(() => { if (routeClubNightId) setCurrentClubNightId(routeClubNightId); }, [routeClubNightId, setCurrentClubNightId]);
+
+  useEffect(() => {
+    if (!clubNightId) {
+      setCompletedMatches([]);
+      return;
+    }
+
+    const refresh = () => {
+      setCompletedMatches(getCompletedMatchesForClubNightInClub(currentClubId, clubNightId, matches.map((match) => match.id)));
+    };
+
+    refresh();
+    const interval = window.setInterval(refresh, 5000);
+    return () => window.clearInterval(interval);
+  }, [clubNightId, currentClubId, matches]);
 
   function startPlacementPools() {
     if (!placementStage.complete || !clubNightId || !currentClubNight) return;
@@ -44,6 +61,37 @@ export default function StillingPage() {
       </section> : null}
 
       <div className="space-y-8">{pools.map((pool) => { const standings = calculatePoolStandings(pool.name, pool.players, matches); return <section key={pool.name} className="rounded-2xl border border-gray-800 bg-gray-900 p-6"><div className="mb-5 flex items-center justify-between"><h2 className="text-2xl font-bold">{pool.name}</h2><span className="text-sm text-gray-500">{pool.players.length} spillere</span></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-gray-500"><tr><th className="pb-3 pr-4">#</th><th className="pb-3 pr-4">Spiller</th><th className="pb-3 pr-4 text-center">K</th><th className="pb-3 pr-4 text-center">V</th><th className="pb-3 pr-4 text-center">T</th><th className="pb-3 pr-4 text-center">LF</th><th className="pb-3 pr-4 text-center">LI</th><th className="pb-3 pr-4 text-center">+/-</th><th className="pb-3 text-center">Point</th></tr></thead><tbody>{standings.map((standing, index) => <tr key={standing.player} className="border-t border-gray-800"><td className="py-3 pr-4 font-bold">{index + 1}</td><td className="py-3 pr-4 font-semibold">{standing.player}</td><td className="py-3 pr-4 text-center">{standing.played}</td><td className="py-3 pr-4 text-center text-green-400">{standing.wins}</td><td className="py-3 pr-4 text-center text-red-400">{standing.losses}</td><td className="py-3 pr-4 text-center">{standing.legsFor}</td><td className="py-3 pr-4 text-center">{standing.legsAgainst}</td><td className="py-3 pr-4 text-center">{standing.legsFor - standing.legsAgainst}</td><td className="py-3 text-center font-bold">{standing.points}</td></tr>)}</tbody></table></div></section>; })}</div>
+
+      <section className="mt-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div><h2 className="text-2xl font-bold">Dagens kampe og statistik</h2><p className="mt-1 text-sm text-gray-400">Viser de færdige kampe, som HESTENG har gemt.</p></div>
+          <span className="text-sm text-gray-500">{completedMatches.length} gemte kampe</span>
+        </div>
+
+        {completedMatches.length === 0 ? (
+          <div className="rounded-xl border border-gray-800 bg-gray-950 p-5 text-center text-gray-500">Ingen færdige kampe gemt endnu.</div>
+        ) : (
+          <div className="space-y-3">
+            {completedMatches.map((match) => (
+              <div key={match.id} className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-bold">{match.player1} <span className="text-orange-400">{match.score1} – {match.score2}</span> {match.player2}</div>
+                  <div className="text-xs text-gray-500">{match.pool ?? "Kamp"}{match.board ? ` · Bane ${match.board}` : ""}</div>
+                </div>
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  {match.players.map((player) => (
+                    <div key={`${match.id}-${player.playerId ?? player.name}`} className="rounded-lg bg-gray-900 p-3">
+                      <div className="font-semibold">{player.name}</div>
+                      <div className="mt-1 text-gray-400">Snit <b className="text-white">{player.average.toFixed(2)}</b> · 180 <b className="text-white">{player.oneEighties}</b> · CO <b className="text-white">{player.checkouts}/{player.checkoutAttempts}</b>{typeof player.highestCheckout === "number" ? <> · Højeste CO <b className="text-white">{player.highestCheckout}</b></> : null}</div>
+                      <div className="mt-1 text-xs text-gray-600">Spiller-ID: {player.playerId ?? "mangler"}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </section></main>
   );
 }
