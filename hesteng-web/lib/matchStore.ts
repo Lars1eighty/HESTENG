@@ -9,6 +9,8 @@ export type CompletedPlayerStats = {
   totalScored: number;
   entries: number;
   average: number;
+  hundredPlus?: number;
+  oneFortyPlus?: number;
   checkouts: number;
   checkoutAttempts: number;
   checkoutPercent: number;
