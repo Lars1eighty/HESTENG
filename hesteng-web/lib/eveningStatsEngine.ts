@@ -1,8 +1,6 @@
 import type { CompletedMatch, CompletedPlayerStats } from "@/lib/matchStore";
 import { normalizeName } from "@/lib/playerIdentity";
 
-type VisitStats = CompletedPlayerStats & { hundredPlus?: number; oneFortyPlus?: number; darts?: number };
-
 export type EveningPlayerStats = {
   playerId?: string;
   player: string;
@@ -45,16 +43,15 @@ function emptyPlayerStats(player: string, playerId?: string): PlayerAccumulator 
 }
 
 function addPlayerMatch(target: PlayerAccumulator, stats: CompletedPlayerStats) {
-  const visitStats = stats as VisitStats;
   target.matchesPlayed += 1;
   target.totalScored += stats.totalScored;
   target.entries += stats.entries;
   target.weightedAveragePoints += stats.average * stats.entries;
   target.weightedAverageEntries += stats.entries;
-  if (typeof visitStats.darts === "number") target.darts += visitStats.darts;
+  if (typeof stats.darts === "number") target.darts += stats.darts;
   else target.exactDartsComplete = false;
-  target.hundredPlus += visitStats.hundredPlus ?? 0;
-  target.oneFortyPlus += visitStats.oneFortyPlus ?? 0;
+  target.hundredPlus += stats.hundredPlus ?? 0;
+  target.oneFortyPlus += stats.oneFortyPlus ?? 0;
   target.oneEighties += stats.oneEighties;
   target.checkouts += stats.checkouts;
   target.checkoutAttempts += stats.checkoutAttempts;
