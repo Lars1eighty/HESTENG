@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useSyncExternalStore, useState } from "react";
 
 import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
@@ -8,8 +8,10 @@ import { useClub } from "@/context/ClubContext";
 import { getPlayerElo } from "@/lib/eloRatingEngine";
 import {
   addPlayerToRegistry,
+  getCustomPlayersStorageValue,
   getPlayerRegistry,
   setPlayerAccessibleBoardNeed,
+  subscribeCustomPlayers,
 } from "@/lib/playerRegistry";
 
 export default function SpillerePage() {
@@ -17,6 +19,13 @@ export default function SpillerePage() {
   const [, setRegistryVersion] = useState(0);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [message, setMessage] = useState("");
+  const customPlayersStore = useSyncExternalStore(
+    subscribeCustomPlayers,
+    getCustomPlayersStorageValue,
+    () => "{}"
+  );
+
+  void customPlayersStore;
 
   const players = getPlayerRegistry(currentClubId)
     .map((player) => ({
@@ -45,7 +54,6 @@ export default function SpillerePage() {
     }
 
     setNewPlayerName("");
-    setRegistryVersion((version) => version + 1);
     setMessage(alreadyExists ? `${player.name} findes allerede.` : `${player.name} er tilføjet.`);
   }
 
