@@ -15,7 +15,7 @@ import { createClubNightPools, type PoolMode, type PoolSizeProfile } from "@/lib
 export default function PuljerPage() {
   const params = useParams<{ clubNightId?: string }>();
   const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
-  const { currentClubId, currentClub } = useClub();
+  const { clubs, currentClubId, currentClub } = useClub();
   const { clubNights, selectedPlayers, pools, setPools, updateClubNight, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
   const routeClubNight = clubNightId ? clubNights.find((clubNight) => clubNight.id === clubNightId) ?? null : null;
@@ -24,7 +24,8 @@ export default function PuljerPage() {
   const playerRegistry = getPlayerRegistry(currentClubId);
   const eloRatings = getEloRatings(currentClubId);
   const [poolMode, setPoolMode] = useState<PoolMode>("draw");
-  const isTjoerring = normalizeName(currentClub.name) === normalizeName("Tjørring Dart");
+  const effectiveClub = (routeClubNight?.clubId ? clubs.find((club) => club.id === routeClubNight.clubId) : null) ?? currentClub;
+  const isTjoerring = normalizeName(effectiveClub.name).includes(normalizeName("Tjørring"));
   const poolSizeProfile: PoolSizeProfile = isTjoerring ? "compact" : "standard";
   const minimumPlayers = isTjoerring ? 6 : 10;
 
