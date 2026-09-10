@@ -1,6 +1,8 @@
 import type { CompletedMatch, CompletedPlayerStats } from "@/lib/matchStore";
 import { normalizeName } from "@/lib/playerIdentity";
 
+type VisitStats = CompletedPlayerStats & { hundredPlus?: number; oneFortyPlus?: number };
+
 export type EveningPlayerStats = {
   playerId?: string;
   player: string;
@@ -8,6 +10,8 @@ export type EveningPlayerStats = {
   totalScored: number;
   entries: number;
   average: number;
+  hundredPlus: number;
+  oneFortyPlus: number;
   oneEighties: number;
   checkouts: number;
   checkoutAttempts: number;
@@ -18,6 +22,8 @@ export type EveningPlayerStats = {
 export type EveningStats = {
   matchesPlayed: number;
   players: EveningPlayerStats[];
+  totalHundredPlus: number;
+  totalOneFortyPlus: number;
   totalOneEighties: number;
   totalCheckouts: number;
   totalCheckoutAttempts: number;
@@ -33,15 +39,18 @@ type PlayerAccumulator = EveningPlayerStats & {
 };
 
 function emptyPlayerStats(player: string, playerId?: string): PlayerAccumulator {
-  return { playerId, player, matchesPlayed: 0, totalScored: 0, entries: 0, average: 0, oneEighties: 0, checkouts: 0, checkoutAttempts: 0, checkoutPercent: 0, fastestLegDarts: null, weightedAveragePoints: 0, weightedAverageEntries: 0 };
+  return { playerId, player, matchesPlayed: 0, totalScored: 0, entries: 0, average: 0, hundredPlus: 0, oneFortyPlus: 0, oneEighties: 0, checkouts: 0, checkoutAttempts: 0, checkoutPercent: 0, fastestLegDarts: null, weightedAveragePoints: 0, weightedAverageEntries: 0 };
 }
 
 function addPlayerMatch(target: PlayerAccumulator, stats: CompletedPlayerStats) {
+  const visitStats = stats as VisitStats;
   target.matchesPlayed += 1;
   target.totalScored += stats.totalScored;
   target.entries += stats.entries;
   target.weightedAveragePoints += stats.average * stats.entries;
   target.weightedAverageEntries += stats.entries;
+  target.hundredPlus += visitStats.hundredPlus ?? 0;
+  target.oneFortyPlus += visitStats.oneFortyPlus ?? 0;
   target.oneEighties += stats.oneEighties;
   target.checkouts += stats.checkouts;
   target.checkoutAttempts += stats.checkoutAttempts;
@@ -77,6 +86,8 @@ export function calculateEveningStats(matches: CompletedMatch[]): EveningStats {
   });
 
   const players = [...playerStats.values()].map(finishPlayerStats).sort((a, b) => a.player.localeCompare(b.player));
+  const totalHundredPlus = players.reduce((sum, player) => sum + player.hundredPlus, 0);
+  const totalOneFortyPlus = players.reduce((sum, player) => sum + player.oneFortyPlus, 0);
   const totalOneEighties = players.reduce((sum, player) => sum + player.oneEighties, 0);
   const totalCheckouts = players.reduce((sum, player) => sum + player.checkouts, 0);
   const totalCheckoutAttempts = players.reduce((sum, player) => sum + player.checkoutAttempts, 0);
@@ -84,6 +95,8 @@ export function calculateEveningStats(matches: CompletedMatch[]): EveningStats {
   return {
     matchesPlayed: countedMatchIds.size,
     players,
+    totalHundredPlus,
+    totalOneFortyPlus,
     totalOneEighties,
     totalCheckouts,
     totalCheckoutAttempts,
