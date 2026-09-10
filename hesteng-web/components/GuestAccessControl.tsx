@@ -125,27 +125,31 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
       const guestResults = await getGuestCompletedMatches(access.publicToken);
       const matchesById = new Map(clubNight.matches.map((match) => [match.id, match]));
       const existingIds = new Set(completedMatches.map((match) => match.id));
-      const importedMatches: CompletedMatch[] = [];
+      const validMatches: CompletedMatch[] = [];
+      let imported = 0;
 
       for (const value of guestResults) {
         if (!value || typeof value !== "object") continue;
         const id = (value as { id?: unknown }).id;
-        if (typeof id !== "string" || existingIds.has(id)) continue;
+        if (typeof id !== "string") continue;
         const authoritativeMatch = matchesById.get(id);
         if (!authoritativeMatch) continue;
         const completed = adaptGuestCompletedMatch(value, authoritativeMatch, clubNight.clubId, clubNight.id);
         if (!completed) continue;
-        saveCompletedMatch(completed);
-        existingIds.add(id);
-        importedMatches.push(completed);
+        validMatches.push(completed);
+        if (!existingIds.has(id)) {
+          saveCompletedMatch(completed);
+          existingIds.add(id);
+          imported += 1;
+        }
       }
 
-      if (importedMatches.length > 0) {
-        const importedById = new Map(importedMatches.map((match) => [match.id, match]));
+      if (validMatches.length > 0) {
+        const completedById = new Map(validMatches.map((match) => [match.id, match]));
         updateClubNight(clubNight.id, (night) => ({
           ...night,
           matches: night.matches.map((match) => {
-            const completed = importedById.get(match.id);
+            const completed = completedById.get(match.id);
             if (!completed) return match;
             return {
               ...match,
@@ -162,8 +166,7 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
         }));
       }
 
-      const imported = importedMatches.length;
-      setImportMessage(imported > 0 ? `${imported} gæsteresultat${imported === 1 ? "" : "er"} hentet.` : "Ingen nye gæsteresultater.");
+      setImportMessage(imported > 0 ? `${imported} gæsteresultat${imported === 1 ? "" : "er"} hentet.` : "Gæsteresultater er synkroniseret.");
     } catch {
       setError("Gæsteresultater kunne ikke hentes.");
     } finally {
