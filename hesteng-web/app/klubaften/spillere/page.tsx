@@ -6,14 +6,19 @@ import BackButton from "@/components/BackButton";
 import PlayerSearch from "@/components/PlayerSearch";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useClub } from "@/context/ClubContext";
 import { useKlubaften } from "@/context/KlubaftenContext";
+import { normalizeName } from "@/lib/playerIdentity";
 
 export default function SpillerePage() {
   const params = useParams<{ clubNightId?: string }>();
   const routeClubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
+  const { currentClub } = useClub();
   const { selectedPlayers, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const [mounted, setMounted] = useState(false);
   const clubNightId = routeClubNightId ?? currentClubNightId;
+  const isTjoerring = normalizeName(currentClub.name).includes(normalizeName("Tjørring"));
+  const minimumPlayers = isTjoerring ? 6 : 10;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -24,7 +29,7 @@ export default function SpillerePage() {
     if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
   }, [routeClubNightId, setCurrentClubNightId]);
 
-  const enabled = mounted && selectedPlayers.length >= 10;
+  const enabled = mounted && selectedPlayers.length >= minimumPlayers;
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -38,7 +43,7 @@ export default function SpillerePage() {
         <PlayerSearch />
 
         <p className="mt-4 text-sm text-gray-500">
-          Vælg mindst 10 spillere for at kunne oprette puljerne.
+          Vælg mindst {minimumPlayers} spillere for at kunne oprette puljerne.
         </p>
 
         <Link
