@@ -59,8 +59,20 @@ function hasValidPlayerStats(players: unknown, allowed: MatchLike) {
       if (stats[field] !== undefined && !isNonNegativeInteger(stats[field])) return false;
     }
 
+    if (!Number.isInteger(stats.legs) || !Number.isInteger(stats.entries) || !Number.isInteger(stats.checkouts) || !Number.isInteger(stats.checkoutAttempts) || !Number.isInteger(stats.oneEighties)) return false;
     if ((stats.checkouts as number) > (stats.checkoutAttempts as number)) return false;
     if ((stats.checkoutPercent as number) > 100) return false;
+
+    const expectedCheckoutPercent = (stats.checkoutAttempts as number) > 0
+      ? Math.round(((stats.checkouts as number) / (stats.checkoutAttempts as number)) * 100)
+      : 0;
+    if (stats.checkoutPercent !== expectedCheckoutPercent) return false;
+
+    if (typeof stats.darts === "number" && stats.darts > 0) {
+      const expectedAverage = Number((((stats.totalScored as number) / stats.darts) * 3).toFixed(2));
+      if (Math.abs((stats.average as number) - expectedAverage) > 0.01) return false;
+    }
+
     if (stats.highestCheckout !== undefined && (!isNonNegativeNumber(stats.highestCheckout) || (stats.highestCheckout as number) > 170)) return false;
     if (stats.highCheckouts !== undefined && (!Array.isArray(stats.highCheckouts) || stats.highCheckouts.some((checkout) => !isNonNegativeNumber(checkout) || checkout < 100 || checkout > 170))) return false;
     if (stats.fastestLegDarts !== null && stats.fastestLegDarts !== undefined && (!Number.isInteger(stats.fastestLegDarts) || (stats.fastestLegDarts as number) <= 0)) return false;
