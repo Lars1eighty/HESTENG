@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 
 import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
 import { useClub } from "@/context/ClubContext";
 import { getPlayerElo } from "@/lib/eloRatingEngine";
-import { getPlayerRegistry, setPlayerAccessibleBoardNeed } from "@/lib/playerRegistry";
+import {
+  addPlayerToRegistry,
+  getPlayerRegistry,
+  setPlayerAccessibleBoardNeed,
+} from "@/lib/playerRegistry";
 
 export default function SpillerePage() {
   const { currentClubId, currentClub } = useClub();
   const [, setRegistryVersion] = useState(0);
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [message, setMessage] = useState("");
+
   const players = getPlayerRegistry(currentClubId)
     .map((player) => ({
       ...player,
@@ -22,6 +29,24 @@ export default function SpillerePage() {
   function toggleAccessibleBoard(playerId: string, currentValue: boolean) {
     setPlayerAccessibleBoardNeed(currentClubId, playerId, !currentValue);
     setRegistryVersion((version) => version + 1);
+  }
+
+  function addPlayer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedName = newPlayerName.trim();
+    if (!trimmedName) return;
+
+    const alreadyExists = players.some((player) => player.name.localeCompare(trimmedName, undefined, { sensitivity: "accent" }) === 0);
+    const player = addPlayerToRegistry(currentClubId, trimmedName);
+
+    if (!player) {
+      setMessage("Spilleren kunne ikke tilføjes.");
+      return;
+    }
+
+    setNewPlayerName("");
+    setRegistryVersion((version) => version + 1);
+    setMessage(alreadyExists ? `${player.name} findes allerede.` : `${player.name} er tilføjet.`);
   }
 
   return (
@@ -40,6 +65,34 @@ export default function SpillerePage() {
             {players.length} spillere
           </span>
         </div>
+
+        <form onSubmit={addPlayer} className="mb-4 rounded-xl border border-gray-800 bg-gray-900 p-4">
+          <label htmlFor="new-player-name" className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-500">
+            Tilføj spiller
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              id="new-player-name"
+              type="text"
+              value={newPlayerName}
+              onChange={(event) => {
+                setNewPlayerName(event.target.value);
+                setMessage("");
+              }}
+              placeholder="Skriv spillerens navn"
+              autoComplete="off"
+              className="min-h-12 flex-1 rounded-xl border border-gray-700 bg-gray-950 px-4 text-base font-semibold text-white outline-none transition placeholder:text-gray-600 focus:border-orange-500"
+            />
+            <button
+              type="submit"
+              disabled={!newPlayerName.trim()}
+              className="min-h-12 rounded-xl bg-orange-500 px-5 text-sm font-black text-gray-950 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Tilføj spiller
+            </button>
+          </div>
+          {message ? <div className="mt-2 text-sm font-semibold text-gray-400">{message}</div> : null}
+        </form>
 
         <div className="mb-4 rounded-xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-400">
           <span className="font-black text-orange-400">{accessibleBoardCount}</span> spillere markeret til handicapbane-prioritet.
