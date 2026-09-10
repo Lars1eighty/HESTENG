@@ -63,9 +63,21 @@ function createRoundRobin(players: string[]): string[][] {
 }
 function getAccessiblePlayerNames(clubId?: string): Set<string> { return new Set(getPlayerRegistry(clubId).filter((player) => player.requiresAccessibleBoard).map((player) => normalizeName(player.name))); }
 function getPlayerIdsByName(clubId?: string): Map<string, string> { return new Map(getPlayerRegistry(clubId).map((player) => [normalizeName(player.name), player.id])); }
-function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>, playerIdsByName: Map<string, string>, bestOfLegs: number, clubId?: string): PendingClubMatch[] {
+function createPendingMatches(pools: Pool[], accessiblePlayerNames: Set<string>, playerIdsByName: Map<string, string>, bestOfLegs: number, clubId?: string, repeatThreePlayerPools = false): PendingClubMatch[] {
   const pending: PendingClubMatch[] = []; let sequence = 1;
-  pools.forEach((pool) => { createRoundRobin(pool.players).forEach((roundMatches, roundIndex) => { roundMatches.forEach((pair) => { const [player1, player2] = pair.split("|||"); const player1Key = normalizeName(player1); const player2Key = normalizeName(player2); const durationEstimate = estimateMatchDurationByPlayers(player1, player2, bestOfLegs, clubId); pending.push({ pool: pool.name, round: roundIndex + 1, sequence: sequence++, player1, player1Id: playerIdsByName.get(player1Key), player2, player2Id: playerIdsByName.get(player2Key), requiresAccessibleBoardForMatch: accessiblePlayerNames.has(player1Key) || accessiblePlayerNames.has(player2Key), durationEstimate }); }); }); });
+  pools.forEach((pool) => {
+    const firstPass = createRoundRobin(pool.players);
+    const rounds = repeatThreePlayerPools && pool.players.length === 3 ? [...firstPass, ...firstPass] : firstPass;
+    rounds.forEach((roundMatches, roundIndex) => {
+      roundMatches.forEach((pair) => {
+        const [player1, player2] = pair.split("|||");
+        const player1Key = normalizeName(player1);
+        const player2Key = normalizeName(player2);
+        const durationEstimate = estimateMatchDurationByPlayers(player1, player2, bestOfLegs, clubId);
+        pending.push({ pool: pool.name, round: roundIndex + 1, sequence: sequence++, player1, player1Id: playerIdsByName.get(player1Key), player2, player2Id: playerIdsByName.get(player2Key), requiresAccessibleBoardForMatch: accessiblePlayerNames.has(player1Key) || accessiblePlayerNames.has(player2Key), durationEstimate });
+      });
+    });
+  });
   return pending;
 }
 function hasPlayerInSlot(match: PendingClubMatch, playersInSlot: Set<string>): boolean { return playersInSlot.has(normalizeName(match.player1)) || playersInSlot.has(normalizeName(match.player2)); }
@@ -88,10 +100,10 @@ function schedulePendingMatches(pendingMatches: PendingClubMatch[], boardCount: 
   return scheduled;
 }
 
-export function createClubNightMatches(pools: Pool[], boardCount = CLUB_NIGHT_BOARD_COUNT, clubNightId?: string, clubId?: string, bestOfLegs = 5, handicapBoards: number[] = CLUB_NIGHT_HANDICAP_BOARDS, stageId?: string): ClubMatch[] {
+export function createClubNightMatches(pools: Pool[], boardCount = CLUB_NIGHT_BOARD_COUNT, clubNightId?: string, clubId?: string, bestOfLegs = 5, handicapBoards: number[] = CLUB_NIGHT_HANDICAP_BOARDS, stageId?: string, repeatThreePlayerPools = false): ClubMatch[] {
   if (!Number.isInteger(boardCount) || boardCount < 1) throw new Error("Klubaften skal have mindst 1 bane");
   if (!Number.isInteger(bestOfLegs) || bestOfLegs < 1 || bestOfLegs % 2 === 0) throw new Error("Antal legs skal være et positivt ulige tal");
-  const accessiblePlayerNames = getAccessiblePlayerNames(clubId); const playerIdsByName = getPlayerIdsByName(clubId); const pendingMatches = createPendingMatches(pools, accessiblePlayerNames, playerIdsByName, bestOfLegs, clubId); const scheduledMatches = schedulePendingMatches(pendingMatches, boardCount, handicapBoards, accessiblePlayerNames);
+  const accessiblePlayerNames = getAccessiblePlayerNames(clubId); const playerIdsByName = getPlayerIdsByName(clubId); const pendingMatches = createPendingMatches(pools, accessiblePlayerNames, playerIdsByName, bestOfLegs, clubId, repeatThreePlayerPools); const scheduledMatches = schedulePendingMatches(pendingMatches, boardCount, handicapBoards, accessiblePlayerNames);
   return scheduledMatches.map((match) => ({
     id: clubNightId ? `${clubNightId}${stageId ? `-${stageId}` : ""}-match-${match.order}` : `thu${stageId ? `-${stageId}` : ""}-${match.order}`,
     clubId, clubNightId, pool: match.pool, round: match.round, order: match.order, scheduleSlot: match.scheduleSlot, player1: match.player1, player1Id: match.player1Id, player2: match.player2, player2Id: match.player2Id, board: match.board, boardType: getBoardType(match.board, handicapBoards), requiresAccessibleBoardForMatch: match.requiresAccessibleBoardForMatch, bestOfLegs, scoringMode: "total", estimatedDurationSeconds: match.durationEstimate.estimatedSeconds, timingEstimateSource: match.durationEstimate.source, timingEstimateConfidence: match.durationEstimate.confidence, score1: 0, score2: 0, status: "pending",
