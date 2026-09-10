@@ -32,6 +32,10 @@ function isNonNegativeNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
+function isNonNegativeInteger(value: unknown) {
+  return Number.isInteger(value) && (value as number) >= 0;
+}
+
 function hasValidPlayerStats(players: unknown, allowed: MatchLike) {
   if (players === undefined) return true;
   if (!Array.isArray(players) || players.length !== 2) return false;
@@ -49,6 +53,10 @@ function hasValidPlayerStats(players: unknown, allowed: MatchLike) {
 
     for (const field of ["legs", "totalScored", "entries", "average", "checkouts", "checkoutAttempts", "checkoutPercent", "oneEighties"]) {
       if (!isNonNegativeNumber(stats[field])) return false;
+    }
+
+    for (const field of ["hundredPlus", "oneFortyPlus"]) {
+      if (stats[field] !== undefined && !isNonNegativeInteger(stats[field])) return false;
     }
 
     if ((stats.checkouts as number) > (stats.checkoutAttempts as number)) return false;
