@@ -3,6 +3,7 @@ import "./globals.css";
 import { KlubaftenProvider } from "@/context/KlubaftenContext";
 import { ClubProvider } from "@/context/ClubContext";
 import { CurrentUserProvider } from "@/context/CurrentUserContext";
+import AdminGuestPreviewControl from "@/components/AdminGuestPreviewControl";
 import ClubNightServerBootstrap from "@/components/ClubNightServerBootstrap";
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
           <ClubProvider>
             <KlubaftenProvider>
               <ClubNightServerBootstrap />
+              <AdminGuestPreviewControl />
               {children}
             </KlubaftenProvider>
           </ClubProvider>
