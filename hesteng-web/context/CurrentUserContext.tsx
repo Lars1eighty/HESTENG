@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, ReactNode, useContext, useMemo } from "react";
+import {
+  createContext,
+  ReactNode,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import { SessionProvider, useSession } from "next-auth/react";
 import type { Session } from "next-auth";
 import type { ClubMembershipRole } from "@prisma/client";
@@ -37,6 +43,50 @@ const FALLBACK_DEMO_PLAYER: PlayerProfile = {
 const CurrentUserContext = createContext<CurrentUserContextType | undefined>(undefined);
 const CAN_USE_DEMO_USER =
   process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_HESTENG_DEMO_USER === "true";
+
+const ADMIN_GUEST_PREVIEW_KEY = "hesteng.adminGuestPreview";
+const ADMIN_GUEST_PREVIEW_EVENT = "hesteng.adminGuestPreviewChanged";
+
+function getAdminGuestPreviewSnapshot() {
+  if (typeof window === "undefined") return false;
+  return window.sessionStorage.getItem(ADMIN_GUEST_PREVIEW_KEY) === "true";
+}
+
+function subscribeToAdminGuestPreview(callback: () => void) {
+  if (typeof window === "undefined") return () => undefined;
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === ADMIN_GUEST_PREVIEW_KEY) callback();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(ADMIN_GUEST_PREVIEW_EVENT, callback);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(ADMIN_GUEST_PREVIEW_EVENT, callback);
+  };
+}
+
+export function useAdminGuestPreview() {
+  return useSyncExternalStore(
+    subscribeToAdminGuestPreview,
+    getAdminGuestPreviewSnapshot,
+    () => false
+  );
+}
+
+export function setAdminGuestPreview(enabled: boolean) {
+  if (typeof window === "undefined") return;
+
+  if (enabled) {
+    window.sessionStorage.setItem(ADMIN_GUEST_PREVIEW_KEY, "true");
+  } else {
+    window.sessionStorage.removeItem(ADMIN_GUEST_PREVIEW_KEY);
+  }
+
+  window.dispatchEvent(new Event(ADMIN_GUEST_PREVIEW_EVENT));
+}
 
 function getDemoCurrentPlayer() {
   const registry = getPlayerRegistry(DEMO_CLUB_ID);
@@ -81,6 +131,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
 
 function CurrentUserProviderInner({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
+  const isAdminGuestPreview = useAdminGuestPreview();
   const sessionPlayer = getSessionPlayer(session);
   const demoPlayer = status === "unauthenticated" && CAN_USE_DEMO_USER ? getDemoCurrentPlayer() : undefined;
   const currentPlayer = sessionPlayer ?? demoPlayer;
@@ -114,7 +165,7 @@ function CurrentUserProviderInner({ children }: { children: ReactNode }) {
   }
 
   const value = useMemo(() => {
-    if (!currentPlayer || !currentUser) {
+    if (!currentPlayer || !currentUser || isAdminGuestPreview) {
       return undefined;
     }
 
@@ -123,7 +174,7 @@ function CurrentUserProviderInner({ children }: { children: ReactNode }) {
       currentPlayer,
       currentPlayerId: currentPlayer.id,
     };
-  }, [currentPlayer, currentUser]);
+  }, [currentPlayer, currentUser, isAdminGuestPreview]);
 
   if (!value) {
     return <>{children}</>;

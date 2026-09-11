@@ -9,7 +9,10 @@ import {
   useSyncExternalStore,
 } from "react";
 import { clubs as demoClubs, DEMO_CLUB_ID, type Club } from "@/data/clubs";
-import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
+import {
+  useAdminGuestPreview,
+  useOptionalCurrentUser,
+} from "@/context/CurrentUserContext";
 
 type ClubContextType = {
   clubs: Club[];
@@ -21,6 +24,12 @@ type ClubContextType = {
 const STORAGE_KEY = "hesteng.currentClubId";
 const STORAGE_CHANGE_EVENT = "hesteng.currentClubChanged";
 const ClubContext = createContext<ClubContextType | undefined>(undefined);
+const GUEST_CLUB: Club = {
+  id: "guest-no-club",
+  name: "Ingen klub tilknyttet",
+  slug: "ingen-klub",
+  createdAt: "",
+};
 
 function getStoredClubId() {
   if (typeof window === "undefined") return DEMO_CLUB_ID;
@@ -60,6 +69,7 @@ function slugify(value: string) {
 
 export function ClubProvider({ children }: { children: ReactNode }) {
   const currentUserContext = useOptionalCurrentUser();
+  const isAdminGuestPreview = useAdminGuestPreview();
   const memberships = currentUserContext?.currentUser.memberships ?? [];
   const storedClubId = useSyncExternalStore(
     subscribeToClub,
@@ -68,6 +78,8 @@ export function ClubProvider({ children }: { children: ReactNode }) {
   );
 
   const availableClubs = useMemo<Club[]>(() => {
+    if (isAdminGuestPreview) return [];
+
     const byId = new Map<string, Club>();
 
     demoClubs.forEach((club) => byId.set(club.id, club));
@@ -82,22 +94,25 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     });
 
     return Array.from(byId.values());
-  }, [memberships]);
+  }, [isAdminGuestPreview, memberships]);
 
-  const currentClub = useMemo(
-    () =>
+  const currentClub = useMemo(() => {
+    if (isAdminGuestPreview) return GUEST_CLUB;
+
+    return (
       availableClubs.find((club) => club.id === storedClubId) ??
       availableClubs[0] ??
-      demoClubs[0],
-    [availableClubs, storedClubId]
-  );
+      demoClubs[0]
+    );
+  }, [availableClubs, isAdminGuestPreview, storedClubId]);
 
   const setCurrentClubId = useCallback(
     (clubId: string) => {
+      if (isAdminGuestPreview) return;
       if (!availableClubs.some((club) => club.id === clubId)) return;
       saveClubId(clubId);
     },
-    [availableClubs]
+    [availableClubs, isAdminGuestPreview]
   );
 
   const value = useMemo(
