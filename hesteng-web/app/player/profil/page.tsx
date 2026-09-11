@@ -46,7 +46,6 @@ export default function PlayerProfilePage() {
 
   useEffect(() => {
     if (!currentUserContext) {
-      setLoading(false);
       return;
     }
 
