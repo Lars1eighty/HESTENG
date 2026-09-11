@@ -1,11 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 
+import {
+  setAdminGuestPreview,
+  useAdminGuestPreview,
+} from "@/context/CurrentUserContext";
+
 export default function Header() {
-  const { status } = useSession();
-  const isAuthenticated = status === "authenticated";
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const isGuestPreview = useAdminGuestPreview();
+  const isAuthenticated = status === "authenticated" && !isGuestPreview;
+  const isAdmin = session?.user?.memberships?.some(
+    (membership) => membership.role === "ADMIN"
+  ) ?? false;
+
+  if (isGuestPreview) {
+    return (
+      <header className="flex items-center justify-between border-b border-gray-800 px-8 py-6">
+        <Link href="/">
+          <h1 className="text-3xl font-bold text-orange-500">HESTENG</h1>
+          <p className="text-sm text-gray-400">Measure. Improve. Compete.</p>
+        </Link>
+      </header>
+    );
+  }
 
   return (
     <header className="flex items-center justify-between border-b border-gray-800 px-8 py-6">
@@ -36,8 +58,20 @@ export default function Header() {
           </Link>
         </nav>
         <div className="hidden text-gray-300 sm:block">
-          👤 Lars
+          👤 {session?.user?.name ?? "Bruger"}
         </div>
+        {isAdmin ? (
+          <button
+            type="button"
+            onClick={() => {
+              setAdminGuestPreview(true);
+              router.push("/");
+            }}
+            className="rounded-full border border-orange-900 px-3 py-1.5 text-xs font-bold text-orange-300 transition hover:border-orange-500 hover:bg-orange-500/10"
+          >
+            Vis som gæst
+          </button>
+        ) : null}
         {isAuthenticated ? (
           <button
             type="button"
