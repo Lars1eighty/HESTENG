@@ -78,11 +78,16 @@ export default function PlayerHistoryPage() {
 
 function PlayerHistoryContent({ currentPlayerId, playerName }: { currentPlayerId: string; playerName: string }) {
   const [results, setResults] = useState<TrainingResult[]>([]);
+  const [resultsLoaded, setResultsLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setResultsLoaded(false);
     void syncTrainingResultsFromSharedStore(currentPlayerId).then((nextResults) => {
-      if (!cancelled) setResults(nextResults);
+      if (!cancelled) {
+        setResults(nextResults);
+        setResultsLoaded(true);
+      }
     });
 
     const unsubscribe = subscribeToTrainingResults(() => {
@@ -120,7 +125,11 @@ function PlayerHistoryContent({ currentPlayerId, playerName }: { currentPlayerId
           </div>
         </div>
 
-        {sortedResults.length === 0 ? (
+        {!resultsLoaded ? (
+          <div className="mt-10 rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
+            <h2 className="text-2xl font-black">Henter træningshistorik…</h2>
+          </div>
+        ) : sortedResults.length === 0 ? (
           <div className="mt-10 rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
             <h2 className="text-2xl font-black">Ingen træninger gemt endnu.</h2>
             <div className="mt-5">
