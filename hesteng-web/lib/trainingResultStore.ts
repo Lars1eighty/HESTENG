@@ -144,20 +144,19 @@ export async function syncTrainingResultsFromSharedStore(playerId?: string): Pro
     : localResults;
 
   try {
-    const response = playerId
-      ? await fetch(`${SHARED_TRAINING_RESULTS_API}?playerId=${encodeURIComponent(playerId)}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-hesteng-player-id": playerId,
-          },
-          body: JSON.stringify({ playerId, results: localPlayerResults }),
-        })
-      : await fetch(SHARED_TRAINING_RESULTS_API);
+    // Synchronizing a page is read-only. Previously this used POST for a player,
+    // which merged the entire local cache back into Prisma before returning it.
+    // GET lets the server read the authenticated player's current results directly.
+    const response = await fetch(SHARED_TRAINING_RESULTS_API, {
+      method: "GET",
+      cache: "no-store",
+    });
     if (!response.ok) return playerId ? localPlayerResults : localResults;
 
-    const state = await response.json() as { results?: TrainingResult[] };
-    const sharedResults = normalizeTrainingResults(Array.isArray(state.results) ? state.results : []);
+    const payload = await response.json() as TrainingResult[] | { results?: TrainingResult[] };
+    const rawResults = Array.isArray(payload) ? payload : Array.isArray(payload.results) ? payload.results : [];
+    const sharedResults = normalizeTrainingResults(rawResults);
+
     if (playerId) {
       writePlayerTrainingResultsToCache(playerId, sharedResults);
     } else {
