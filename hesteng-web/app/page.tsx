@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 const INTRO_SESSION_KEY = "hesteng.brandIntroSeen";
 
@@ -11,6 +12,8 @@ function prefersReducedMotion() {
 
 export default function PublicHomePage() {
   const [showIntro, setShowIntro] = useState(false);
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
 
   useEffect(() => {
     if (prefersReducedMotion()) return;
@@ -35,9 +38,15 @@ export default function PublicHomePage() {
             <div className="text-3xl font-black text-orange-500">HESTENG</div>
             <div className="text-sm font-semibold text-gray-400">Measure. Improve. Compete.</div>
           </Link>
-          <Link href="/login" className="rounded-full border border-gray-700 px-4 py-2 text-sm font-bold text-gray-300 transition hover:border-orange-500 hover:text-orange-300">
-            Log ind
-          </Link>
+          {isAuthenticated ? (
+            <Link href="/dashboard" className="rounded-full border border-gray-700 px-4 py-2 text-sm font-bold text-gray-300 transition hover:border-orange-500 hover:text-orange-300">
+              Åbn HESTENG
+            </Link>
+          ) : (
+            <Link href="/login" className="rounded-full border border-gray-700 px-4 py-2 text-sm font-bold text-gray-300 transition hover:border-orange-500 hover:text-orange-300">
+              Log ind
+            </Link>
+          )}
         </header>
 
         <div className="grid flex-1 items-center gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr]">
@@ -53,15 +62,28 @@ export default function PublicHomePage() {
               Træning, konkurrencer, statistik og udvikling samlet ét sted.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/login" className="rounded-xl bg-orange-500 px-6 py-4 font-black text-gray-950 transition hover:bg-orange-400">
-                Log ind
-              </Link>
-              <Link href="/opret-klub" className="rounded-xl border border-gray-700 px-6 py-4 font-bold text-gray-300 transition hover:border-orange-500 hover:text-orange-300">
-                Opret klub
-              </Link>
-              <Link href="/dashboard" className="rounded-xl px-5 py-4 text-sm font-bold text-gray-500 transition hover:text-orange-300">
-                Prøv demo
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link href="/dashboard" className="rounded-xl bg-orange-500 px-6 py-4 font-black text-gray-950 transition hover:bg-orange-400">
+                    Åbn HESTENG
+                  </Link>
+                  <Link href="/player/profil" className="rounded-xl border border-gray-700 px-6 py-4 font-bold text-gray-300 transition hover:border-orange-500 hover:text-orange-300">
+                    Min profil
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="rounded-xl bg-orange-500 px-6 py-4 font-black text-gray-950 transition hover:bg-orange-400">
+                    Log ind
+                  </Link>
+                  <Link href="/opret-klub" className="rounded-xl border border-gray-700 px-6 py-4 font-bold text-gray-300 transition hover:border-orange-500 hover:text-orange-300">
+                    Opret klub
+                  </Link>
+                  <Link href="/dashboard" className="rounded-xl px-5 py-4 text-sm font-bold text-gray-500 transition hover:text-orange-300">
+                    Prøv demo
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 
