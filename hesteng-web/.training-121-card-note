@@ -1,0 +1,1 @@
+Temporary integration note: 121 is rendered as a normal in-flow training card by TrainingQuickLinks. A future cleanup can move route-based exercises into the shared TrainingExerciseCard renderer when the large training page is split into smaller components.
