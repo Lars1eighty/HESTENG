@@ -13,6 +13,7 @@ import type { TrainingResult } from "@/lib/trainingTypes";
 export default function Checkout121Page() {
   const currentUserContext = useOptionalCurrentUser();
   const [savedResult, setSavedResult] = useState<TrainingResult | null>(null);
+  const [sessionNumber, setSessionNumber] = useState(1);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -56,10 +57,16 @@ export default function Checkout121Page() {
       setSavedResult(result);
     } catch (error) {
       console.error("Failed to save 121 training result", error);
-      setSaveError("Resultatet kunne ikke gemmes. Prøv igen.");
+      setSaveError("Resultatet kunne ikke gemmes. Genindlæs siden og prøv igen.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function startNewSession() {
+    setSavedResult(null);
+    setSaveError(null);
+    setSessionNumber((current) => current + 1);
   }
 
   return (
@@ -109,7 +116,7 @@ export default function Checkout121Page() {
               </Link>
               <button
                 type="button"
-                onClick={() => setSavedResult(null)}
+                onClick={startNewSession}
                 className="rounded-2xl border border-white/20 px-5 py-3 font-bold text-white transition hover:bg-white/10"
               >
                 Træn 121 igen
@@ -118,7 +125,7 @@ export default function Checkout121Page() {
           </section>
         ) : (
           <>
-            <Checkout121Training onComplete={handleComplete} />
+            <Checkout121Training key={sessionNumber} onComplete={handleComplete} />
             {saving ? <p className="mt-4 text-center text-sm text-gray-400">Gemmer resultat…</p> : null}
             {saveError ? <p className="mt-4 text-center text-sm font-semibold text-red-300">{saveError}</p> : null}
           </>
