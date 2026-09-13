@@ -16,6 +16,12 @@ const routeExercises = [
     description: "10 forsøg på 170. Du har højst 9 pile pr. forsøg og registrerer antal pile ved en lukning.",
     metric: "Antal lukkede",
   },
+  {
+    href: "/traening/170-vs-cpu",
+    name: "170 vs CPU",
+    description: "Spil først til 5 legs mod CPU fra 170. Vælg CPU-niveau og registrer din score efter hver visit.",
+    metric: "Matchresultat",
+  },
 ];
 
 export default function TrainingQuickLinks() {
