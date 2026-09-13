@@ -157,6 +157,10 @@ model PlayerProfile {
   id              String           @id @default(cuid())
   userId          String           @unique
   displayName     String
+  birthDate       DateTime?
+  city            String?
+  country         String?
+  bio             String?          @db.Text
   primaryClubId   String?
   trainingResults TrainingResult[]
   createdAt       DateTime         @default(now())

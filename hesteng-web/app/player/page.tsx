@@ -141,6 +141,9 @@ function PlayerPageContent({ currentUserContext }: { currentUserContext: NonNull
               <Link href="/traening" className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-black transition hover:bg-orange-400">
                 Åbn Min træning
               </Link>
+              <Link href="/player/profil" className="rounded-xl border border-gray-700 px-5 py-3 text-sm font-black uppercase tracking-wide text-gray-300 transition hover:border-orange-500/70 hover:text-orange-300">
+                Min profil
+              </Link>
               <Link href="/player/historik" className="rounded-xl border border-gray-700 px-5 py-3 text-sm font-black uppercase tracking-wide text-gray-300 transition hover:border-orange-500/70 hover:text-orange-300">
                 Se historik
               </Link>
