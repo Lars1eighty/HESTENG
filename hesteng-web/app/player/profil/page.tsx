@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import Header from "@/components/Header";
@@ -37,6 +38,7 @@ const emptyForm: ProfileForm = {
 
 export default function PlayerProfilePage() {
   const currentUserContext = useOptionalCurrentUser();
+  const { data: session } = useSession();
   const [profile, setProfile] = useState<PlayerProfileResponse["profile"] | null>(null);
   const [form, setForm] = useState<ProfileForm>(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export default function PlayerProfilePage() {
     };
   }, [currentUserContext]);
 
-  const primaryMembership = currentUserContext?.currentUser.memberships[0];
+  const primaryMembership = session?.user?.memberships?.[0];
   const age = useMemo(() => calculateAge(form.birthDate), [form.birthDate]);
 
   if (!currentUserContext) {
@@ -135,9 +137,6 @@ export default function PlayerProfilePage() {
           <div>
             <div className="text-xs font-black uppercase tracking-[0.22em] text-orange-400">Player profil</div>
             <h1 className="mt-2 text-4xl font-black sm:text-5xl">{form.displayName || currentUserContext.currentPlayer.name}</h1>
-            <div className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-gray-500">
-              {primaryMembership?.clubName ?? "Ingen klub tilknyttet"}
-            </div>
           </div>
         </div>
 
@@ -186,6 +185,15 @@ export default function PlayerProfilePage() {
                   />
                 </Field>
               </div>
+
+              <Field label="Klub">
+                <input
+                  value={primaryMembership?.clubName ?? "Ingen klub tilknyttet"}
+                  readOnly
+                  aria-readonly="true"
+                  className="w-full cursor-default rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-gray-400 outline-none"
+                />
+              </Field>
 
               <Field label="Kort bio" hint={`${form.bio.length}/500`}>
                 <textarea
