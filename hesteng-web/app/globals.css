@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #050811;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,17 +12,24 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(249, 115, 22, 0.13), transparent 28rem),
+    radial-gradient(circle at 88% 22%, rgba(30, 64, 175, 0.12), transparent 34rem),
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(145deg, #07101d 0%, #050811 48%, #09111d 100%);
+  background-size: auto, auto, 48px 48px, 48px 48px, auto;
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Tailwind's existing bg-gray-950 app shells stay semantically dark while
+   allowing the shared HESTENG performance background to show through. */
+main.min-h-screen.bg-gray-950 {
+  background-color: transparent;
 }
 
 .hesteng-intro {
