@@ -22,6 +22,12 @@ const routeExercises = [
     description: "Spil først til 5 legs mod CPU fra 170. Vælg CPU-niveau og registrer din score efter hver visit.",
     metric: "Matchresultat",
   },
+  {
+    href: "/traening/doubles-10",
+    name: "Doubles 10",
+    description: "10 tilfældige doubler fra D1 til D20. Du har 3 pile på hver double.",
+    metric: "Doubler ramt",
+  },
 ];
 
 export default function TrainingQuickLinks() {
