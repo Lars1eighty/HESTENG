@@ -6,10 +6,9 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import Checkout170Training from "@/components/training/Checkout170Training";
 import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
+import { CHECKOUT_170_EXERCISE_ID } from "@/data/trainingExercises";
 import { saveTrainingResultToSharedStore } from "@/lib/trainingResultStore";
 import type { TrainingResult } from "@/lib/trainingTypes";
-
-const CHECKOUT_170_EXERCISE_ID = "checkout-170";
 
 export default function Checkout170Page() {
   const currentUserContext = useOptionalCurrentUser();
@@ -33,13 +32,7 @@ export default function Checkout170Page() {
   const { currentPlayerId, currentUser } = currentUserContext;
   const trainingClubId = currentUser.memberships[0]?.clubId;
 
-  async function handleComplete({
-    metrics,
-    details,
-  }: {
-    metrics: Record<string, number>;
-    details: Record<string, unknown>;
-  }) {
+  async function handleComplete({ metrics, details }: { metrics: Record<string, number>; details: Record<string, unknown> }) {
     const result: TrainingResult = {
       id: `training-${CHECKOUT_170_EXERCISE_ID}-${currentPlayerId}-${Date.now()}`,
       clubId: trainingClubId,
@@ -79,10 +72,7 @@ export default function Checkout170Page() {
             <div className="text-xs font-black uppercase tracking-[0.22em] text-orange-400">HESTENG Training</div>
             <h1 className="mt-1 text-3xl font-black sm:text-4xl">170</h1>
           </div>
-          <Link
-            href="/traening"
-            className="rounded-xl border border-gray-700 px-4 py-2 text-sm font-bold text-gray-200 transition hover:border-orange-400 hover:text-orange-300"
-          >
+          <Link href="/traening" className="rounded-xl border border-gray-700 px-4 py-2 text-sm font-bold text-gray-200 transition hover:border-orange-400 hover:text-orange-300">
             Til træning
           </Link>
         </div>
@@ -99,17 +89,10 @@ export default function Checkout170Page() {
               <ResultStat label="Forsøg" value={savedResult.metrics.checkoutAttempts} />
             </div>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link
-                href="/player/historik"
-                className="rounded-2xl bg-white px-5 py-3 font-bold text-gray-950 transition hover:bg-gray-200"
-              >
+              <Link href="/player/historik" className="rounded-2xl bg-white px-5 py-3 font-bold text-gray-950 transition hover:bg-gray-200">
                 Se historik
               </Link>
-              <button
-                type="button"
-                onClick={startNewSession}
-                className="rounded-2xl border border-white/20 px-5 py-3 font-bold text-white transition hover:bg-white/10"
-              >
+              <button type="button" onClick={startNewSession} className="rounded-2xl border border-white/20 px-5 py-3 font-bold text-white transition hover:bg-white/10">
                 Træn 170 igen
               </button>
             </div>
