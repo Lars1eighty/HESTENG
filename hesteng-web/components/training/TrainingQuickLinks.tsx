@@ -28,6 +28,12 @@ const routeExercises = [
     description: "10 tilfældige doubler fra D1 til D20. Du har 3 pile på hver double.",
     metric: "Doubler ramt",
   },
+  {
+    href: "/traening/scoring-targets",
+    name: "Scoring Targets",
+    description: "Træn de vigtige scoring-targets T20, T19 og Bull med 10 runder på hver.",
+    metric: "Point og træf %",
+  },
 ];
 
 export default function TrainingQuickLinks() {
