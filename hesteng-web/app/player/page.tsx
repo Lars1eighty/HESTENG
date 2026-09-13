@@ -72,13 +72,18 @@ function PlayerPageContent({ currentUserContext }: { currentUserContext: NonNull
   const primaryMembership = currentUser.memberships[0];
   const isClubAdmin = primaryMembership?.role === "ADMIN";
   const [results, setResults] = useState<TrainingResult[]>([]);
+  const [resultsLoaded, setResultsLoaded] = useState(false);
   const month = useMemo(() => currentMonthKey(), []);
   const activeExercises = trainingExercises.filter((exercise) => exercise.isActive);
 
   useEffect(() => {
     let cancelled = false;
+    setResultsLoaded(false);
     void syncTrainingResultsFromSharedStore(currentPlayerId).then((nextResults) => {
-      if (!cancelled) setResults(nextResults);
+      if (!cancelled) {
+        setResults(nextResults);
+        setResultsLoaded(true);
+      }
     });
 
     const unsubscribe = subscribeToTrainingResults(() => {
@@ -163,12 +168,16 @@ function PlayerPageContent({ currentUserContext }: { currentUserContext: NonNull
             <dl className="mt-4 grid gap-3">
               <div className="rounded-xl bg-gray-950 p-4">
                 <dt className="text-xs font-bold uppercase text-gray-500">Træninger denne måned</dt>
-                <dd className="mt-1 text-3xl font-black text-orange-300">{totalThisMonth}</dd>
+                <dd className="mt-1 text-3xl font-black text-orange-300">{resultsLoaded ? totalThisMonth : "Henter…"}</dd>
               </div>
               <div className="rounded-xl bg-gray-950 p-4">
                 <dt className="text-xs font-bold uppercase text-gray-500">Seneste træning</dt>
                 <dd className="mt-1 text-lg font-bold text-white">
-                  {latestResult ? trainingExercises.find((exercise) => exercise.id === latestResult.exerciseId)?.name ?? latestResult.exerciseId : "Ingen endnu"}
+                  {!resultsLoaded
+                    ? "Henter…"
+                    : latestResult
+                      ? trainingExercises.find((exercise) => exercise.id === latestResult.exerciseId)?.name ?? latestResult.exerciseId
+                      : "Ingen endnu"}
                 </dd>
               </div>
             </dl>
