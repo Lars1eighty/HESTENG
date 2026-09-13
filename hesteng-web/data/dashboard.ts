@@ -25,10 +25,10 @@ export const dashboardCards = [
   },
   {
     label: "RANGLISTER",
-    title: "Ranglister",
-    description: "Se aktuelle ranglister.",
+    title: "Træningsranglister",
+    description: "Sammenlign de bedste træningsresultater.",
     icon: "📊",
     buttonText: "Vis ranglister →",
-    href: "/ranglister",
+    href: "/ranglister/traening",
   },
 ];
