@@ -31,7 +31,7 @@ const routeExercises = [
   {
     href: "/traening/scoring-targets",
     name: "Scoring Targets",
-    description: "Træn de vigtige scoring-targets T20, T19 og Bull med 10 runder på hver.",
+    description: "T20, T19 og Bull. Vælg 90-pils mix eller 100 pile på ét target.",
     metric: "Point og træf %",
   },
 ];
