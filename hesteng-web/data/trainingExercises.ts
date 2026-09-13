@@ -4,6 +4,7 @@ export const JDC_CHALLENGE_EXERCISE_ID = "jdc-challenge";
 export const CATCH_40_EXERCISE_ID = "catch-40";
 export const CHECKOUT_121_EXERCISE_ID = "checkout-121";
 export const CHECKOUT_170_EXERCISE_ID = "checkout-170";
+export const CHECKOUT_170_VS_CPU_EXERCISE_ID = "checkout-170-vs-cpu";
 export const BOBS_27_EXERCISE_ID = "bobs-27";
 export const GAME_420_EXERCISE_ID = "game-420";
 export const SCORING_EXERCISE_ID = "scoring";
@@ -68,6 +69,21 @@ export const trainingExercises: TrainingExercise[] = [
       { key: "checkoutPercent", label: "Checkout %", valueType: "percent", personalBest: "higherIsBetter" },
       { key: "bestDarts", label: "Bedste antal pile", valueType: "count", personalBest: "lowerIsBetter" },
       { key: "averageDarts", label: "Snit pile", valueType: "number", personalBest: "lowerIsBetter" },
+    ],
+  },
+  {
+    id: CHECKOUT_170_VS_CPU_EXERCISE_ID,
+    name: "170 vs CPU",
+    type: "checkout-match",
+    description: "Først til 5 legs mod CPU. Begge starter hvert leg på 170.",
+    isActive: true,
+    metrics: [
+      { key: "score", label: "Dine legs", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "won", label: "Sejr", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "playerLegs", label: "Dine legs", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "cpuLegs", label: "CPU legs", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "threeDartAverage", label: "3-pils snit", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "cpuLevel", label: "CPU niveau", valueType: "number" },
     ],
   },
   {
