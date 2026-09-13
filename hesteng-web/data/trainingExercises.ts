@@ -5,6 +5,7 @@ export const CATCH_40_EXERCISE_ID = "catch-40";
 export const CHECKOUT_121_EXERCISE_ID = "checkout-121";
 export const CHECKOUT_170_EXERCISE_ID = "checkout-170";
 export const CHECKOUT_170_VS_CPU_EXERCISE_ID = "checkout-170-vs-cpu";
+export const DOUBLES_10_EXERCISE_ID = "doubles-10";
 export const BOBS_27_EXERCISE_ID = "bobs-27";
 export const GAME_420_EXERCISE_ID = "game-420";
 export const SCORING_EXERCISE_ID = "scoring";
@@ -84,6 +85,21 @@ export const trainingExercises: TrainingExercise[] = [
       { key: "cpuLegs", label: "CPU legs", valueType: "count", personalBest: "lowerIsBetter" },
       { key: "threeDartAverage", label: "3-pils snit", valueType: "number", personalBest: "higherIsBetter" },
       { key: "cpuLevel", label: "CPU niveau", valueType: "number" },
+    ],
+  },
+  {
+    id: DOUBLES_10_EXERCISE_ID,
+    name: "Doubles 10",
+    type: "double-training",
+    description: "10 tilfældige doubler fra D1 til D20 med 3 pile på hver.",
+    isActive: true,
+    metrics: [
+      { key: "score", label: "Doubler ramt", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "hits", label: "Doubler ramt", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "targets", label: "Targets", valueType: "count" },
+      { key: "doublePercent", label: "Double %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "totalDartsThrown", label: "Pile brugt", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "averageDartsOnHit", label: "Snit pile ved hit", valueType: "number", personalBest: "lowerIsBetter" },
     ],
   },
   {
