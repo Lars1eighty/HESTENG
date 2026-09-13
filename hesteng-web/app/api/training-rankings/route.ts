@@ -42,7 +42,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const results = await getPrisma().trainingResult.findMany({
+  const prisma = getPrisma();
+  const currentProfile = await prisma.playerProfile.findUnique({
+    where: { id: currentPlayerId },
+    select: { displayName: true },
+  });
+
+  const results = await prisma.trainingResult.findMany({
     where: {
       exerciseId,
       ...(scope === "club" && clubId ? { clubId } : {}),
@@ -53,6 +59,7 @@ export async function GET(request: NextRequest) {
       player: {
         select: {
           displayName: true,
+          userId: true,
         },
       },
     },
@@ -61,21 +68,55 @@ export async function GET(request: NextRequest) {
   const rankingMetric = getRankingMetric(exercise);
   const direction = getDirection(exercise);
   const bestByPlayer = new Map<string, RankingRow>();
+  const legacyPlayerIds = new Set<string>();
 
   for (const result of results) {
     const value = readMetricValue(result.metrics, rankingMetric?.key ?? "score");
     if (value === null) continue;
 
-    const current = bestByPlayer.get(result.playerId);
+    const isLegacyProfileForCurrentPlayer = Boolean(
+      currentProfile
+      && result.playerId !== currentPlayerId
+      && result.playerId.startsWith("seed:")
+      && result.player.displayName === currentProfile.displayName
+      && result.player.userId === `training-user-${result.playerId}`
+    );
+
+    const effectivePlayerId = isLegacyProfileForCurrentPlayer ? currentPlayerId : result.playerId;
+    const effectivePlayerName = isLegacyProfileForCurrentPlayer
+      ? currentProfile?.displayName ?? result.player.displayName
+      : result.player.displayName;
+
+    if (isLegacyProfileForCurrentPlayer) {
+      legacyPlayerIds.add(result.playerId);
+    }
+
+    const current = bestByPlayer.get(effectivePlayerId);
     const isBetter = !current || (direction === "higher" ? value > current.value : value < current.value);
 
     if (isBetter) {
-      bestByPlayer.set(result.playerId, {
-        playerId: result.playerId,
-        playerName: result.player.displayName,
+      bestByPlayer.set(effectivePlayerId, {
+        playerId: effectivePlayerId,
+        playerName: effectivePlayerName,
         value,
       });
     }
+  }
+
+  // Historical authenticated users could previously inherit a seeded profile.
+  // Once such a profile has been moved to its synthetic demo owner, migrate all
+  // of its training results to the authenticated profile. The strict seed id,
+  // synthetic owner id and exact display-name checks keep this repair scoped to
+  // that legacy state only. Future requests then use the canonical profile.
+  if (legacyPlayerIds.size > 0) {
+    await prisma.trainingResult.updateMany({
+      where: {
+        playerId: { in: [...legacyPlayerIds] },
+      },
+      data: {
+        playerId: currentPlayerId,
+      },
+    });
   }
 
   const rows = [...bestByPlayer.values()]
