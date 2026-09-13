@@ -2,6 +2,7 @@ import type { TrainingExercise } from "@/lib/trainingTypes";
 
 export const JDC_CHALLENGE_EXERCISE_ID = "jdc-challenge";
 export const CATCH_40_EXERCISE_ID = "catch-40";
+export const CHECKOUT_121_EXERCISE_ID = "checkout-121";
 export const BOBS_27_EXERCISE_ID = "bobs-27";
 export const GAME_420_EXERCISE_ID = "game-420";
 export const SCORING_EXERCISE_ID = "scoring";
@@ -81,6 +82,49 @@ export const trainingExercises: TrainingExercise[] = [
         label: "Højeste luk",
         valueType: "number",
         personalBest: "higherIsBetter",
+      },
+    ],
+  },
+  {
+    id: CHECKOUT_121_EXERCISE_ID,
+    name: "121",
+    type: "checkout-progression",
+    description: "20 minutter. Luk 121 med 9 pile, gå ét tal op ved succes og bliv på samme tal ved miss.",
+    isActive: true,
+    metrics: [
+      {
+        key: "score",
+        label: "Højeste luk",
+        valueType: "number",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "highestCheckout",
+        label: "Højeste luk",
+        valueType: "number",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "checkouts",
+        label: "Lukkede",
+        valueType: "count",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "checkoutAttempts",
+        label: "Forsøg",
+        valueType: "count",
+      },
+      {
+        key: "checkoutPercent",
+        label: "Checkout %",
+        valueType: "percent",
+        personalBest: "higherIsBetter",
+      },
+      {
+        key: "durationSeconds",
+        label: "Tid",
+        valueType: "duration",
       },
     ],
   },
