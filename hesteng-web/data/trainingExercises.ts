@@ -6,6 +6,7 @@ export const CHECKOUT_121_EXERCISE_ID = "checkout-121";
 export const CHECKOUT_170_EXERCISE_ID = "checkout-170";
 export const CHECKOUT_170_VS_CPU_EXERCISE_ID = "checkout-170-vs-cpu";
 export const DOUBLES_10_EXERCISE_ID = "doubles-10";
+export const SCORING_TARGETS_EXERCISE_ID = "scoring-targets";
 export const BOBS_27_EXERCISE_ID = "bobs-27";
 export const GAME_420_EXERCISE_ID = "game-420";
 export const SCORING_EXERCISE_ID = "scoring";
@@ -100,6 +101,22 @@ export const trainingExercises: TrainingExercise[] = [
       { key: "doublePercent", label: "Double %", valueType: "percent", personalBest: "higherIsBetter" },
       { key: "totalDartsThrown", label: "Pile brugt", valueType: "count", personalBest: "lowerIsBetter" },
       { key: "averageDartsOnHit", label: "Snit pile ved hit", valueType: "number", personalBest: "lowerIsBetter" },
+    ],
+  },
+  {
+    id: SCORING_TARGETS_EXERCISE_ID,
+    name: "Scoring Targets",
+    type: "target-scoring",
+    description: "10 runder med 3 pile på hver af T20, T19 og Bull.",
+    isActive: true,
+    metrics: [
+      { key: "score", label: "Point", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "hits", label: "Hits", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "attempts", label: "Pile", valueType: "count" },
+      { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "t20Hits", label: "T20 hits", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "t19Hits", label: "T19 hits", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "bullHits", label: "Bull hits", valueType: "count", personalBest: "higherIsBetter" },
     ],
   },
   {
