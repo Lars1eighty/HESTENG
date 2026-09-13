@@ -3,6 +3,7 @@ import type { TrainingExercise } from "@/lib/trainingTypes";
 export const JDC_CHALLENGE_EXERCISE_ID = "jdc-challenge";
 export const CATCH_40_EXERCISE_ID = "catch-40";
 export const CHECKOUT_121_EXERCISE_ID = "checkout-121";
+export const CHECKOUT_170_EXERCISE_ID = "checkout-170";
 export const BOBS_27_EXERCISE_ID = "bobs-27";
 export const GAME_420_EXERCISE_ID = "game-420";
 export const SCORING_EXERCISE_ID = "scoring";
@@ -18,34 +19,11 @@ export const trainingExercises: TrainingExercise[] = [
     description: "Live gameplay med Shanghai, doubles around the world og automatisk score.",
     isActive: true,
     metrics: [
-      {
-        key: "score",
-        label: "Score",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "shanghaiCount",
-        label: "Shanghai",
-        valueType: "count",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "hits",
-        label: "Hits",
-        valueType: "count",
-      },
-      {
-        key: "attempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
-      {
-        key: "hitPercent",
-        label: "Træf %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
+      { key: "score", label: "Score", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "shanghaiCount", label: "Shanghai", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "hits", label: "Hits", valueType: "count" },
+      { key: "attempts", label: "Forsøg", valueType: "count" },
+      { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" },
     ],
   },
   {
@@ -55,34 +33,11 @@ export const trainingExercises: TrainingExercise[] = [
     description: "Live checkout-træning fra 61 til 100 med automatisk score.",
     isActive: true,
     metrics: [
-      {
-        key: "score",
-        label: "Score",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "checkouts",
-        label: "Checkouts",
-        valueType: "count",
-      },
-      {
-        key: "checkoutAttempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
-      {
-        key: "checkoutPercent",
-        label: "Checkout %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "highestCheckout",
-        label: "Højeste luk",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
+      { key: "score", label: "Score", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "checkouts", label: "Checkouts", valueType: "count" },
+      { key: "checkoutAttempts", label: "Forsøg", valueType: "count" },
+      { key: "checkoutPercent", label: "Checkout %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "highestCheckout", label: "Højeste luk", valueType: "number", personalBest: "higherIsBetter" },
     ],
   },
   {
@@ -92,40 +47,27 @@ export const trainingExercises: TrainingExercise[] = [
     description: "20 minutter. Luk 121 med 9 pile, gå ét tal op ved succes og bliv på samme tal ved miss.",
     isActive: true,
     metrics: [
-      {
-        key: "score",
-        label: "Højeste luk",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "highestCheckout",
-        label: "Højeste luk",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "checkouts",
-        label: "Lukkede",
-        valueType: "count",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "checkoutAttempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
-      {
-        key: "checkoutPercent",
-        label: "Checkout %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "durationSeconds",
-        label: "Tid",
-        valueType: "duration",
-      },
+      { key: "score", label: "Højeste luk", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "highestCheckout", label: "Højeste luk", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "checkouts", label: "Lukkede", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "checkoutAttempts", label: "Forsøg", valueType: "count" },
+      { key: "checkoutPercent", label: "Checkout %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "durationSeconds", label: "Tid", valueType: "duration" },
+    ],
+  },
+  {
+    id: CHECKOUT_170_EXERCISE_ID,
+    name: "170",
+    type: "checkout-training",
+    description: "10 forsøg på 170 med højst 9 pile pr. forsøg.",
+    isActive: true,
+    metrics: [
+      { key: "score", label: "Lukkede", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "checkouts", label: "Lukkede", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "checkoutAttempts", label: "Forsøg", valueType: "count" },
+      { key: "checkoutPercent", label: "Checkout %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "bestDarts", label: "Bedste antal pile", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "averageDarts", label: "Snit pile", valueType: "number", personalBest: "lowerIsBetter" },
     ],
   },
   {
@@ -135,28 +77,10 @@ export const trainingExercises: TrainingExercise[] = [
     description: "Live double-træning fra D1 til D20 og Bull med automatisk score.",
     isActive: true,
     metrics: [
-      {
-        key: "score",
-        label: "Score",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "hits",
-        label: "Hits",
-        valueType: "count",
-      },
-      {
-        key: "attempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
-      {
-        key: "hitPercent",
-        label: "Træf %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
+      { key: "score", label: "Score", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "hits", label: "Hits", valueType: "count" },
+      { key: "attempts", label: "Forsøg", valueType: "count" },
+      { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" },
     ],
   },
   {
@@ -166,34 +90,11 @@ export const trainingExercises: TrainingExercise[] = [
     description: "Live træning fra D1 til D20 og Bull med remaining fra 420.",
     isActive: true,
     metrics: [
-      {
-        key: "score",
-        label: "Score",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "remaining420",
-        label: "Remaining",
-        valueType: "number",
-        personalBest: "lowerIsBetter",
-      },
-      {
-        key: "hits",
-        label: "Hits",
-        valueType: "count",
-      },
-      {
-        key: "attempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
-      {
-        key: "hitPercent",
-        label: "Træf %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
+      { key: "score", label: "Score", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "remaining420", label: "Remaining", valueType: "number", personalBest: "lowerIsBetter" },
+      { key: "hits", label: "Hits", valueType: "count" },
+      { key: "attempts", label: "Forsøg", valueType: "count" },
+      { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" },
     ],
   },
   {
@@ -203,58 +104,16 @@ export const trainingExercises: TrainingExercise[] = [
     description: "100 pile på valgt target med performance-point og automatisk statistik.",
     isActive: true,
     metrics: [
-      {
-        key: "score",
-        label: "Score",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "singles",
-        label: "Singles",
-        valueType: "count",
-      },
-      {
-        key: "doubles",
-        label: "Doubles",
-        valueType: "count",
-      },
-      {
-        key: "triples",
-        label: "Triples",
-        valueType: "count",
-      },
-      {
-        key: "misses",
-        label: "Misses",
-        valueType: "count",
-      },
-      {
-        key: "hits",
-        label: "Hits",
-        valueType: "count",
-      },
-      {
-        key: "attempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
-      {
-        key: "hitPercent",
-        label: "Træf %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "first50Score",
-        label: "Første 50",
-        valueType: "number",
-      },
-      {
-        key: "second50Score",
-        label: "Sidste 50",
-        valueType: "number",
-      },
+      { key: "score", label: "Score", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "singles", label: "Singles", valueType: "count" },
+      { key: "doubles", label: "Doubles", valueType: "count" },
+      { key: "triples", label: "Triples", valueType: "count" },
+      { key: "misses", label: "Misses", valueType: "count" },
+      { key: "hits", label: "Hits", valueType: "count" },
+      { key: "attempts", label: "Forsøg", valueType: "count" },
+      { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "first50Score", label: "Første 50", valueType: "number" },
+      { key: "second50Score", label: "Sidste 50", valueType: "number" },
     ],
   },
   {
@@ -264,49 +123,14 @@ export const trainingExercises: TrainingExercise[] = [
     description: "3 pile mod hver triple fra T10 til T20. Kun triple-hits tæller.",
     isActive: true,
     metrics: [
-      {
-        key: "score",
-        label: "Score",
-        valueType: "number",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "hits",
-        label: "Hits",
-        valueType: "count",
-      },
-      {
-        key: "attempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
-      {
-        key: "hitPercent",
-        label: "Træf %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "triples",
-        label: "Triples",
-        valueType: "count",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "singles",
-        label: "Singles",
-        valueType: "count",
-      },
-      {
-        key: "doubles",
-        label: "Doubles",
-        valueType: "count",
-      },
-      {
-        key: "misses",
-        label: "Misses",
-        valueType: "count",
-      },
+      { key: "score", label: "Score", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "hits", label: "Hits", valueType: "count" },
+      { key: "attempts", label: "Forsøg", valueType: "count" },
+      { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "triples", label: "Triples", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "singles", label: "Singles", valueType: "count" },
+      { key: "doubles", label: "Doubles", valueType: "count" },
+      { key: "misses", label: "Misses", valueType: "count" },
     ],
   },
   {
@@ -316,33 +140,11 @@ export const trainingExercises: TrainingExercise[] = [
     description: "Ram 1-20 og Bull i rækkefølge. Variant afgør segmentet.",
     isActive: true,
     metrics: [
-      {
-        key: "dartsUsed",
-        label: "Pile brugt",
-        valueType: "count",
-        personalBest: "lowerIsBetter",
-      },
-      {
-        key: "hits",
-        label: "Hits",
-        valueType: "count",
-      },
-      {
-        key: "attempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
-      {
-        key: "hitPercent",
-        label: "Træf %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "misses",
-        label: "Misses",
-        valueType: "count",
-      },
+      { key: "dartsUsed", label: "Pile brugt", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "hits", label: "Hits", valueType: "count" },
+      { key: "attempts", label: "Forsøg", valueType: "count" },
+      { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "misses", label: "Misses", valueType: "count" },
     ],
   },
   {
@@ -352,23 +154,9 @@ export const trainingExercises: TrainingExercise[] = [
     description: "Sammensæt 1-3 targets og træn hits over valgte runder.",
     isActive: true,
     metrics: [
-      {
-        key: "hitPercent",
-        label: "Træf %",
-        valueType: "percent",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "hits",
-        label: "Hits",
-        valueType: "count",
-        personalBest: "higherIsBetter",
-      },
-      {
-        key: "attempts",
-        label: "Forsøg",
-        valueType: "count",
-      },
+      { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "hits", label: "Hits", valueType: "count", personalBest: "higherIsBetter" },
+      { key: "attempts", label: "Forsøg", valueType: "count" },
     ],
   },
 ];
