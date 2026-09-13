@@ -16,20 +16,32 @@ type Props = {
   onComplete: (result: MatchResult) => void;
 };
 
+const IMPOSSIBLE_CHECKOUTS = new Set([169, 168, 166, 165, 163, 162, 159]);
+
 function clampScore(score: number) {
   return Math.max(0, Math.min(180, Math.round(score)));
 }
 
+function isCheckoutable(remaining: number) {
+  return remaining >= 2 && remaining <= 170 && !IMPOSSIBLE_CHECKOUTS.has(remaining);
+}
+
 function cpuCheckoutChance(remaining: number, level: CpuLevel) {
-  const levelFactor = level === 45 ? 0.75 : level === 55 ? 1 : 1.3;
-  if (remaining <= 40) return Math.min(0.82, 0.55 * levelFactor);
-  if (remaining <= 80) return Math.min(0.7, 0.38 * levelFactor);
-  if (remaining <= 120) return Math.min(0.55, 0.24 * levelFactor);
-  return Math.min(0.4, 0.12 * levelFactor);
+  if (!isCheckoutable(remaining)) return 0;
+
+  const baseChance = level === 45 ? 0.12 : level === 55 ? 0.18 : 0.25;
+  const difficultyFactor =
+    remaining <= 40 ? 1.45 : remaining <= 80 ? 1 : remaining <= 120 ? 0.68 : 0.38;
+
+  // Hidden form variance makes two CPU players at the same level behave differently
+  // from visit to visit, so checkout timing cannot be read from a fixed pattern.
+  const formFactor = 0.5 + Math.random() * 1.1;
+
+  return Math.min(0.58, Math.max(0.025, baseChance * difficultyFactor * formFactor));
 }
 
 function cpuVisitScore(level: CpuLevel, remaining: number) {
-  const spread = level === 45 ? 34 : level === 55 ? 31 : 28;
+  const spread = level === 45 ? 36 : level === 55 ? 33 : 30;
   const randomOffset = (Math.random() + Math.random() - 1) * spread;
   let score = clampScore(level + randomOffset);
 
@@ -107,7 +119,7 @@ export default function Checkout170VsCpuTraining({ onComplete }: Props) {
   }
 
   function playCpuTurn(remaining: number) {
-    if (remaining <= 170 && Math.random() < cpuCheckoutChance(remaining, cpuLevel)) {
+    if (Math.random() < cpuCheckoutChance(remaining, cpuLevel)) {
       return { closed: true, scored: remaining, remaining: 0 };
     }
 
