@@ -26,6 +26,11 @@ function formatMonth(month: string) {
   return new Intl.DateTimeFormat("da-DK", { month: "long", year: "numeric" }).format(new Date(year, monthNumber - 1, 1));
 }
 
+function formatShortMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Intl.DateTimeFormat("da-DK", { month: "short" }).format(new Date(year, monthNumber - 1, 1)).replace(".", "");
+}
+
 function getPrimaryMetric(exercise: TrainingExercise) {
   return exercise.metrics.find((metric) => metric.personalBest) ?? exercise.metrics[0] ?? null;
 }
@@ -137,6 +142,7 @@ function PlayerDevelopmentContent({ currentPlayerId, playerName }: { currentPlay
                     <MetricBox label="Gennemsnit" value={formatNumberValue(primaryStats?.currentAverage, primaryMetric)} />
                     <MetricBox label="Ændring mod måneden før" value={hasPreviousData ? formatChange(primaryStats?.changeFromPreviousAverage, primaryMetric) : "Ikke nok data"} valueClassName={primaryStats?.changeFromPreviousAverage && primaryStats.changeFromPreviousAverage > 0 ? "text-emerald-300" : primaryStats?.changeFromPreviousAverage && primaryStats.changeFromPreviousAverage < 0 ? "text-red-300" : undefined} />
                   </dl>
+                  <DevelopmentChart results={playerResults} exercise={exercise} metric={primaryMetric} selectedMonth={month} playerId={currentPlayerId} variant={latest?.variant} />
                 </article>
               );
             })}
@@ -144,6 +150,43 @@ function PlayerDevelopmentContent({ currentPlayerId, playerName }: { currentPlay
         )}
       </section>
     </main>
+  );
+}
+
+function DevelopmentChart({ results, exercise, metric, selectedMonth, playerId, variant }: { results: TrainingResult[]; exercise: TrainingExercise; metric: TrainingMetricDefinition | null; selectedMonth: string; playerId: string; variant?: string }) {
+  if (!metric) return null;
+
+  const points = Array.from({ length: 6 }, (_, index) => shiftMonth(selectedMonth, index - 5)).map((monthKey) => {
+    const stats = calculateTrainingMonthlyStats(results, exercise, { playerId, variant, month: monthKey });
+    const metricStats = stats.metrics.find((item) => item.key === metric.key);
+    return { month: monthKey, average: metricStats?.currentAverage ?? null, best: metricStats?.currentBest ?? null };
+  });
+  const numericValues = points.flatMap((point) => [point.average, point.best]).filter((value): value is number => typeof value === "number");
+  if (numericValues.length < 2) return <div className="mt-5 rounded-xl border border-gray-800 bg-gray-950 p-4 text-sm text-gray-500">Graf vises, når der er data fra flere perioder.</div>;
+
+  const min = Math.min(...numericValues);
+  const max = Math.max(...numericValues);
+  const range = max - min || Math.max(Math.abs(max), 1);
+  const yMin = min - range * 0.12;
+  const yMax = max + range * 0.12;
+  const x = (index: number) => points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
+  const y = (value: number) => 88 - ((value - yMin) / (yMax - yMin)) * 76;
+  const averagePoints = points.map((point, index) => point.average === null ? null : `${x(index)},${y(point.average)}`).filter((point): point is string => point !== null).join(" ");
+  const bestPoints = points.map((point, index) => point.best === null ? null : `${x(index)},${y(point.best)}`).filter((point): point is string => point !== null).join(" ");
+
+  return (
+    <div className="mt-5 rounded-xl border border-gray-800 bg-gray-950 p-4">
+      <div className="flex items-center justify-between gap-3"><div className="text-xs font-black uppercase tracking-wide text-gray-500">Seneste 6 måneder</div><div className="flex gap-3 text-xs font-bold"><span className="text-orange-300">● Gennemsnit</span><span className="text-emerald-300">● Bedste</span></div></div>
+      <div className="mt-3 h-36 w-full">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full overflow-visible" role="img" aria-label={`Udviklingsgraf for ${exercise.name}`}>
+          {[12, 37, 62, 88].map((line) => <line key={line} x1="0" y1={line} x2="100" y2={line} stroke="currentColor" className="text-gray-800" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />)}
+          {averagePoints ? <polyline points={averagePoints} fill="none" stroke="rgb(253 186 116)" strokeWidth="2" vectorEffect="non-scaling-stroke" /> : null}
+          {bestPoints ? <polyline points={bestPoints} fill="none" stroke="rgb(110 231 183)" strokeWidth="2" vectorEffect="non-scaling-stroke" /> : null}
+          {points.map((point, index) => <g key={point.month}>{point.average !== null ? <circle cx={x(index)} cy={y(point.average)} r="1.6" fill="rgb(253 186 116)" vectorEffect="non-scaling-stroke" /> : null}{point.best !== null ? <circle cx={x(index)} cy={y(point.best)} r="1.6" fill="rgb(110 231 183)" vectorEffect="non-scaling-stroke" /> : null}</g>)}
+        </svg>
+      </div>
+      <div className="mt-1 grid grid-cols-6 gap-1 text-center text-[0.65rem] font-bold uppercase text-gray-600">{points.map((point) => <span key={point.month}>{formatShortMonth(point.month)}</span>)}</div>
+    </div>
   );
 }
 
