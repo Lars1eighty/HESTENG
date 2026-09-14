@@ -20,14 +20,37 @@ export default function TrainingGameHelp() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    function syncHash() {
+    function syncLocation() {
       setHashExerciseId(exerciseIdFromHash(window.location.hash));
       setOpen(false);
     }
 
-    syncHash();
-    window.addEventListener("hashchange", syncHash);
-    return () => window.removeEventListener("hashchange", syncHash);
+    syncLocation();
+
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+
+    window.history.pushState = function (...args) {
+      originalPushState.apply(this, args);
+      window.dispatchEvent(new Event("hesteng-training-location-change"));
+    };
+
+    window.history.replaceState = function (...args) {
+      originalReplaceState.apply(this, args);
+      window.dispatchEvent(new Event("hesteng-training-location-change"));
+    };
+
+    window.addEventListener("hashchange", syncLocation);
+    window.addEventListener("popstate", syncLocation);
+    window.addEventListener("hesteng-training-location-change", syncLocation);
+
+    return () => {
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+      window.removeEventListener("hashchange", syncLocation);
+      window.removeEventListener("popstate", syncLocation);
+      window.removeEventListener("hesteng-training-location-change", syncLocation);
+    };
   }, [pathname]);
 
   const exerciseId = trainingRouteExerciseIds[pathname] ?? (pathname === "/traening" ? hashExerciseId : null);
