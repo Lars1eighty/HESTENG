@@ -67,7 +67,7 @@ export default function TrainingQuickLinks() {
     <section className="mx-auto -mt-1 max-w-6xl px-3 pb-8 sm:px-6 lg:px-8">
       <div className="mb-3 sm:mb-4">
         <h2 className="text-2xl font-black text-white">Alle træningsspil</h2>
-        <p className="mt-1 text-sm font-semibold text-gray-500">Vælg det spil, du vil træne.</p>
+        <p className="mt-1 text-sm font-semibold text-gray-500">Tryk på et spil for at åbne det.</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
@@ -77,9 +77,8 @@ export default function TrainingQuickLinks() {
               <div className="text-xs font-black uppercase tracking-[0.22em] text-orange-400">Træningsspil</div>
               <h3 className="mt-1 text-xl font-black leading-tight text-white sm:text-2xl">{game.name}</h3>
               <p className="mt-1 min-h-10 text-sm font-semibold text-gray-500">{game.description}</p>
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-800 pt-3">
+              <div className="mt-4 border-t border-gray-800 pt-3">
                 <span className="text-sm font-bold text-gray-400">{game.metric}</span>
-                <span className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-black text-gray-950">Start</span>
               </div>
             </>
           );
