@@ -14,6 +14,20 @@ import {
 } from "@/lib/trainingResultStore";
 import type { TrainingExercise, TrainingResult } from "@/lib/trainingTypes";
 
+const routedTrainingGames: Record<string, string> = {
+  "checkout-121": "/traening/121",
+  "checkout-170": "/traening/170",
+  "checkout-170-vs-cpu": "/traening/170-vs-cpu",
+  "doubles-10": "/traening/doubles-10",
+  "scoring-targets": "/traening/scoring-targets",
+  "practice-501": "/traening/501",
+  "practice-501-vs-cpu": "/traening/501-vs-cpu",
+};
+
+function getTrainingHref(exerciseId: string) {
+  return routedTrainingGames[exerciseId] ?? `/traening#play=${encodeURIComponent(exerciseId)}`;
+}
+
 function currentMonthKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -188,7 +202,7 @@ function PlayerPageContent({ currentUserContext }: { currentUserContext: NonNull
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-black">Min træning</h2>
-              <p className="mt-1 text-sm text-gray-400">Eksisterende træningsspil, PR og månedsstatistik ligger fortsat i den fælles Training-motor.</p>
+              <p className="mt-1 text-sm text-gray-400">Tryk på et spil for at åbne det direkte. PR og månedsstatistik ligger fortsat i den fælles Training-motor.</p>
             </div>
           </div>
 
@@ -196,17 +210,12 @@ function PlayerPageContent({ currentUserContext }: { currentUserContext: NonNull
             {exerciseSummaries.map(({ exercise, latest, primaryMetric, primaryStats, monthly }) => (
               <Link
                 key={exercise.id}
-                href="/traening"
+                href={getTrainingHref(exercise.id)}
                 className="group rounded-2xl border border-gray-800 bg-gray-900 p-5 transition hover:border-orange-500/60 hover:bg-gray-900/80"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-xl font-black group-hover:text-orange-300">{exercise.name}</h3>
-                    <p className="mt-1 line-clamp-2 text-sm text-gray-400">{exercise.description}</p>
-                  </div>
-                  <span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-black uppercase text-orange-300">
-                    Start
-                  </span>
+                <div>
+                  <h3 className="text-xl font-black group-hover:text-orange-300">{exercise.name}</h3>
+                  <p className="mt-1 line-clamp-2 text-sm text-gray-400">{exercise.description}</p>
                 </div>
                 <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
                   <MetricBox label="Seneste" value={getResultValue(latest, exercise)} />
