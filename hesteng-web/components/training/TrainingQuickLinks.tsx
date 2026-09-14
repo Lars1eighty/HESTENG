@@ -36,9 +36,14 @@ export default function TrainingQuickLinks() {
   useEffect(() => {
     if (pathname !== "/traening") return;
 
-    const legacyGrid = Array.from(document.querySelectorAll("main section")).find(
-      (section) => section.querySelectorAll('article[role="button"]').length >= 8
-    ) as HTMLElement | undefined;
+    // Hide only the old exercise-card grid. Keep the recommendation and
+    // "Min træning" statistics above it visible.
+    const legacyGrid = Array.from(document.querySelectorAll("main section")).find((section) => {
+      const directExerciseCards = Array.from(section.children).filter(
+        (child) => child instanceof HTMLElement && child.matches('article[role="button"]')
+      );
+      return directExerciseCards.length >= 8;
+    }) as HTMLElement | undefined;
 
     if (!legacyGrid) return;
     const previousDisplay = legacyGrid.style.display;
