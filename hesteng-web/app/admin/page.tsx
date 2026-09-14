@@ -1,15 +1,55 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useClub } from "@/context/ClubContext";
 import { resetTestDataToBaseline, type ResetTestDataResult } from "@/lib/testDataReset";
+
+type AdminUserOverview = {
+  totalUsers: number;
+  recentUsers: Array<{
+    id: string;
+    username: string | null;
+    createdAt: string;
+  }>;
+};
 
 export default function AdminPage() {
   const { currentClub } = useClub();
   const [isResetting, setIsResetting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ResetTestDataResult | null>(null);
+  const [userOverview, setUserOverview] = useState<AdminUserOverview | null>(null);
+  const [userOverviewError, setUserOverviewError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUserOverview() {
+      try {
+        const response = await fetch("/api/admin/users", { cache: "no-store" });
+        const body = await response.json().catch(() => null) as AdminUserOverview | { error?: string } | null;
+
+        if (!response.ok) {
+          throw new Error(body && "error" in body && body.error ? body.error : "Kunne ikke hente brugere.");
+        }
+
+        if (!cancelled) {
+          setUserOverview(body as AdminUserOverview);
+          setUserOverviewError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setUserOverviewError(error instanceof Error ? error.message : "Kunne ikke hente brugere.");
+        }
+      }
+    }
+
+    void loadUserOverview();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleResetTestData() {
     setMessage(null);
@@ -46,6 +86,43 @@ export default function AdminPage() {
             Til forsiden
           </Link>
         </header>
+
+        <section className="rounded-2xl border border-orange-500/25 bg-neutral-900/70 p-5 shadow-2xl shadow-black/30">
+          <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">HESTENG brugere</p>
+              <h2 className="mt-2 text-xl font-black uppercase">Nye tilmeldinger</h2>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-neutral-500">I alt</p>
+              <p className="mt-1 text-3xl font-black text-white">{userOverview?.totalUsers ?? "–"}</p>
+            </div>
+          </div>
+
+          {userOverviewError ? (
+            <p className="mt-4 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm font-bold text-red-200">
+              {userOverviewError}
+            </p>
+          ) : !userOverview ? (
+            <p className="mt-4 text-sm font-semibold text-neutral-500">Henter brugere…</p>
+          ) : userOverview.recentUsers.length === 0 ? (
+            <p className="mt-4 text-sm font-semibold text-neutral-500">Ingen registrerede brugere endnu.</p>
+          ) : (
+            <div className="mt-4 divide-y divide-white/10">
+              {userOverview.recentUsers.map((user) => (
+                <div key={user.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                  <div>
+                    <p className="font-black text-neutral-100">{user.username ? `@${user.username}` : "Ny spiller"}</p>
+                    <p className="mt-1 text-xs font-semibold text-neutral-500">{user.username ? "Offentligt brugernavn" : "Intet offentligt brugernavn endnu"}</p>
+                  </div>
+                  <time className="shrink-0 text-sm font-bold text-neutral-400" dateTime={user.createdAt}>
+                    {formatCreatedAt(user.createdAt)}
+                  </time>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="rounded-2xl border border-red-500/30 bg-red-950/20 p-5 shadow-2xl shadow-black/30">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -97,4 +174,13 @@ export default function AdminPage() {
       </div>
     </main>
   );
+}
+
+function formatCreatedAt(value: string) {
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
