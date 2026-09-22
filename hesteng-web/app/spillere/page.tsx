@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useSyncExternalStore, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import BackButton from "@/components/BackButton";
 import Header from "@/components/Header";
@@ -8,10 +8,8 @@ import { useClub } from "@/context/ClubContext";
 import { getPlayerElo } from "@/lib/eloRatingEngine";
 import {
   addPlayerToRegistry,
-  getCustomPlayersStorageValue,
   getPlayerRegistry,
   setPlayerAccessibleBoardNeed,
-  subscribeCustomPlayers,
 } from "@/lib/playerRegistry";
 
 export default function SpillerePage() {
@@ -19,20 +17,39 @@ export default function SpillerePage() {
   const [, setRegistryVersion] = useState(0);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [message, setMessage] = useState("");
-  const customPlayersStore = useSyncExternalStore(
-    subscribeCustomPlayers,
-    getCustomPlayersStorageValue,
-    () => "{}"
-  );
+  const [serverPlayers, setServerPlayers] = useState<Array<{ id: string; name: string; requiresAccessibleBoard?: boolean }>>([]);
 
-  void customPlayersStore;
+  useEffect(() => {
+    let cancelled = false;
 
-  const players = getPlayerRegistry(currentClubId)
-    .map((player) => ({
-      ...player,
-      elo: getPlayerElo(player.name, currentClubId).elo,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    fetch(`/api/club-players?clubId=${encodeURIComponent(currentClubId)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error ?? "Spillerlisten kunne ikke hentes.");
+        if (!cancelled) setServerPlayers(Array.isArray(body.players) ? body.players : []);
+      })
+      .catch(() => {
+        if (!cancelled) setMessage("Spillerlisten kunne ikke hentes.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentClubId]);
+
+  const players = useMemo(() => {
+    const byName = new Map<string, { id: string; name: string; requiresAccessibleBoard?: boolean }>();
+    [...serverPlayers, ...getPlayerRegistry(currentClubId)].forEach((player) => {
+      byName.set(player.name.trim().toLocaleLowerCase("da-DK"), player);
+    });
+
+    return Array.from(byName.values())
+      .map((player) => ({
+        ...player,
+        elo: getPlayerElo(player.name, currentClubId).elo,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [currentClubId, serverPlayers]);
   const accessibleBoardCount = players.filter((player) => player.requiresAccessibleBoard).length;
 
   function toggleAccessibleBoard(playerId: string, currentValue: boolean) {
@@ -40,21 +57,37 @@ export default function SpillerePage() {
     setRegistryVersion((version) => version + 1);
   }
 
-  function addPlayer(event: FormEvent<HTMLFormElement>) {
+  async function addPlayer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedName = newPlayerName.trim();
     if (!trimmedName) return;
 
     const alreadyExists = players.some((player) => player.name.localeCompare(trimmedName, undefined, { sensitivity: "accent" }) === 0);
-    const player = addPlayerToRegistry(currentClubId, trimmedName);
 
-    if (!player) {
+    try {
+      const response = await fetch("/api/club-players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clubId: currentClubId, name: trimmedName }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.player?.id || !body.player?.name) {
+        setMessage(body.error ?? "Spilleren kunne ikke tilføjes.");
+        return;
+      }
+
+      addPlayerToRegistry(currentClubId, body.player.name);
+      setServerPlayers((current) => {
+        const key = body.player.name.trim().toLocaleLowerCase("da-DK");
+        return current.some((player) => player.name.trim().toLocaleLowerCase("da-DK") === key)
+          ? current
+          : [...current, body.player];
+      });
+      setNewPlayerName("");
+      setMessage(alreadyExists ? `${body.player.name} findes allerede.` : `${body.player.name} er tilføjet.`);
+    } catch {
       setMessage("Spilleren kunne ikke tilføjes.");
-      return;
     }
-
-    setNewPlayerName("");
-    setMessage(alreadyExists ? `${player.name} findes allerede.` : `${player.name} er tilføjet.`);
   }
 
   return (
