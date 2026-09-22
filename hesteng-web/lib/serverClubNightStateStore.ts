@@ -155,8 +155,27 @@ export async function upsertSharedClubNightMatches(clubNightId: string, matches:
 export async function upsertSharedCompletedMatch(match: CompletedMatch): Promise<SharedClubNightState> {
   return serializeWrite(async () => {
     const current = await readSharedClubNightState();
+    const clubNightId = match.clubNightId;
+    const finishedMatch: ClubMatch = {
+      ...(match as unknown as ClubMatch),
+      status: "finished",
+    };
+
     return writeStateNow({
       ...current,
+      clubNights: clubNightId
+        ? current.clubNights.map((clubNight) => {
+            if (clubNight.id !== clubNightId) return clubNight;
+            return {
+              ...clubNight,
+              matches: clubNight.matches.map((storedMatch) =>
+                storedMatch.id === match.id
+                  ? preserveAdvancedMatch(finishedMatch, storedMatch)
+                  : storedMatch
+              ),
+            };
+          })
+        : current.clubNights,
       completedMatches: normalizeCompletedMatches([match, ...current.completedMatches]),
     });
   });
