@@ -42,6 +42,7 @@ type Props = {
   pool?: string | null;
   round?: number | null;
   startedAt?: string;
+  startingPlayer?: 0 | 1;
   onMatchComplete?: (match: CompletedMatch) => void;
 };
 
@@ -149,12 +150,12 @@ function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
 
-export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, scoringMode = "total", board = null, pool = null, round = null, startedAt, onMatchComplete }: Props) {
+export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, scoringMode = "total", board = null, pool = null, round = null, startedAt, startingPlayer = 0, onMatchComplete }: Props) {
   const [players, setPlayers] = useState<PlayerScore[]>([
     { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
     { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
   ]);
-  const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
+  const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(startingPlayer);
   const [input, setInput] = useState("");
   const [scoreParts, setScoreParts] = useState<number[]>([]);
   const [dartMultiplier, setDartMultiplier] = useState<Multiplier>("S");
