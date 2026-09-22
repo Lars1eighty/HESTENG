@@ -60,6 +60,39 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Turneringen er afsluttet." }, { status: 410 });
   }
 
+  // Backfill older QR results into the shared state whenever a guest client polls.
+  // This also repairs matches scored before live-state synchronization was added.
+  const storedCompletedMatches = asCompletedMatches(record.completedMatches);
+  for (const storedMatch of storedCompletedMatches) {
+    const storedMatchId = matchId(storedMatch);
+    if (!storedMatchId || storedMatch === null || typeof storedMatch !== "object") continue;
+
+    const typedStoredMatch = {
+      ...(storedMatch as Record<string, unknown>),
+      clubId: record.clubId,
+      clubNightId: record.clubNightId,
+    } as Parameters<typeof upsertSharedCompletedMatch>[0];
+
+    await upsertSharedCompletedMatch(typedStoredMatch);
+
+    const publishedMatch = findPublishedMatch(record.clubNight, storedMatchId);
+    if (publishedMatch) {
+      const finishedMatch = {
+        ...publishedMatch,
+        id: storedMatchId,
+        clubId: record.clubId,
+        clubNightId: record.clubNightId,
+        score1: typedStoredMatch.score1,
+        score2: typedStoredMatch.score2,
+        winner: typedStoredMatch.winner,
+        status: "finished" as const,
+        completedAt: typedStoredMatch.completedAt,
+        finishedAt: typedStoredMatch.finishedAt,
+      } as unknown as Parameters<typeof upsertSharedClubNightMatches>[1][number];
+      await upsertSharedClubNightMatches(record.clubNightId, [finishedMatch]);
+    }
+  }
+
   return NextResponse.json({
     publicToken: record.publicToken,
     clubNightId: record.clubNightId,
