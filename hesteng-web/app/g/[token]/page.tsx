@@ -26,6 +26,8 @@ export default function GuestClubNightPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [poolFilter, setPoolFilter] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [startingPlayer, setStartingPlayer] = useState<0 | 1 | null>(null);
+  const [scoringStarted, setScoringStarted] = useState(false);
 
   useEffect(() => {
     if (!publicToken) return;
@@ -62,6 +64,8 @@ export default function GuestClubNightPage() {
       const saved = await saveGuestCompletedMatch(publicToken, completed);
       setSnapshot({ ...snapshot, completedMatches: saved.completedMatches });
       setSelectedMatchId(null);
+      setStartingPlayer(null);
+      setScoringStarted(false);
       setError("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Kampresultatet kunne ikke gemmes.");
@@ -97,14 +101,23 @@ export default function GuestClubNightPage() {
         {poolFilter && <div className="mt-3 flex items-center justify-between text-sm"><span className="font-bold text-white">{poolFilter}</span><span className="text-gray-400">{unfinishedVisible} kampe mangler</span></div>}
       </section>
 
-      {selectedMatch && !resultById.has(text(selectedMatch.id)) && <section className="mb-8"><GuestMatchScorer matchId={text(selectedMatch.id)} player1={text(selectedMatch.player1)} player1Id={typeof selectedMatch.player1Id === "string" ? selectedMatch.player1Id : undefined} player2={text(selectedMatch.player2)} player2Id={typeof selectedMatch.player2Id === "string" ? selectedMatch.player2Id : undefined} bestOfLegs={typeof selectedMatch.bestOfLegs === "number" ? selectedMatch.bestOfLegs : 1} disabled={savingId === selectedMatchId} onComplete={saveScoredMatch} onCancel={() => setSelectedMatchId(null)} /></section>}
+      {selectedMatch && !resultById.has(text(selectedMatch.id)) && !scoringStarted && <section className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-5">
+        <div className="text-xs font-black uppercase tracking-widest text-orange-400">Kampstart</div>
+        <h2 className="mt-2 text-2xl font-black">Hvem starter?</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[text(selectedMatch.player1), text(selectedMatch.player2)].map((name, index) => <button key={name} type="button" onClick={() => setStartingPlayer(index as 0 | 1)} className={`rounded-2xl border px-4 py-5 text-lg font-black ${startingPlayer === index ? "border-orange-400 bg-orange-500 text-black" : "border-gray-700 bg-gray-950 text-white"}`}>{name}</button>)}
+        </div>
+        <button type="button" disabled={startingPlayer === null} onClick={() => setScoringStarted(true)} className="mt-4 w-full rounded-2xl bg-green-500 py-5 text-xl font-black text-black disabled:opacity-40">START KAMP</button>
+      </section>}
+
+      {selectedMatch && !resultById.has(text(selectedMatch.id)) && scoringStarted && startingPlayer !== null && <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-950 text-white"><GuestMatchScorer matchId={text(selectedMatch.id)} player1={text(selectedMatch.player1)} player1Id={typeof selectedMatch.player1Id === "string" ? selectedMatch.player1Id : undefined} player2={text(selectedMatch.player2)} player2Id={typeof selectedMatch.player2Id === "string" ? selectedMatch.player2Id : undefined} bestOfLegs={typeof selectedMatch.bestOfLegs === "number" ? selectedMatch.bestOfLegs : 1} startingPlayer={startingPlayer} disabled={savingId === selectedMatchId} onComplete={saveScoredMatch} onCancel={() => { setSelectedMatchId(null); setStartingPlayer(null); setScoringStarted(false); }} /></div>}
 
       {!poolFilter && <section className="mb-10"><h2 className="mb-4 text-2xl font-bold">Puljer</h2><div className="grid gap-4 md:grid-cols-2">{pools.map((pool, index) => { const poolName = text(pool.name, `Pulje ${index + 1}`); const poolPlayers = Array.isArray(pool.players) ? pool.players.filter((p): p is string => typeof p === "string") : []; return <button type="button" key={`${poolName}-${index}`} onClick={() => { setPoolFilter(poolName); setSelectedMatchId(null); }} className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-left hover:border-cyan-500/60"><h3 className="text-xl font-bold">{poolName}</h3><div className="mt-3 space-y-2">{poolPlayers.map((player) => <div key={player} className="rounded-lg bg-gray-950 px-3 py-3 font-semibold text-gray-200">{player}</div>)}</div><div className="mt-4 text-sm font-black text-cyan-300">Vis kampe →</div></button>; })}</div></section>}
 
       <section>
         <div className="mb-4 flex items-center justify-between"><h2 className="text-2xl font-bold">{poolFilter ? `${poolFilter} · kampe` : "Kampe"}</h2><span className="text-sm font-semibold text-gray-400">{results.length} færdige i alt</span></div>
         {poolFilter && <button type="button" onClick={() => { setPoolFilter(""); setSelectedMatchId(null); }} className="mb-4 rounded-xl border border-gray-700 px-4 py-2 text-sm font-bold text-gray-300">Vis alle puljer</button>}
-        <div className="space-y-3">{visibleMatches.map((match, index) => { const id = text(match.id, `match-${index + 1}`); const result = resultById.get(id); const saving = savingId === id; const selected = selectedMatchId === id; return <div key={id} className={`rounded-2xl border p-4 ${result ? "border-green-900 bg-green-950/20" : selected ? "border-orange-500 bg-orange-500/5" : "border-gray-800 bg-gray-900"}`}><div className="text-sm font-semibold text-gray-500">{text(match.pool, "Pulje")} · Runde {typeof match.round === "number" ? match.round : "-"} · Bane {typeof match.board === "number" ? match.board : "-"}</div><div className="mt-3 flex items-center justify-between gap-4"><span className="font-black">{text(match.player1)} – {text(match.player2)}</span>{result && <span className="font-black tabular-nums">{result.score1}-{result.score2}</span>}</div>{!result && <button type="button" disabled={saving} onClick={() => setSelectedMatchId(selected ? null : id)} className="mt-4 w-full rounded-xl bg-orange-500 px-4 py-4 font-black text-black disabled:opacity-50">{selected ? "Scoreboard åbent" : "Åbn scoreboard"}</button>}{result && <><div className="mt-3 text-sm font-bold text-green-300">Færdig · {result.score1}-{result.score2} · {result.winner}</div>{statsLine(result)}</>}{saving && <div className="mt-3 text-sm font-bold text-orange-300">Gemmer...</div>}</div>; })}</div>
+        <div className="space-y-3">{visibleMatches.map((match, index) => { const id = text(match.id, `match-${index + 1}`); const result = resultById.get(id); const saving = savingId === id; const selected = selectedMatchId === id; return <div key={id} className={`rounded-2xl border p-4 ${result ? "border-green-900 bg-green-950/20" : selected ? "border-orange-500 bg-orange-500/5" : "border-gray-800 bg-gray-900"}`}><div className="text-sm font-semibold text-gray-500">{text(match.pool, "Pulje")} · Runde {typeof match.round === "number" ? match.round : "-"} · Bane {typeof match.board === "number" ? match.board : "-"}</div><div className="mt-3 flex items-center justify-between gap-4"><span className="font-black">{text(match.player1)} – {text(match.player2)}</span>{result && <span className="font-black tabular-nums">{result.score1}-{result.score2}</span>}</div>{!result && <button type="button" disabled={saving} onClick={() => { setSelectedMatchId(selected ? null : id); setStartingPlayer(null); setScoringStarted(false); }} className="mt-4 w-full rounded-xl bg-orange-500 px-4 py-4 font-black text-black disabled:opacity-50">{selected ? "Scoreboard åbent" : "Åbn scoreboard"}</button>}{result && <><div className="mt-3 text-sm font-bold text-green-300">Færdig · {result.score1}-{result.score2} · {result.winner}</div>{statsLine(result)}</>}{saving && <div className="mt-3 text-sm font-bold text-orange-300">Gemmer...</div>}</div>; })}</div>
       </section>
 
       {visibleHistoricalResults.length > 0 && <section className="mt-10"><h2 className="mb-4 text-xl font-bold text-gray-300">Tidligere runder</h2><div className="space-y-3">{visibleHistoricalResults.map(resultCard)}</div></section>}
