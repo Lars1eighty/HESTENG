@@ -248,7 +248,11 @@ export default function KampScoringPage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : null}
+      </section>
+
+      {!isFinished && !isReadOnly && !isSetupRequired ? (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-950 text-white">
           <MatchScorer
             matchId={match.id}
             clubId={clubNight?.clubId ?? currentClubId}
@@ -264,7 +268,8 @@ export default function KampScoringPage() {
             startingPlayer={match.startingPlayer ?? 0}
             onMatchComplete={saveMatchResult}
           />
-        )}
+        </div>
+      ) : null}
       </section>
     </main>
   );
