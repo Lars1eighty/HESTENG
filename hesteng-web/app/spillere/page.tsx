@@ -57,6 +57,29 @@ export default function SpillerePage() {
     setRegistryVersion((version) => version + 1);
   }
 
+  async function deletePlayer(playerId: string, playerName: string) {
+    if (!window.confirm(`Slet ${playerName} fra klubbens spillerliste?`)) return;
+
+    const response = await fetch("/api/club-players", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clubId: currentClubId, playerId }),
+    });
+    const body = await response.json().catch(() => ({}));
+
+    if (response.status === 409 && body.hasStatistics) {
+      setMessage(`${playerName} har statistik. Spilleren kan ikke slettes, før statistikken er slettet eller flyttet til et andet navn.`);
+      return;
+    }
+    if (!response.ok) {
+      setMessage(body.error ?? "Spilleren kunne ikke slettes.");
+      return;
+    }
+
+    setServerPlayers((current) => current.filter((player) => player.id !== playerId));
+    setMessage(`${playerName} er slettet.`);
+  }
+
   async function addPlayer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedName = newPlayerName.trim();
@@ -144,7 +167,7 @@ export default function SpillerePage() {
           <div className="grid grid-cols-[minmax(0,1fr)_7rem_8rem] gap-3 border-b border-gray-800 bg-gray-950/60 px-4 py-2 text-[0.68rem] font-black uppercase tracking-wide text-gray-500">
             <div>Navn</div>
             <div className="text-right">Aktuel ELO</div>
-            <div className="text-right">Bane-behov</div>
+            <div className="text-right">Handling</div>
           </div>
 
           <div className="divide-y divide-gray-800">
@@ -159,7 +182,7 @@ export default function SpillerePage() {
                   ) : null}
                 </div>
                 <div className="text-right text-lg font-black tabular-nums text-orange-400">{player.elo}</div>
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     aria-pressed={player.requiresAccessibleBoard}
@@ -171,6 +194,13 @@ export default function SpillerePage() {
                     }`}
                   >
                     {player.requiresAccessibleBoard ? "Til" : "Fra"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deletePlayer(player.id, player.name)}
+                    className="min-h-11 rounded-xl border border-red-900 px-3 py-2 text-xs font-black uppercase tracking-wide text-red-300 transition hover:border-red-500 hover:bg-red-500/10"
+                  >
+                    Slet
                   </button>
                 </div>
               </div>
