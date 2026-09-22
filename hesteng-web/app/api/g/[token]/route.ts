@@ -5,7 +5,7 @@ import {
   updatePublicClubNightCompletedMatchesByToken,
 } from "@/lib/publicClubNightStore";
 import { validateGuestCompletedMatches } from "@/lib/publicClubNightValidation";
-import { upsertSharedCompletedMatch } from "@/lib/serverClubNightStateStore";
+import { upsertSharedClubNightMatches, upsertSharedCompletedMatch } from "@/lib/serverClubNightStateStore";
 
 export const runtime = "nodejs";
 
@@ -127,7 +127,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
         clubNightId: record.clubNightId,
       }
     : completedMatch;
-  await upsertSharedCompletedMatch(sharedCompletedMatch);
+  await upsertSharedCompletedMatch(sharedCompletedMatch as Parameters<typeof upsertSharedCompletedMatch>[0]);
+
+  const publishedMatch = findPublishedMatch(record.clubNight, completedMatchId);
+  if (publishedMatch) {
+    await upsertSharedClubNightMatches(record.clubNightId, [{
+      ...publishedMatch,
+      ...sharedCompletedMatch,
+      id: completedMatchId,
+      clubId: record.clubId,
+      clubNightId: record.clubNightId,
+      status: "finished",
+    } as Parameters<typeof upsertSharedClubNightMatches>[1][number]]);
+  }
 
   return NextResponse.json({ completedMatches: updated.completedMatches ?? [] });
 }
