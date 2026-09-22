@@ -20,6 +20,7 @@ export type ClubMatch = {
   requiresAccessibleBoardForMatch: boolean;
   bestOfLegs: number;
   scoringMode?: "total" | "dart-by-dart";
+  startingPlayer?: 0 | 1;
   score1: number;
   score2: number;
   winner?: string;
