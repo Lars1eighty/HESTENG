@@ -5,6 +5,7 @@ import {
   updatePublicClubNightCompletedMatchesByToken,
 } from "@/lib/publicClubNightStore";
 import { validateGuestCompletedMatches } from "@/lib/publicClubNightValidation";
+import { upsertSharedCompletedMatch } from "@/lib/serverClubNightStateStore";
 
 export const runtime = "nodejs";
 
@@ -116,6 +117,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!updated) {
     return NextResponse.json({ error: "Turneringen er ikke længere aktiv." }, { status: 410 });
   }
+
+  // QR-scoring must feed the same shared state used by the live TV dashboard.
+  // Attach club context here because guest results are submitted outside MatchStore.
+  const sharedCompletedMatch = completedMatch !== null && typeof completedMatch === "object"
+    ? {
+        ...(completedMatch as Record<string, unknown>),
+        clubId: record.clubId,
+        clubNightId: record.clubNightId,
+      }
+    : completedMatch;
+  await upsertSharedCompletedMatch(sharedCompletedMatch);
 
   return NextResponse.json({ completedMatches: updated.completedMatches ?? [] });
 }
