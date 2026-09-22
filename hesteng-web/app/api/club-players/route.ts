@@ -55,6 +55,7 @@ export async function DELETE(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const clubId = typeof body.clubId === "string" ? body.clubId.trim() : "";
   const playerId = typeof body.playerId === "string" ? body.playerId.trim() : "";
+  const deleteStatistics = body.deleteStatistics === true;
   if (!clubId || !playerId) {
     return NextResponse.json({ error: "clubId og playerId mangler." }, { status: 400 });
   }
@@ -75,7 +76,7 @@ export async function DELETE(request: NextRequest) {
     JSON.stringify([night.clubNight, night.completedMatches]).toLocaleLowerCase("da-DK").includes(playerKey)
   );
 
-  if (hasStatistics) {
+  if (hasStatistics && !deleteStatistics) {
     return NextResponse.json({
       error: "Spilleren har registrerede kampdata og kan ikke slettes direkte.",
       hasStatistics: true,
