@@ -61,7 +61,27 @@ export default function SpillerePage() {
     const body = await response.json().catch(() => ({}));
 
     if (response.status === 409 && body.hasStatistics) {
-      setMessage(`${playerName} har statistik. Spilleren kan ikke slettes, før statistikken er slettet eller flyttet til et andet navn.`);
+      const deleteAnyway = window.confirm(
+        `${playerName} har registrerede kampdata.\n\nOK = slet spilleren og de registrerede kampdata.\nAnnuller = behold spilleren.`
+      );
+      if (!deleteAnyway) {
+        setMessage(`${playerName} blev ikke slettet.`);
+        return;
+      }
+
+      const forceResponse = await fetch("/api/club-players", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clubId: currentClubId, playerId, deleteStatistics: true }),
+      });
+      const forceBody = await forceResponse.json().catch(() => ({}));
+      if (!forceResponse.ok) {
+        setMessage(forceBody.error ?? "Spilleren kunne ikke slettes.");
+        return;
+      }
+
+      setServerPlayers((current) => current.filter((player) => player.id !== playerId));
+      setMessage(`${playerName} er slettet.`);
       return;
     }
     if (!response.ok) {
