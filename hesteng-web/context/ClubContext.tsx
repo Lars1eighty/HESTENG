@@ -32,8 +32,8 @@ const GUEST_CLUB: Club = {
 };
 
 function getStoredClubId() {
-  if (typeof window === "undefined") return DEMO_CLUB_ID;
-  return window.localStorage.getItem(STORAGE_KEY) ?? DEMO_CLUB_ID;
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(STORAGE_KEY) ?? "";
 }
 
 function subscribeToClub(callback: () => void) {
@@ -74,7 +74,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
   const storedClubId = useSyncExternalStore(
     subscribeToClub,
     getStoredClubId,
-    () => DEMO_CLUB_ID
+    () => ""
   );
 
   const availableClubs = useMemo<Club[]>(() => {
