@@ -82,12 +82,9 @@ export function ClubProvider({ children }: { children: ReactNode }) {
 
     const byId = new Map<string, Club>();
 
-    // Signed-in users must use their durable membership club IDs only.
-    // Mixing the legacy demo club with a real membership makes club-scoped data
-    // jump between two IDs while the session is loading.
-    if (!currentUserContext) {
-      demoClubs.forEach((club) => byId.set(club.id, club));
-    }
+    // Keep legacy/demo clubs selectable alongside durable memberships.
+    // Club-scoped data remains separated by the selected club ID.
+    demoClubs.forEach((club) => byId.set(club.id, club));
 
     memberships.forEach((membership) => {
       byId.set(membership.clubId, {
@@ -99,7 +96,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     });
 
     return Array.from(byId.values());
-  }, [currentUserContext, isAdminGuestPreview, memberships]);
+  }, [isAdminGuestPreview, memberships]);
 
   const currentClub = useMemo(() => {
     if (isAdminGuestPreview) return GUEST_CLUB;
@@ -107,7 +104,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     return (
       availableClubs.find((club) => club.id === storedClubId) ??
       availableClubs[0] ??
-      GUEST_CLUB
+      demoClubs[0]
     );
   }, [availableClubs, isAdminGuestPreview, storedClubId]);
 
