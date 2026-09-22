@@ -9,6 +9,7 @@ import { getPlayerElo } from "@/lib/eloRatingEngine";
 import {
   addPlayerToRegistry,
   getPlayerRegistry,
+  removePlayerFromLocalRegistry,
   setPlayerAccessibleBoardNeed,
 } from "@/lib/playerRegistry";
 
@@ -76,7 +77,9 @@ export default function SpillerePage() {
       return;
     }
 
+    removePlayerFromLocalRegistry(currentClubId, playerId, playerName);
     setServerPlayers((current) => current.filter((player) => player.id !== playerId));
+    setRegistryVersion((version) => version + 1);
     setMessage(`${playerName} er slettet.`);
   }
 
