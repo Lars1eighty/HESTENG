@@ -69,6 +69,16 @@ export function addPlayerToRegistry(clubId: string, name: string): PlayerProfile
   return nextPlayer;
 }
 
+export function removePlayerFromLocalRegistry(clubId: string, playerId: string, playerName: string) {
+  const state = getCustomPlayersState();
+  const players = state[clubId] ?? [];
+  const nextPlayers = players.filter((player) => player.id !== playerId && normalizeName(player.name) !== normalizeName(playerName));
+  if (nextPlayers.length === players.length) return;
+  const nextState = { ...state, [clubId]: nextPlayers };
+  saveCustomPlayersState(nextState);
+  syncCustomPlayersToSharedStore(nextState);
+}
+
 export function getSelectablePlayerNames(clubId = getCurrentClubId()): string[] { return getPlayerRegistry(clubId).map((player) => player.name); }
 export function setPlayerAccessibleBoardNeed(clubId: string, playerId: string, requiresAccessibleBoard: boolean) { const state = getPlayerBoardNeedsState(); const clubNeeds = state[clubId] ?? {}; const nextClubNeeds = { ...clubNeeds, [playerId]: { ...clubNeeds[playerId], requiresAccessibleBoard } }; const nextState = { ...state, [clubId]: nextClubNeeds }; savePlayerBoardNeedsState(nextState); syncPlayerBoardNeedsToSharedStore(nextState); }
 export function getAccessibleBoardPlayers(clubId = getCurrentClubId()): PlayerProfile[] { return getPlayerRegistry(clubId).filter((player) => player.requiresAccessibleBoard); }
