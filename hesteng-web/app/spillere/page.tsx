@@ -7,9 +7,6 @@ import Header from "@/components/Header";
 import { useClub } from "@/context/ClubContext";
 import { getPlayerElo } from "@/lib/eloRatingEngine";
 import {
-  addPlayerToRegistry,
-  getPlayerRegistry,
-  removePlayerFromLocalRegistry,
   setPlayerAccessibleBoardNeed,
 } from "@/lib/playerRegistry";
 
@@ -39,12 +36,7 @@ export default function SpillerePage() {
   }, [currentClubId]);
 
   const players = useMemo(() => {
-    const byName = new Map<string, { id: string; name: string; requiresAccessibleBoard?: boolean }>();
-    [...serverPlayers, ...getPlayerRegistry(currentClubId)].forEach((player) => {
-      byName.set(player.name.trim().toLocaleLowerCase("da-DK"), player);
-    });
-
-    return Array.from(byName.values())
+    return serverPlayers
       .map((player) => ({
         ...player,
         elo: getPlayerElo(player.name, currentClubId).elo,
@@ -77,7 +69,6 @@ export default function SpillerePage() {
       return;
     }
 
-    removePlayerFromLocalRegistry(currentClubId, playerId, playerName);
     setServerPlayers((current) => current.filter((player) => player.id !== playerId));
     setRegistryVersion((version) => version + 1);
     setMessage(`${playerName} er slettet.`);
@@ -102,7 +93,6 @@ export default function SpillerePage() {
         return;
       }
 
-      addPlayerToRegistry(currentClubId, body.player.name);
       setServerPlayers((current) => {
         const key = body.player.name.trim().toLocaleLowerCase("da-DK");
         return current.some((player) => player.name.trim().toLocaleLowerCase("da-DK") === key)
