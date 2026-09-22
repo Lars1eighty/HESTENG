@@ -101,14 +101,17 @@ export default function GuestClubNightPage() {
         {poolFilter && <div className="mt-3 flex items-center justify-between text-sm"><span className="font-bold text-white">{poolFilter}</span><span className="text-gray-400">{unfinishedVisible} kampe mangler</span></div>}
       </section>
 
-      {selectedMatch && !resultById.has(text(selectedMatch.id)) && !scoringStarted && <section className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-5">
-        <div className="text-xs font-black uppercase tracking-widest text-orange-400">Kampstart</div>
-        <h2 className="mt-2 text-2xl font-black">Hvem starter?</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {[text(selectedMatch.player1), text(selectedMatch.player2)].map((name, index) => <button key={name} type="button" onClick={() => setStartingPlayer(index as 0 | 1)} className={`rounded-2xl border px-4 py-5 text-lg font-black ${startingPlayer === index ? "border-orange-400 bg-orange-500 text-black" : "border-gray-700 bg-gray-950 text-white"}`}>{name}</button>)}
-        </div>
-        <button type="button" disabled={startingPlayer === null} onClick={() => setScoringStarted(true)} className="mt-4 w-full rounded-2xl bg-green-500 py-5 text-xl font-black text-black disabled:opacity-40">START KAMP</button>
-      </section>}
+      {selectedMatch && !resultById.has(text(selectedMatch.id)) && !scoringStarted && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-gray-950 p-4 text-white">
+        <section className="w-full max-w-xl rounded-2xl border border-orange-500/40 bg-gray-900 p-5 sm:p-7">
+          <div className="text-xs font-black uppercase tracking-widest text-orange-400">Kampstart</div>
+          <h2 className="mt-2 text-3xl font-black">Hvem starter?</h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {[text(selectedMatch.player1), text(selectedMatch.player2)].map((name, index) => <button key={name} type="button" onClick={() => setStartingPlayer(index as 0 | 1)} className={`rounded-2xl border px-4 py-6 text-xl font-black ${startingPlayer === index ? "border-orange-400 bg-orange-500 text-black" : "border-gray-700 bg-gray-950 text-white"}`}>{name}</button>)}
+          </div>
+          <button type="button" disabled={startingPlayer === null} onClick={() => setScoringStarted(true)} className="mt-4 w-full rounded-2xl bg-green-500 py-5 text-xl font-black text-black disabled:opacity-40">START KAMP</button>
+          <button type="button" onClick={() => { setSelectedMatchId(null); setStartingPlayer(null); }} className="mt-3 w-full rounded-xl border border-gray-700 py-3 text-sm font-bold text-gray-400">Tilbage</button>
+        </section>
+      </div>}
 
       {selectedMatch && !resultById.has(text(selectedMatch.id)) && scoringStarted && startingPlayer !== null && <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-950 text-white"><GuestMatchScorer matchId={text(selectedMatch.id)} player1={text(selectedMatch.player1)} player1Id={typeof selectedMatch.player1Id === "string" ? selectedMatch.player1Id : undefined} player2={text(selectedMatch.player2)} player2Id={typeof selectedMatch.player2Id === "string" ? selectedMatch.player2Id : undefined} bestOfLegs={typeof selectedMatch.bestOfLegs === "number" ? selectedMatch.bestOfLegs : 1} startingPlayer={startingPlayer} disabled={savingId === selectedMatchId} onComplete={saveScoredMatch} onCancel={() => { setSelectedMatchId(null); setStartingPlayer(null); setScoringStarted(false); }} /></div>}
 
