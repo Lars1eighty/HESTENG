@@ -24,6 +24,7 @@ export default function PlayerSearch() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingNewPlayer, setPendingNewPlayer] = useState<string | null>(null);
   const [serverPlayers, setServerPlayers] = useState<Array<{ id: string; name: string; type: "player"; requiresAccessibleBoard: boolean }>>([]);
+  const [playersLoading, setPlayersLoading] = useState(true);
   const { currentClubId, currentClub } = useClub();
   const { clubNights, currentClubNightId, selectedPlayers, setSelectedPlayers, matches } = useKlubaften();
   const customPlayersStore = useSyncExternalStore(
@@ -34,6 +35,7 @@ export default function PlayerSearch() {
   useEffect(() => {
     let cancelled = false;
 
+    setPlayersLoading(true);
     async function loadClubPlayers() {
       try {
         const response = await fetch(`/api/club-players?clubId=${encodeURIComponent(currentClubId)}`, { cache: "no-store" });
@@ -43,7 +45,11 @@ export default function PlayerSearch() {
         setServerPlayers(body.players
           .filter((player: { id?: unknown; name?: unknown }) => typeof player.id === "string" && typeof player.name === "string")
           .map((player: { id: string; name: string }) => ({ ...player, type: "player" as const, requiresAccessibleBoard: false })));
-      } catch {}
+      } catch {
+        // Keep the last known list instead of flashing an empty selector.
+      } finally {
+        if (!cancelled) setPlayersLoading(false);
+      }
     }
 
     void loadClubPlayers();
@@ -281,7 +287,10 @@ export default function PlayerSearch() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
-              {filteredPlayers.length === 0 && !trimmedSearch ? (
+              {playersLoading && filteredPlayers.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-700 p-6 text-center text-sm text-gray-500">Henter spillere...</div>
+              ) : null}
+              {!playersLoading && filteredPlayers.length === 0 && !trimmedSearch ? (
                 <div className="rounded-2xl border border-dashed border-gray-700 p-6 text-center text-sm text-gray-500">Ingen spillere i klubben endnu. Skriv et navn ovenfor for at oprette den første.</div>
               ) : null}
               <div className="grid gap-2 sm:grid-cols-2">
