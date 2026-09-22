@@ -9,7 +9,7 @@ import { dashboardCards } from "@/data/dashboard";
 export default function DashboardPage() {
   const currentUserContext = useOptionalCurrentUser();
   const currentUser = currentUserContext?.currentUser;
-  const { clubs, currentClub, currentClubId, setCurrentClubId } = useClub();
+  const { currentClub, currentClubId } = useClub();
   const currentMembership = currentUser?.memberships.find(
     (membership) => membership.clubId === currentClubId
   );
@@ -38,22 +38,6 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {clubs.length > 1 ? (
-            <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Vælg klub
-              <select
-                value={currentClubId}
-                onChange={(event) => setCurrentClubId(event.target.value)}
-                className="min-w-56 rounded-xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-semibold normal-case tracking-normal text-white outline-none transition focus:border-orange-500"
-              >
-                {clubs.map((club) => (
-                  <option key={club.id} value={club.id}>
-                    {club.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
