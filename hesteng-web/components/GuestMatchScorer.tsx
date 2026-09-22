@@ -45,6 +45,7 @@ type Props = {
   player2Id?: string;
   bestOfLegs?: number;
   disabled?: boolean;
+  startingPlayer?: 0 | 1;
   onComplete: (result: GuestMatchScorerResult) => Promise<void> | void;
   onCancel?: () => void;
 };
@@ -253,11 +254,12 @@ export default function GuestMatchScorer({
   player2Id,
   bestOfLegs = 1,
   disabled = false,
+  startingPlayer = 0,
   onComplete,
   onCancel,
 }: Props) {
   const [players, setPlayers] = useState<[PlayerState, PlayerState]>([initialPlayerState(), initialPlayerState()]);
-  const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
+  const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(startingPlayer);
   const [input, setInput] = useState("");
   const [scoreParts, setScoreParts] = useState<number[]>([]);
   const [history, setHistory] = useState<Snapshot[]>([]);
