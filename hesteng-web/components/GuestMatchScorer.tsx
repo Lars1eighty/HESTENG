@@ -522,7 +522,7 @@ export default function GuestMatchScorer({
 
       <div className="mt-2 grid grid-cols-4 gap-2">
         <button type="button" onClick={undo} disabled={!history.length || saving || hasPendingPrompt} className="rounded-xl border border-red-900 bg-red-500/10 py-3 font-black text-red-400 disabled:opacity-40">↶</button>
-        <button type="button" onClick={addScorePart} disabled={!input || saving || hasPendingPrompt} className="rounded-xl border border-orange-500/70 bg-orange-500/10 py-3 text-2xl font-black text-orange-300 disabled:opacity-40">+</button>
+        <button type="button" onClick={() => input ? addScorePart() : submitScore(0)} disabled={saving || hasPendingPrompt} className="rounded-xl border border-orange-500/70 bg-orange-500/10 py-3 font-black text-orange-300 disabled:opacity-40">{input ? <span className="text-2xl">+</span> : <span className="text-xs sm:text-sm">BUST/MISS</span>}</button>
         <button type="button" onClick={() => input ? addDigit(0) : chooseScore(180)} disabled={saving || hasPendingPrompt} className="rounded-xl border border-blue-600 bg-blue-600 py-3 text-lg font-black text-white disabled:opacity-40">{input ? "0" : "180"}</button>
         <button type="button" onClick={() => submitScore()} disabled={disabled || saving || hasPendingPrompt} className="rounded-xl bg-green-500 py-3 font-black text-black disabled:opacity-50">ENTER</button>
       </div>
