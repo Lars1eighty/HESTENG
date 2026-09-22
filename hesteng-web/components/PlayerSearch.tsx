@@ -142,20 +142,52 @@ export default function PlayerSearch() {
     setPendingNewPlayer(trimmedSearch);
   }
 
-  function confirmNewPlayer() {
+  async function confirmNewPlayer() {
     if (!pendingNewPlayer) return;
 
-    const player = addPlayerToRegistry(currentClubId, pendingNewPlayer);
-    if (!player) return;
+    const name = pendingNewPlayer.trim();
+    if (!name) return;
 
-    setDraftPlayers((current) => (
-      current.some((name) => normalizeName(name) === normalizeName(player.name))
-        ? current
-        : [...current, player.name]
-    ));
-    setPendingNewPlayer(null);
-    setSearch("");
     setSaveError(null);
+
+    try {
+      const response = await fetch("/api/club-players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clubId: currentClubId, name }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.player?.id || !body.player?.name) {
+        setSaveError(body.error ?? "Spilleren kunne ikke gemmes i klubben.");
+        return;
+      }
+
+      const savedPlayer = {
+        id: body.player.id as string,
+        name: body.player.name as string,
+        type: "player" as const,
+        requiresAccessibleBoard: false,
+      };
+
+      // Keep the local registry as a cache, but the server database is authoritative.
+      addPlayerToRegistry(currentClubId, savedPlayer.name);
+      setServerPlayers((current) => {
+        const key = normalizeName(savedPlayer.name);
+        return current.some((player) => normalizeName(player.name) === key)
+          ? current
+          : [...current, savedPlayer];
+      });
+      setDraftPlayers((current) => (
+        current.some((playerName) => normalizeName(playerName) === normalizeName(savedPlayer.name))
+          ? current
+          : [...current, savedPlayer.name]
+      ));
+      setPendingNewPlayer(null);
+      setSearch("");
+    } catch {
+      setSaveError("Spilleren kunne ikke gemmes i klubben.");
+    }
   }
 
   function selectLiveActive() {
