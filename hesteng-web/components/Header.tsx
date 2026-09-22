@@ -42,7 +42,7 @@ export default function Header() {
 
       <div className="flex items-center gap-4 text-sm font-semibold text-gray-300">
         <nav className="flex items-center gap-2 rounded-full border border-gray-800 bg-gray-950/60 p-1">
-          <Link href="/dashboard" className="rounded-full px-3 py-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white">
+          <Link href="/club" className="rounded-full px-3 py-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white">
             Club
           </Link>
         </nav>
