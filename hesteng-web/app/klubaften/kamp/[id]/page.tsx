@@ -270,7 +270,6 @@ export default function KampScoringPage() {
           />
         </div>
       ) : null}
-      </section>
     </main>
   );
 }
