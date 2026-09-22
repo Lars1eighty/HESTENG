@@ -47,6 +47,7 @@ export default function KampScoringPage() {
   const match = scopedMatches.find((item) => item.id === id);
   const [selectedBestOfLegs, setSelectedBestOfLegs] = useState(5);
   const [selectedScoringMode, setSelectedScoringMode] = useState<NonNullable<ClubMatch["scoringMode"]>>("total");
+  const [selectedStartingPlayer, setSelectedStartingPlayer] = useState<0 | 1 | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -133,6 +134,7 @@ export default function KampScoringPage() {
       clubNightId: item.clubNightId ?? clubNightId ?? undefined,
       bestOfLegs: selectedBestOfLegs,
       scoringMode: selectedScoringMode,
+      startingPlayer: selectedStartingPlayer ?? 0,
       startedAt: item.startedAt ?? new Date().toISOString(),
       status: "live",
     } : item));
@@ -224,7 +226,22 @@ export default function KampScoringPage() {
                 ))}
               </div>
             </div>
-            <button onClick={startMatch} className="mt-4 w-full rounded-2xl bg-green-500 py-5 text-xl font-bold text-black">START KAMP</button>
+            <div className="mt-6">
+              <div className="text-sm font-semibold uppercase tracking-wide text-gray-400">Hvem starter?</div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {[match.player1, match.player2].map((name, index) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setSelectedStartingPlayer(index as 0 | 1)}
+                    className={`rounded-2xl border py-5 text-lg font-bold ${selectedStartingPlayer === index ? "border-orange-400 bg-orange-500 text-black" : "border-gray-800 bg-gray-950 text-white hover:border-gray-600"}`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button disabled={selectedStartingPlayer === null} onClick={startMatch} className="mt-4 w-full rounded-2xl bg-green-500 py-5 text-xl font-bold text-black disabled:cursor-not-allowed disabled:opacity-40">START KAMP</button>
             {startError && (
               <div className="mt-4 rounded-xl border border-red-800 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
                 {startError}
@@ -244,6 +261,7 @@ export default function KampScoringPage() {
             pool={match.pool}
             round={match.round}
             startedAt={match.startedAt}
+            startingPlayer={match.startingPlayer ?? 0}
             onMatchComplete={saveMatchResult}
           />
         )}
