@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useClub } from "@/context/ClubContext";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import {
@@ -23,6 +23,7 @@ export default function PlayerSearch() {
   const [draftPlayers, setDraftPlayers] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingNewPlayer, setPendingNewPlayer] = useState<string | null>(null);
+  const [serverPlayers, setServerPlayers] = useState<Array<{ id: string; name: string; type: "player"; requiresAccessibleBoard: boolean }>>([]);
   const { currentClubId, currentClub } = useClub();
   const { clubNights, currentClubNightId, selectedPlayers, setSelectedPlayers, matches } = useKlubaften();
   const customPlayersStore = useSyncExternalStore(
@@ -30,9 +31,31 @@ export default function PlayerSearch() {
     getCustomPlayersStorageValue,
     () => "{}"
   );
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadClubPlayers() {
+      try {
+        const response = await fetch(`/api/club-players?clubId=${encodeURIComponent(currentClubId)}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const body = await response.json();
+        if (cancelled || !Array.isArray(body.players)) return;
+        setServerPlayers(body.players
+          .filter((player: { id?: unknown; name?: unknown }) => typeof player.id === "string" && typeof player.name === "string")
+          .map((player: { id: string; name: string }) => ({ ...player, type: "player" as const, requiresAccessibleBoard: false })));
+      } catch {}
+    }
+
+    void loadClubPlayers();
+    return () => { cancelled = true; };
+  }, [currentClubId]);
+
   const players = useMemo(() => {
     void customPlayersStore;
-    const registryPlayers = getPlayerRegistry(currentClubId);
+    const localPlayers = getPlayerRegistry(currentClubId);
+    const registryPlayers = [...serverPlayers, ...localPlayers].filter((player, index, all) =>
+      all.findIndex((item) => normalizeName(item.name) === normalizeName(player.name)) === index
+    );
     const knownNames = new Set(registryPlayers.map((player) => normalizeName(player.name)));
     const selectedOnlyPlayers = selectedPlayers
       .filter((name) => !knownNames.has(normalizeName(name)))
@@ -44,7 +67,7 @@ export default function PlayerSearch() {
       }));
 
     return [...registryPlayers, ...selectedOnlyPlayers].sort((a, b) => a.name.localeCompare(b.name));
-  }, [currentClubId, customPlayersStore, selectedPlayers]);
+  }, [currentClubId, customPlayersStore, selectedPlayers, serverPlayers]);
   const playerByName = useMemo(() => new Map(players.map((player) => [normalizeName(player.name), player])), [players]);
   const liveActiveSnapshotStore = useSyncExternalStore(
     subscribeLiveActiveSnapshots,
