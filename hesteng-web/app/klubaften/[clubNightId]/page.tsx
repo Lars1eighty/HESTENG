@@ -12,6 +12,7 @@ import { calculatePoolStandings } from "@/lib/standingsEngine";
 import { getClubNightMatchHref } from "@/lib/clubNightRoutes";
 import type { ClubMatch } from "@/lib/matchEngine";
 import { calculateThursdayPoints } from "@/lib/thursdayPointsEngine";
+import { getPublicClubNightAccess } from "@/lib/publicClubNightClient";
 import {
   calculateLiveActiveRows,
   getLatestLiveActiveSnapshotFromStorageValue,
@@ -105,6 +106,8 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
   const [lastUpdated, setLastUpdated] = useState("-");
   const [dashboardLayout, setDashboardLayout] = useState<DashboardLayout>("performance");
   const [layoutReady, setLayoutReady] = useState(false);
+  const [guestToken, setGuestToken] = useState<string | null>(null);
+  const [guestQrUrl, setGuestQrUrl] = useState("");
 
   const liveActiveSnapshotStore = useSyncExternalStore(
     subscribeLiveActiveSnapshots,
@@ -120,6 +123,19 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
   useEffect(() => {
     setCurrentClubNightId(clubNightId);
   }, [clubNightId, setCurrentClubNightId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getPublicClubNightAccess(clubNightId)
+      .then((access) => {
+        if (cancelled || !access) return;
+        const publicUrl = `${window.location.origin}/g/${access.publicToken}`;
+        setGuestToken(access.publicToken);
+        setGuestQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}`);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [clubNightId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -311,6 +327,12 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
               <TopPill label="Færdige" value={`${finished}/${total}`} tone="green" />
               <TopPill label="I gang" value={live} tone="orange" />
               <TopPill label="Mangler" value={open} tone="gray" />
+              {guestToken && guestQrUrl ? (
+                <a href={`/g/${guestToken}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-cyan-200" title="Scan for gæsteadgang">
+                  <img src={guestQrUrl} alt="QR-kode til gæsteadgang" width={46} height={46} className="rounded bg-white p-0.5" />
+                  <span className="hidden text-[10px] font-black uppercase leading-tight 2xl:block">Scan<br />og spil</span>
+                </a>
+              ) : null}
               <div className="rounded-md border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-right">
                 <div className="text-[9px] uppercase tracking-wider text-orange-300">{isActive ? "Auto" : "Status"}</div>
                 <div className="text-xs tabular-nums text-orange-100">{lastUpdatedLabel}</div>
