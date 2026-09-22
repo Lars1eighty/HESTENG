@@ -16,9 +16,20 @@ export default function SpillerePage() {
   const [newPlayerName, setNewPlayerName] = useState("");
   const [message, setMessage] = useState("");
   const [serverPlayers, setServerPlayers] = useState<Array<{ id: string; name: string; requiresAccessibleBoard?: boolean }>>([]);
+  const [handicapBoards, setHandicapBoards] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
+
+    fetch(`/api/clubs?clubId=${encodeURIComponent(currentClubId)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error();
+        if (!cancelled) setHandicapBoards(Array.isArray(body.club?.handicapBoards) ? body.club.handicapBoards : []);
+      })
+      .catch(() => {
+        if (!cancelled) setHandicapBoards([]);
+      });
 
     fetch(`/api/club-players?clubId=${encodeURIComponent(currentClubId)}`, { cache: "no-store" })
       .then(async (response) => {
@@ -171,10 +182,12 @@ export default function SpillerePage() {
           {message ? <div className="mt-2 text-sm font-semibold text-gray-400">{message}</div> : null}
         </form>
 
-        <div className="mb-4 rounded-xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-400">
-          <span className="font-black text-orange-400">{accessibleBoardCount}</span> spillere markeret til handicapbane-prioritet.
-          Bane 4 og 13 kan stadig bruges normalt.
-        </div>
+        {handicapBoards.length > 0 ? (
+          <div className="mb-4 rounded-xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-400">
+            <span className="font-black text-orange-400">{accessibleBoardCount}</span> spillere markeret til handicapbane-prioritet.
+            Handicapbane{handicapBoards.length > 1 ? "r" : ""}: {handicapBoards.join(", ")}.
+          </div>
+        ) : null}
 
         <section className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900">
           <div className="grid grid-cols-[minmax(0,1fr)_7rem_8rem] gap-3 border-b border-gray-800 bg-gray-950/60 px-4 py-2 text-[0.68rem] font-black uppercase tracking-wide text-gray-500">
@@ -196,18 +209,20 @@ export default function SpillerePage() {
                 </div>
                 <div className="text-right text-lg font-black tabular-nums text-orange-400">{player.elo}</div>
                 <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    aria-pressed={player.requiresAccessibleBoard}
-                    onClick={() => toggleAccessibleBoard(player.id, !!player.requiresAccessibleBoard)}
-                    className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-wide transition ${
-                      player.requiresAccessibleBoard
-                        ? "border-orange-500 bg-orange-500 text-gray-950"
-                        : "border-gray-700 bg-gray-950 text-gray-400 hover:border-orange-500 hover:text-white"
-                    }`}
-                  >
-                    {player.requiresAccessibleBoard ? "Til" : "Fra"}
-                  </button>
+                  {handicapBoards.length > 0 ? (
+                    <button
+                      type="button"
+                      aria-pressed={player.requiresAccessibleBoard}
+                      onClick={() => toggleAccessibleBoard(player.id, !!player.requiresAccessibleBoard)}
+                      className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-wide transition ${
+                        player.requiresAccessibleBoard
+                          ? "border-orange-500 bg-orange-500 text-gray-950"
+                          : "border-gray-700 bg-gray-950 text-gray-400 hover:border-orange-500 hover:text-white"
+                      }`}
+                    >
+                      {player.requiresAccessibleBoard ? "Til" : "Fra"}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => deletePlayer(player.id, player.name)}
