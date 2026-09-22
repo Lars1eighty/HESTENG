@@ -131,7 +131,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
         if (cancelled || !access) return;
         const publicUrl = `${window.location.origin}/g/${access.publicToken}`;
         setGuestToken(access.publicToken);
-        setGuestQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}`);
+        setGuestQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(publicUrl)}`);
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
@@ -328,9 +328,9 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
               <TopPill label="I gang" value={live} tone="orange" />
               <TopPill label="Mangler" value={open} tone="gray" />
               {guestToken && guestQrUrl ? (
-                <a href={`/g/${guestToken}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-cyan-200" title="Scan for gæsteadgang">
-                  <img src={guestQrUrl} alt="QR-kode til gæsteadgang" width={46} height={46} className="rounded bg-white p-0.5" />
-                  <span className="hidden text-[10px] font-black uppercase leading-tight 2xl:block">Scan<br />og spil</span>
+                <a href={`/g/${guestToken}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2 text-cyan-200" title="Scan for gæsteadgang">
+                  <img src={guestQrUrl} alt="QR-kode til gæsteadgang" width={96} height={96} className="h-24 w-24 rounded bg-white p-1" />
+                  <span className="hidden text-sm font-black uppercase leading-tight xl:block">Scan<br />og spil</span>
                 </a>
               ) : null}
               <div className="rounded-md border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-right">
