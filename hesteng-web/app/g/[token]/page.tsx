@@ -57,6 +57,21 @@ export default function GuestClubNightPage() {
   const unfinishedVisible = visibleMatches.filter((match) => !resultById.has(text(match.id))).length;
   const selectedMatch = useMemo(() => matches.find((match) => text(match.id) === selectedMatchId) ?? null, [matches, selectedMatchId]);
 
+  useEffect(() => {
+    const locked = Boolean(selectedMatch && !resultById.has(text(selectedMatch.id)));
+    if (!locked) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [selectedMatch, resultById]);
+
   async function saveScoredMatch(completed: unknown) {
     if (!snapshot || !selectedMatchId) return;
     setSavingId(selectedMatchId);
