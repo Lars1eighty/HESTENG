@@ -153,33 +153,35 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Turneringen er ikke længere aktiv." }, { status: 410 });
   }
 
-  // QR-scoring must feed the same shared state used by the live TV dashboard.
-  // Attach club context here because guest results are submitted outside MatchStore.
-  const sharedCompletedMatch = completedMatch !== null && typeof completedMatch === "object"
-    ? {
-        ...(completedMatch as Record<string, unknown>),
+  // Club nights also feed the shared live-TV state.
+  // Private competitions have no clubId and keep their result in public access storage only.
+  if (record.clubId) {
+    const sharedCompletedMatch = completedMatch !== null && typeof completedMatch === "object"
+      ? {
+          ...(completedMatch as Record<string, unknown>),
+          clubId: record.clubId,
+          clubNightId: record.clubNightId,
+        }
+      : completedMatch;
+    const typedCompletedMatch = sharedCompletedMatch as Parameters<typeof upsertSharedCompletedMatch>[0];
+    await upsertSharedCompletedMatch(typedCompletedMatch);
+
+    const publishedMatch = findPublishedMatch(record.clubNight, completedMatchId);
+    if (publishedMatch) {
+      const finishedMatch = {
+        ...publishedMatch,
+        id: completedMatchId,
         clubId: record.clubId,
         clubNightId: record.clubNightId,
-      }
-    : completedMatch;
-  const typedCompletedMatch = sharedCompletedMatch as Parameters<typeof upsertSharedCompletedMatch>[0];
-  await upsertSharedCompletedMatch(typedCompletedMatch);
-
-  const publishedMatch = findPublishedMatch(record.clubNight, completedMatchId);
-  if (publishedMatch) {
-    const finishedMatch = {
-      ...publishedMatch,
-      id: completedMatchId,
-      clubId: record.clubId,
-      clubNightId: record.clubNightId,
-      score1: typedCompletedMatch.score1,
-      score2: typedCompletedMatch.score2,
-      winner: typedCompletedMatch.winner,
-      status: "finished" as const,
-      completedAt: typedCompletedMatch.completedAt,
-      finishedAt: typedCompletedMatch.finishedAt,
-    } as unknown as Parameters<typeof upsertSharedClubNightMatches>[1][number];
-    await upsertSharedClubNightMatches(record.clubNightId, [finishedMatch]);
+        score1: typedCompletedMatch.score1,
+        score2: typedCompletedMatch.score2,
+        winner: typedCompletedMatch.winner,
+        status: "finished" as const,
+        completedAt: typedCompletedMatch.completedAt,
+        finishedAt: typedCompletedMatch.finishedAt,
+      } as unknown as Parameters<typeof upsertSharedClubNightMatches>[1][number];
+      await upsertSharedClubNightMatches(record.clubNightId, [finishedMatch]);
+    }
   }
 
   return NextResponse.json({ completedMatches: updated.completedMatches ?? [] });
