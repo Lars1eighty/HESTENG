@@ -40,7 +40,7 @@ export default function KampScoringPage() {
     ? params.clubNightId
     : searchParams.get("clubNightId");
   const shouldReturnToBoard = searchParams.get("returnTo") === "board";
-  const { currentClubId, clubNights, matches, setMatches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
+  const { currentClubId, clubNights, matches, isSharedStateReady, setMatches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
   const clubNight = clubNights.find((item) => item.id === clubNightId) ?? null;
   const scopedMatches = clubNight?.matches ?? matches;
@@ -89,6 +89,19 @@ export default function KampScoringPage() {
       router.replace(`/klubaften/${clubNightId}/bane`);
     }
   }, [clubNight?.clubId, clubNightId, currentClubId, router, scopedMatches, setMatches, shouldReturnToBoard]);
+
+  if (!isSharedStateReady) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-white">
+        <Header />
+        <section className="mx-auto max-w-5xl p-10">
+          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center font-bold text-gray-300">
+            Henter kamp...
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   if (!match) {
     return (
