@@ -8,7 +8,8 @@ type CompetitionFormat = "pools" | "roundRobin" | "knockout";
 type StartingScore = 301 | 501;
 type BestOfLegs = 1 | 3 | 5 | 7 | 9;
 
-type GeneratedMatch = { id: string; player1: string; player2: string; round?: string };\ntype GeneratedPool = { name: string; players: string[] };
+type GeneratedMatch = { id: string; player1: string; player2: string; round?: string };
+type GeneratedPool = { name: string; players: string[] };
 
 export default function PrivateCompetitionPage() {
   const [name, setName] = useState("");
@@ -18,7 +19,8 @@ export default function PrivateCompetitionPage() {
   const [matchSetupOpen, setMatchSetupOpen] = useState(false);
   const [startingScore, setStartingScore] = useState<StartingScore>(501);
   const [bestOfLegs, setBestOfLegs] = useState<BestOfLegs>(3);
-  const [generatedMatches, setGeneratedMatches] = useState<GeneratedMatch[] | null>(null);\n  const [generatedPools, setGeneratedPools] = useState<GeneratedPool[]>([]);
+  const [generatedMatches, setGeneratedMatches] = useState<GeneratedMatch[] | null>(null);
+  const [generatedPools, setGeneratedPools] = useState<GeneratedPool[]>([]);
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
