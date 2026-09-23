@@ -30,6 +30,8 @@ export default function PrivateCompetitionPage() {
   const [qualifiedPlayers, setQualifiedPlayers] = useState<string[]>([]);
   const [nextPhasePools, setNextPhasePools] = useState<GeneratedPool[]>([]);
   const [nextPhaseMatches, setNextPhaseMatches] = useState<GeneratedMatch[]>([]);
+  const [activeNextPhaseMatchId, setActiveNextPhaseMatchId] = useState<string | null>(null);
+  const [nextPhaseCompletedMatches, setNextPhaseCompletedMatches] = useState<Record<string, CompletedMatch>>({});
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
@@ -151,7 +153,25 @@ export default function PrivateCompetitionPage() {
         <h1 className="mt-2 text-4xl font-black">Ny privat turnering</h1>
         <p className="mt-3 text-gray-400">Ingen klub nødvendig. Start med navn og deltagere.</p>
 
-        {generatedMatches && activeMatchId ? (() => {
+        {activeNextPhaseMatchId ? (() => {
+          const match = nextPhaseMatches.find((item) => item.id === activeNextPhaseMatchId);
+          if (!match || match.player2 === "BYE") return null;
+          return (
+            <div className="mt-8">
+              <button type="button" onClick={() => setActiveNextPhaseMatchId(null)} className="mb-4 rounded-xl border border-gray-700 px-4 py-2 font-bold text-gray-300">← Tilbage til turnering</button>
+              <MatchScorer
+                matchId={match.id}
+                player1={match.player1}
+                player2={match.player2}
+                bestOfLegs={bestOfLegs}
+                onMatchComplete={(completedMatch) => {
+                  setNextPhaseCompletedMatches((current) => ({ ...current, [match.id]: completedMatch }));
+                  setActiveNextPhaseMatchId(null);
+                }}
+              />
+            </div>
+          );
+        })() : generatedMatches && activeMatchId ? (() => {
           const match = generatedMatches.find((item) => item.id === activeMatchId);
           if (!match || match.player2 === "BYE") return null;
           return (
@@ -237,9 +257,20 @@ export default function PrivateCompetitionPage() {
                     )}
                     <div className="mt-4 space-y-2">
                       {nextPhaseMatches.map((match) => (
-                        <div key={match.id} className="flex items-center justify-between rounded-lg border border-gray-800 px-3 py-2 text-sm">
+                        <div key={match.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-800 px-3 py-2 text-sm">
                           <span><b>{match.player1}</b> <span className="text-gray-600">vs</span> <b>{match.player2}</b></span>
-                          <span className="text-xs font-bold text-gray-500">{match.round}</span>
+                          <div className="flex items-center gap-2">
+                            {match.player2 === "BYE" ? (
+                              <span className="text-xs font-black text-gray-500">BYE</span>
+                            ) : nextPhaseCompletedMatches[match.id] ? (
+                              <div className="text-right">
+                                <div className="font-black text-green-400">{nextPhaseCompletedMatches[match.id].score1}–{nextPhaseCompletedMatches[match.id].score2}</div>
+                                <div className="text-[10px] font-black uppercase text-gray-500">{nextPhaseCompletedMatches[match.id].winner} vandt</div>
+                              </div>
+                            ) : (
+                              <button type="button" onClick={() => setActiveNextPhaseMatchId(match.id)} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-black text-gray-950">Spil</button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
