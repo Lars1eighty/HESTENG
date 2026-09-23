@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
+import MatchScorer from "@/components/MatchScorer";
 
 type CompetitionFormat = "pools" | "roundRobin" | "knockout";
 type StartingScore = 301 | 501;
@@ -21,6 +22,8 @@ export default function PrivateCompetitionPage() {
   const [bestOfLegs, setBestOfLegs] = useState<BestOfLegs>(3);
   const [generatedMatches, setGeneratedMatches] = useState<GeneratedMatch[] | null>(null);
   const [generatedPools, setGeneratedPools] = useState<GeneratedPool[]>([]);
+  const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
+  const [completedMatchIds, setCompletedMatchIds] = useState<string[]>([]);
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
@@ -80,7 +83,27 @@ export default function PrivateCompetitionPage() {
         <h1 className="mt-2 text-4xl font-black">Ny privat turnering</h1>
         <p className="mt-3 text-gray-400">Ingen klub nødvendig. Start med navn og deltagere.</p>
 
-        {generatedMatches ? (
+        {generatedMatches && activeMatchId ? (() => {
+          const match = generatedMatches.find((item) => item.id === activeMatchId);
+          if (!match || match.player2 === "BYE") return null;
+          return (
+            <div className="mt-8">
+              <button type="button" onClick={() => setActiveMatchId(null)} className="mb-4 rounded-xl border border-gray-700 px-4 py-2 font-bold text-gray-300">
+                ← Tilbage til turnering
+              </button>
+              <MatchScorer
+                matchId={match.id}
+                player1={match.player1}
+                player2={match.player2}
+                bestOfLegs={bestOfLegs}
+                onMatchComplete={() => {
+                  setCompletedMatchIds((current) => current.includes(match.id) ? current : [...current, match.id]);
+                  setActiveMatchId(null);
+                }}
+              />
+            </div>
+          );
+        })() :         {generatedMatches ? (
           <div className="mt-8 rounded-2xl border border-orange-500/40 bg-gray-900 p-6">
             <div className="text-sm font-black uppercase tracking-widest text-orange-400">Turnering oprettet</div>
             <h2 className="mt-2 text-3xl font-black">{name.trim()}</h2>
@@ -99,9 +122,18 @@ export default function PrivateCompetitionPage() {
             )}
             <div className="mt-6 space-y-2">
               {generatedMatches.map((match, index) => (
-                <div key={match.id} className="flex items-center justify-between rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+                <div key={match.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
                   <div><span className="mr-3 text-xs font-black text-gray-600">{index + 1}</span><span className="font-bold">{match.player1}</span><span className="mx-2 text-gray-600">vs</span><span className="font-bold">{match.player2}</span></div>
-                  {match.round && <span className="text-xs font-bold text-gray-500">{match.round}</span>}
+                  <div className="flex items-center gap-2">
+                    {match.round && <span className="text-xs font-bold text-gray-500">{match.round}</span>}
+                    {match.player2 === "BYE" ? (
+                      <span className="text-xs font-black text-gray-500">BYE</span>
+                    ) : completedMatchIds.includes(match.id) ? (
+                      <span className="text-xs font-black text-green-400">FÆRDIG</span>
+                    ) : (
+                      <button type="button" onClick={() => setActiveMatchId(match.id)} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-black text-gray-950">Spil</button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
