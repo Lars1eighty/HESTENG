@@ -32,6 +32,8 @@ export default function PrivateCompetitionPage() {
   const [nextPhaseMatches, setNextPhaseMatches] = useState<GeneratedMatch[]>([]);
   const [activeNextPhaseMatchId, setActiveNextPhaseMatchId] = useState<string | null>(null);
   const [nextPhaseCompletedMatches, setNextPhaseCompletedMatches] = useState<Record<string, CompletedMatch>>({});
+  const [knockoutRound, setKnockoutRound] = useState(1);
+  const [champion, setChampion] = useState<string | null>(null);
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
@@ -52,6 +54,38 @@ export default function PrivateCompetitionPage() {
         return { player, played, wins, losses, legsFor, legsAgainst, legDiff: legsFor - legsAgainst };
       })
       .sort((a, b) => b.wins - a.wins || b.legDiff - a.legDiff || b.legsFor - a.legsFor || a.player.localeCompare(b.player));
+  }
+
+  function getNextPoolStandings(pool: GeneratedPool) {
+    return pool.players.map((player) => {
+      let played = 0, wins = 0, losses = 0, legsFor = 0, legsAgainst = 0;
+      nextPhaseMatches.filter((match) => match.round === pool.name && (match.player1 === player || match.player2 === player)).forEach((match) => {
+        const result = nextPhaseCompletedMatches[match.id];
+        if (!result) return;
+        played += 1;
+        const isPlayer1 = match.player1 === player;
+        legsFor += isPlayer1 ? result.score1 : result.score2;
+        legsAgainst += isPlayer1 ? result.score2 : result.score1;
+        if (result.winner === player) wins += 1; else losses += 1;
+      });
+      return { player, played, wins, losses, legsFor, legsAgainst, legDiff: legsFor - legsAgainst };
+    }).sort((a, b) => b.wins - a.wins || b.legDiff - a.legDiff || b.legsFor - a.legsFor || a.player.localeCompare(b.player));
+  }
+
+  function advanceKnockoutRound() {
+    const winners = nextPhaseMatches.map((match) => match.player2 === "BYE" ? match.player1 : nextPhaseCompletedMatches[match.id]?.winner).filter((player): player is string => Boolean(player));
+    if (winners.length === 1) {
+      setChampion(winners[0]);
+      return;
+    }
+    const round = knockoutRound + 1;
+    const matches: GeneratedMatch[] = [];
+    for (let i = 0; i < winners.length; i += 2) {
+      matches.push({ id: `ko-round-${round}-${i}`, player1: winners[i], player2: winners[i + 1] ?? "BYE", round: `Knockout runde ${round}` });
+    }
+    setKnockoutRound(round);
+    setNextPhaseMatches(matches);
+    setNextPhaseCompletedMatches({});
   }
 
   function advanceFromPools() {
@@ -250,9 +284,24 @@ export default function PrivateCompetitionPage() {
                         {nextPhasePools.map((pool) => (
                           <div key={pool.name} className="rounded-lg border border-gray-800 p-3">
                             <div className="font-black text-orange-400">{pool.name}</div>
-                            <div className="mt-1 text-sm text-gray-300">{pool.players.join(" · ")}</div>
+                            <div className="mt-2 space-y-1 text-xs">
+                              {getNextPoolStandings(pool).map((row, index) => (
+                                <div key={row.player} className="grid grid-cols-[24px_1fr_28px_28px_55px] gap-1 border-t border-gray-900 py-2">
+                                  <span className="text-gray-500">{index + 1}</span><span className="font-bold">{row.player}</span><span>{row.wins}V</span><span>{row.losses}T</span><span>{row.legsFor}–{row.legsAgainst}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+                    {nextPhase === "knockout" && nextPhaseMatches.length > 0 && nextPhaseMatches.every((match) => match.player2 === "BYE" || Boolean(nextPhaseCompletedMatches[match.id])) && !champion && (
+                      <button type="button" onClick={advanceKnockoutRound} className="mt-4 w-full rounded-lg bg-orange-500 px-4 py-3 font-black text-gray-950">Næste knockout-runde</button>
+                    )}
+                    {champion && (
+                      <div className="mt-4 rounded-xl border border-orange-500 bg-orange-500/10 p-5 text-center">
+                        <div className="text-xs font-black uppercase tracking-widest text-orange-400">Turneringsvinder</div>
+                        <div className="mt-2 text-3xl font-black">🏆 {champion}</div>
                       </div>
                     )}
                     <div className="mt-4 space-y-2">
