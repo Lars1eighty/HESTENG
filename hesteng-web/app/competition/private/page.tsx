@@ -34,6 +34,7 @@ export default function PrivateCompetitionPage() {
   const [nextPhaseCompletedMatches, setNextPhaseCompletedMatches] = useState<Record<string, CompletedMatch>>({});
   const [knockoutRound, setKnockoutRound] = useState(1);
   const [champion, setChampion] = useState<string | null>(null);
+  const [finalRanking, setFinalRanking] = useState<string[]>([]);
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
@@ -75,7 +76,12 @@ export default function PrivateCompetitionPage() {
   function advanceKnockoutRound() {
     const winners = nextPhaseMatches.map((match) => match.player2 === "BYE" ? match.player1 : nextPhaseCompletedMatches[match.id]?.winner).filter((player): player is string => Boolean(player));
     if (winners.length === 1) {
+      const finalMatch = nextPhaseMatches.length === 1 ? nextPhaseMatches[0] : null;
+      const runnerUp = finalMatch && finalMatch.player2 !== "BYE"
+        ? (finalMatch.player1 === winners[0] ? finalMatch.player2 : finalMatch.player1)
+        : null;
       setChampion(winners[0]);
+      setFinalRanking(runnerUp ? [winners[0], runnerUp] : [winners[0]]);
       return;
     }
     const round = knockoutRound + 1;
@@ -299,9 +305,24 @@ export default function PrivateCompetitionPage() {
                       <button type="button" onClick={advanceKnockoutRound} className="mt-4 w-full rounded-lg bg-orange-500 px-4 py-3 font-black text-gray-950">Næste knockout-runde</button>
                     )}
                     {champion && (
-                      <div className="mt-4 rounded-xl border border-orange-500 bg-orange-500/10 p-5 text-center">
-                        <div className="text-xs font-black uppercase tracking-widest text-orange-400">Turneringsvinder</div>
-                        <div className="mt-2 text-3xl font-black">🏆 {champion}</div>
+                      <div className="mt-4 rounded-xl border border-orange-500 bg-orange-500/10 p-5">
+                        <div className="text-center">
+                          <div className="text-xs font-black uppercase tracking-widest text-orange-400">Turneringen er færdig</div>
+                          <div className="mt-2 text-3xl font-black">🏆 {champion}</div>
+                          <div className="mt-1 text-sm text-gray-400">Vinder af {name.trim()}</div>
+                        </div>
+                        {finalRanking.length > 0 && (
+                          <div className="mt-5 border-t border-orange-500/20 pt-4">
+                            <div className="mb-2 text-xs font-black uppercase tracking-widest text-gray-500">Slutplacering</div>
+                            {finalRanking.map((player, index) => (
+                              <div key={player} className="flex items-center gap-3 border-t border-gray-800 py-2 first:border-0">
+                                <span className="w-6 font-black text-orange-400">{index + 1}.</span>
+                                <span className="font-bold">{player}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-4 text-center text-xs text-gray-500">{Object.keys(completedMatches).length + Object.keys(nextPhaseCompletedMatches).length} spillede kampe registreret</div>
                       </div>
                     )}
                     <div className="mt-4 space-y-2">
