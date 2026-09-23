@@ -254,7 +254,14 @@ export default function PrivateCompetitionPage() {
             <div className="text-sm font-black uppercase tracking-widest text-orange-400">Turnering oprettet</div>
             <h2 className="mt-2 text-3xl font-black">{name.trim()}</h2>
             <p className="mt-2 text-gray-400">{activePlayers.length} deltagere · {startingScore} · Best of {bestOfLegs}</p>
-            {guestToken && guestQrUrl && (\n              <a href={`/g/${guestToken}`} target="_blank" rel="noreferrer" className="mb-6 flex items-center gap-4 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-4">\n                <img src={guestQrUrl} alt="QR-kode til gæsteadgang" width={112} height={112} className="h-28 w-28 rounded bg-white p-1" />\n                <div><div className="text-xs font-black uppercase tracking-widest text-cyan-300">Gæstescorer</div><div className="mt-1 font-black text-white">Scan QR-koden og vælg kamp</div><div className="mt-1 text-sm text-gray-400">Kan åbnes på mobil uden HESTENG-login.</div></div>\n              </a>\n            )}\n\n            {generatedPools.length > 0 && (
+            {guestToken && guestQrUrl && (
+              <a href={`/g/${guestToken}`} target="_blank" rel="noreferrer" className="mb-6 flex items-center gap-4 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-4">
+                <img src={guestQrUrl} alt="QR-kode til gæsteadgang" width={112} height={112} className="h-28 w-28 rounded bg-white p-1" />
+                <div><div className="text-xs font-black uppercase tracking-widest text-cyan-300">Gæstescorer</div><div className="mt-1 font-black text-white">Scan QR-koden og vælg kamp</div><div className="mt-1 text-sm text-gray-400">Kan åbnes på mobil uden HESTENG-login.</div></div>
+              </a>
+            )}
+
+            {generatedPools.length > 0 && (
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {generatedPools.map((pool) => (
                   <div key={pool.name} className="rounded-xl border border-gray-800 bg-gray-950 p-4">
