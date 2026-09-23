@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import MatchScorer from "@/components/MatchScorer";
+import type { CompletedMatch } from "@/lib/matchStore";
 
 type CompetitionFormat = "pools" | "roundRobin" | "knockout";
 type StartingScore = 301 | 501;
@@ -23,7 +24,7 @@ export default function PrivateCompetitionPage() {
   const [generatedMatches, setGeneratedMatches] = useState<GeneratedMatch[] | null>(null);
   const [generatedPools, setGeneratedPools] = useState<GeneratedPool[]>([]);
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
-  const [completedMatchIds, setCompletedMatchIds] = useState<string[]>([]);
+  const [completedMatches, setCompletedMatches] = useState<Record<string, CompletedMatch>>({});
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
@@ -96,8 +97,8 @@ export default function PrivateCompetitionPage() {
                 player1={match.player1}
                 player2={match.player2}
                 bestOfLegs={bestOfLegs}
-                onMatchComplete={() => {
-                  setCompletedMatchIds((current) => current.includes(match.id) ? current : [...current, match.id]);
+                onMatchComplete={(completedMatch) => {
+                  setCompletedMatches((current) => ({ ...current, [match.id]: completedMatch }));
                   setActiveMatchId(null);
                 }}
               />
@@ -128,8 +129,11 @@ export default function PrivateCompetitionPage() {
                     {match.round && <span className="text-xs font-bold text-gray-500">{match.round}</span>}
                     {match.player2 === "BYE" ? (
                       <span className="text-xs font-black text-gray-500">BYE</span>
-                    ) : completedMatchIds.includes(match.id) ? (
-                      <span className="text-xs font-black text-green-400">FÆRDIG</span>
+                    ) : completedMatches[match.id] ? (
+                      <div className="text-right">
+                        <div className="font-black text-green-400">{completedMatches[match.id].score1}–{completedMatches[match.id].score2}</div>
+                        <div className="text-[10px] font-black uppercase tracking-wider text-gray-500">{completedMatches[match.id].winner} vandt</div>
+                      </div>
                     ) : (
                       <button type="button" onClick={() => setActiveMatchId(match.id)} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-black text-gray-950">Spil</button>
                     )}
