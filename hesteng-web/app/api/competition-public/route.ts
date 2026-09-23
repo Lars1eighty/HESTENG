@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
   }
 
   const prisma = getPrisma();
+  const competitionJson = JSON.stringify(competition);
+  const completedMatchesJson = JSON.stringify(completedMatches);
   const existing = await prisma.$queryRaw<Array<{ publicToken: string }>>`
     SELECT "publicToken" FROM "PublicClubNight"
     WHERE "clubNightId" = ${competitionId}
@@ -33,8 +35,8 @@ export async function POST(request: NextRequest) {
   if (existing[0]) {
     await prisma.$executeRaw`
       UPDATE "PublicClubNight"
-      SET "clubNight" = ${JSON.stringify(competition)}::jsonb,
-          "completedMatches" = ${JSON.stringify(completedMatches)}::jsonb,
+      SET "clubNight" = ${competitionJson}::jsonb,
+          "completedMatches" = ${completedMatchesJson}::jsonb,
           "status" = 'active',
           "updatedAt" = CURRENT_TIMESTAMP
       WHERE "clubNightId" = ${competitionId}
