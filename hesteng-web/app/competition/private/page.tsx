@@ -28,6 +28,8 @@ export default function PrivateCompetitionPage() {
   const [advanceCount, setAdvanceCount] = useState(2);
   const [nextPhase, setNextPhase] = useState<"pools" | "knockout">("knockout");
   const [qualifiedPlayers, setQualifiedPlayers] = useState<string[]>([]);
+  const [nextPhasePools, setNextPhasePools] = useState<GeneratedPool[]>([]);
+  const [nextPhaseMatches, setNextPhaseMatches] = useState<GeneratedMatch[]>([]);
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
@@ -53,6 +55,44 @@ export default function PrivateCompetitionPage() {
   function advanceFromPools() {
     const qualified = generatedPools.flatMap((pool) => getPoolStandings(pool).slice(0, advanceCount).map((row) => row.player));
     setQualifiedPlayers(qualified);
+
+    if (nextPhase === "knockout") {
+      const matches: GeneratedMatch[] = [];
+      for (let i = 0; i < qualified.length; i += 2) {
+        matches.push({
+          id: `phase-2-ko-${i}`,
+          player1: qualified[i],
+          player2: qualified[i + 1] ?? "BYE",
+          round: "Knockout",
+        });
+      }
+      setNextPhasePools([]);
+      setNextPhaseMatches(matches);
+      return;
+    }
+
+    const poolCount = Math.max(1, Math.ceil(qualified.length / 5));
+    const pools: GeneratedPool[] = Array.from({ length: poolCount }, (_, index) => ({
+      name: `Ny pulje ${String.fromCharCode(65 + index)}`,
+      players: [],
+    }));
+    qualified.forEach((player, index) => pools[index % poolCount].players.push(player));
+
+    const matches: GeneratedMatch[] = [];
+    pools.forEach((pool, poolIndex) => {
+      for (let i = 0; i < pool.players.length; i += 1) {
+        for (let j = i + 1; j < pool.players.length; j += 1) {
+          matches.push({
+            id: `phase-2-pool-${poolIndex}-${i}-${j}`,
+            player1: pool.players[i],
+            player2: pool.players[j],
+            round: pool.name,
+          });
+        }
+      }
+    });
+    setNextPhasePools(pools);
+    setNextPhaseMatches(matches);
   }
 
   function updatePlayer(index: number, value: string) {
@@ -183,8 +223,26 @@ export default function PrivateCompetitionPage() {
                 </div>
                 {qualifiedPlayers.length > 0 && (
                   <div className="mt-4 border-t border-gray-800 pt-4">
-                    <div className="text-xs font-black uppercase tracking-widest text-orange-400">{nextPhase === "knockout" ? "Klar til knockout" : "Klar til nye puljer"}</div>
+                    <div className="text-xs font-black uppercase tracking-widest text-orange-400">{nextPhase === "knockout" ? "Knockout oprettet" : "Nye puljer oprettet"}</div>
                     <div className="mt-2 text-sm text-gray-300">{qualifiedPlayers.join(" · ")}</div>
+                    {nextPhasePools.length > 0 && (
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {nextPhasePools.map((pool) => (
+                          <div key={pool.name} className="rounded-lg border border-gray-800 p-3">
+                            <div className="font-black text-orange-400">{pool.name}</div>
+                            <div className="mt-1 text-sm text-gray-300">{pool.players.join(" · ")}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-4 space-y-2">
+                      {nextPhaseMatches.map((match) => (
+                        <div key={match.id} className="flex items-center justify-between rounded-lg border border-gray-800 px-3 py-2 text-sm">
+                          <span><b>{match.player1}</b> <span className="text-gray-600">vs</span> <b>{match.player2}</b></span>
+                          <span className="text-xs font-bold text-gray-500">{match.round}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
