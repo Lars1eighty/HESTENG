@@ -7,7 +7,7 @@ import BackButton from "@/components/BackButton";
 export default function PrivateCompetitionPage() {
   const [name, setName] = useState("");
   const [players, setPlayers] = useState(["", ""]);
-  const [created, setCreated] = useState(false);
+  const [created, setCreated] = useState(false);\n  const [format, setFormat] = useState<"pools" | "roundRobin" | "knockout" | null>(null);
 
   function updatePlayer(index: number, value: string) {
     setPlayers((current) => current.map((player, i) => i === index ? value : player));
@@ -38,7 +38,29 @@ export default function PrivateCompetitionPage() {
             <div className="text-sm font-black uppercase tracking-widest text-orange-400">Grundlag klar</div>
             <h2 className="mt-2 text-2xl font-black">{name.trim()}</h2>
             <p className="mt-2 text-gray-400">{players.filter((player) => player.trim()).length} deltagere</p>
-            <p className="mt-6 text-sm text-gray-500">Næste trin bliver turneringsformat: puljer, alle-mod-alle eller knockout.</p>
+            <div className="mt-6">
+              <div className="mb-3 text-sm font-bold text-gray-300">Vælg turneringsformat</div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { id: "pools", title: "Puljer", text: "Fordel spillerne i puljer." },
+                  { id: "roundRobin", title: "Alle mod alle", text: "Alle møder alle." },
+                  { id: "knockout", title: "Knockout", text: "Taberen er ude." },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setFormat(option.id as "pools" | "roundRobin" | "knockout")}
+                    className={`rounded-xl border p-4 text-left transition ${format === option.id ? "border-orange-500 bg-orange-500/10" : "border-gray-700 bg-gray-950 hover:border-orange-500"}`}
+                  >
+                    <div className="font-black">{option.title}</div>
+                    <div className="mt-1 text-xs leading-5 text-gray-400">{option.text}</div>
+                  </button>
+                ))}
+              </div>
+              <button type="button" disabled={!format} className="mt-5 w-full rounded-xl bg-orange-500 px-5 py-4 font-black text-gray-950 disabled:cursor-not-allowed disabled:opacity-40">
+                Fortsæt
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={submit} className="mt-8 space-y-6">
