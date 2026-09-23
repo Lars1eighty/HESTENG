@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const record = await findPublicClubNightById(clubNightId);
   if (!record) return NextResponse.json({ record: null });
 
-  if (!(await canAccessClub(userId, record.clubId))) {
+  if (!record.clubId || !(await canAccessClub(userId, record.clubId))) {
     return NextResponse.json({ error: "Ingen adgang til klubben." }, { status: 403 });
   }
 
