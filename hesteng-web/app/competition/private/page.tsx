@@ -25,6 +25,9 @@ export default function PrivateCompetitionPage() {
   const [generatedPools, setGeneratedPools] = useState<GeneratedPool[]>([]);
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [completedMatches, setCompletedMatches] = useState<Record<string, CompletedMatch>>({});
+  const [advanceCount, setAdvanceCount] = useState(2);
+  const [nextPhase, setNextPhase] = useState<"pools" | "knockout">("knockout");
+  const [qualifiedPlayers, setQualifiedPlayers] = useState<string[]>([]);
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
@@ -45,6 +48,11 @@ export default function PrivateCompetitionPage() {
         return { player, played, wins, losses, legsFor, legsAgainst, legDiff: legsFor - legsAgainst };
       })
       .sort((a, b) => b.wins - a.wins || b.legDiff - a.legDiff || b.legsFor - a.legsFor || a.player.localeCompare(b.player));
+  }
+
+  function advanceFromPools() {
+    const qualified = generatedPools.flatMap((pool) => getPoolStandings(pool).slice(0, advanceCount).map((row) => row.player));
+    setQualifiedPlayers(qualified);
   }
 
   function updatePlayer(index: number, value: string) {
@@ -157,6 +165,31 @@ export default function PrivateCompetitionPage() {
                 ))}
               </div>
             )}
+            {generatedPools.length > 0 && generatedMatches.every((match) => Boolean(completedMatches[match.id])) && (
+              <div className="mt-6 rounded-xl border border-gray-800 bg-gray-950 p-4">
+                <div className="font-black">Videre til næste fase</div>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <label className="text-sm text-gray-400">Top
+                    <select value={advanceCount} onChange={(event) => setAdvanceCount(Number(event.target.value))} className="mx-2 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white">
+                      {[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}
+                    </select>
+                    fra hver pulje
+                  </label>
+                  <select value={nextPhase} onChange={(event) => setNextPhase(event.target.value as "pools" | "knockout")} className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white">
+                    <option value="knockout">Knockout</option>
+                    <option value="pools">Nye puljer</option>
+                  </select>
+                  <button type="button" onClick={advanceFromPools} className="rounded-lg bg-orange-500 px-4 py-2 font-black text-gray-950">Lav næste fase</button>
+                </div>
+                {qualifiedPlayers.length > 0 && (
+                  <div className="mt-4 border-t border-gray-800 pt-4">
+                    <div className="text-xs font-black uppercase tracking-widest text-orange-400">{nextPhase === "knockout" ? "Klar til knockout" : "Klar til nye puljer"}</div>
+                    <div className="mt-2 text-sm text-gray-300">{qualifiedPlayers.join(" · ")}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="mt-6 space-y-2">
               {generatedMatches.map((match, index) => (
                 <div key={match.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
