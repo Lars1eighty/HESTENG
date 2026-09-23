@@ -67,6 +67,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const storedMatchId = matchId(storedMatch);
     if (!storedMatchId || storedMatch === null || typeof storedMatch !== "object") continue;
 
+    if (!record.clubId) continue;
+
     const typedStoredMatch = {
       ...(storedMatch as Record<string, unknown>),
       clubId: record.clubId,
