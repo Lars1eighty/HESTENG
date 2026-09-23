@@ -7,7 +7,7 @@ import BackButton from "@/components/BackButton";
 export default function PrivateCompetitionPage() {
   const [name, setName] = useState("");
   const [players, setPlayers] = useState(["", ""]);
-  const [created, setCreated] = useState(false);\n  const [format, setFormat] = useState<"pools" | "roundRobin" | "knockout" | null>(null);
+  const [created, setCreated] = useState(false);\n  const [format, setFormat] = useState<"pools" | "roundRobin" | "knockout" | null>(null);\n  const [matchSetupOpen, setMatchSetupOpen] = useState(false);\n  const [startingScore, setStartingScore] = useState<301 | 501>(501);\n  const [bestOfLegs, setBestOfLegs] = useState<1 | 3 | 5 | 7 | 9>(3);
 
   function updatePlayer(index: number, value: string) {
     setPlayers((current) => current.map((player, i) => i === index ? value : player));
