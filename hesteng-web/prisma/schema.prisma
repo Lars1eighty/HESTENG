@@ -71,7 +71,9 @@ enum ClubMembershipRole {
 model PublicClubNight {
   id               String   @id @default(cuid())
   clubNightId      String   @unique
-  clubId            String
+  clubId            String?
+  ownerUserId       String?
+  accessType        String   @default("club-night")
   publicToken       String   @unique @default(cuid())
   status            String
   clubNight         Json
@@ -80,6 +82,7 @@ model PublicClubNight {
   updatedAt         DateTime @updatedAt
 
   @@index([clubId, status])
+  @@index([ownerUserId, accessType, status])
 }
 
 model Account {
