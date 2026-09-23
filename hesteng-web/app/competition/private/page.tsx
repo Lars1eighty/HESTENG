@@ -414,7 +414,7 @@ export default function PrivateCompetitionPage() {
                       ))}
                     </div>
                   </div>
-                  <button type="button" className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-4 font-black text-gray-950">
+                  <button type="button" onClick={generateCompetition} className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-4 font-black text-gray-950">
                     Opret turnering
                   </button>
                 </div>
