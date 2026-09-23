@@ -187,7 +187,7 @@ export default function PrivateCompetitionPage() {
   return (
     <main className="min-h-screen bg-gray-950 text-white">
       <Header />
-      <section className="mx-auto max-w-3xl px-5 py-8 sm:px-8">
+      <section className={`mx-auto px-5 py-8 sm:px-8 ${activeMatchId || activeNextPhaseMatchId ? "max-w-7xl" : "max-w-3xl"}`}>
         <BackButton />
         <p className="mt-6 text-sm font-black uppercase tracking-[0.3em] text-orange-400">Privat Competition</p>
         <h1 className="mt-2 text-4xl font-black">Ny privat turnering</h1>
