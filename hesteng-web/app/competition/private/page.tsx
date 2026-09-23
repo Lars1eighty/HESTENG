@@ -6,7 +6,7 @@ import BackButton from "@/components/BackButton";
 
 type CompetitionFormat = "pools" | "roundRobin" | "knockout";
 type StartingScore = 301 | 501;
-type BestOfLegs = 1 | 3 | 5 | 7 | 9;
+type BestOfLegs = 1 | 3 | 5 | 7 | 9;\n\ntype GeneratedMatch = { id: string; player1: string; player2: string; round?: string };
 
 export default function PrivateCompetitionPage() {
   const [name, setName] = useState("");
@@ -15,7 +15,7 @@ export default function PrivateCompetitionPage() {
   const [format, setFormat] = useState<CompetitionFormat | null>(null);
   const [matchSetupOpen, setMatchSetupOpen] = useState(false);
   const [startingScore, setStartingScore] = useState<StartingScore>(501);
-  const [bestOfLegs, setBestOfLegs] = useState<BestOfLegs>(3);
+  const [bestOfLegs, setBestOfLegs] = useState<BestOfLegs>(3);\n  const [generatedMatches, setGeneratedMatches] = useState<GeneratedMatch[] | null>(null);
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
@@ -27,7 +27,7 @@ export default function PrivateCompetitionPage() {
     setPlayers((current) => [...current, ""]);
   }
 
-  function submit(event: FormEvent) {
+  function generateCompetition() {\n    if (!format) return;\n    const matches: GeneratedMatch[] = [];\n\n    if (format === "roundRobin" || format === "pools") {\n      for (let i = 0; i < activePlayers.length; i += 1) {\n        for (let j = i + 1; j < activePlayers.length; j += 1) {\n          matches.push({ id: `match-${i}-${j}`, player1: activePlayers[i], player2: activePlayers[j], round: format === "pools" ? "Pulje" : undefined });\n        }\n      }\n    } else {\n      for (let i = 0; i < activePlayers.length; i += 2) {\n        matches.push({ id: `match-${i}`, player1: activePlayers[i], player2: activePlayers[i + 1] ?? "BYE", round: "1. runde" });\n      }\n    }\n\n    setGeneratedMatches(matches);\n  }\n\n  function submit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim() || activePlayers.length < 2) return;
     setCreated(true);
@@ -42,7 +42,7 @@ export default function PrivateCompetitionPage() {
         <h1 className="mt-2 text-4xl font-black">Ny privat turnering</h1>
         <p className="mt-3 text-gray-400">Ingen klub nødvendig. Start med navn og deltagere.</p>
 
-        {created ? (
+        {generatedMatches ? (\n          <div className="mt-8 rounded-2xl border border-orange-500/40 bg-gray-900 p-6">\n            <div className="text-sm font-black uppercase tracking-widest text-orange-400">Turnering oprettet</div>\n            <h2 className="mt-2 text-3xl font-black">{name.trim()}</h2>\n            <p className="mt-2 text-gray-400">{activePlayers.length} deltagere · {startingScore} · Best of {bestOfLegs}</p>\n            <div className="mt-6 space-y-2">\n              {generatedMatches.map((match, index) => (\n                <div key={match.id} className="flex items-center justify-between rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">\n                  <div><span className="mr-3 text-xs font-black text-gray-600">{index + 1}</span><span className="font-bold">{match.player1}</span><span className="mx-2 text-gray-600">vs</span><span className="font-bold">{match.player2}</span></div>\n                  {match.round && <span className="text-xs font-bold text-gray-500">{match.round}</span>}\n                </div>\n              ))}\n            </div>\n          </div>\n        ) : created ? (
           <div className="mt-8 rounded-2xl border border-orange-500/40 bg-gray-900 p-6">
             <div className="text-sm font-black uppercase tracking-widest text-orange-400">Grundlag klar</div>
             <h2 className="mt-2 text-2xl font-black">{name.trim()}</h2>
