@@ -28,6 +28,25 @@ export default function PrivateCompetitionPage() {
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
+  function getPoolStandings(pool: GeneratedPool) {
+    return pool.players
+      .map((player) => {
+        let played = 0, wins = 0, losses = 0, legsFor = 0, legsAgainst = 0;
+        generatedMatches?.filter((match) => match.round === pool.name && (match.player1 === player || match.player2 === player)).forEach((match) => {
+          const result = completedMatches[match.id];
+          if (!result) return;
+          played += 1;
+          const isPlayer1 = match.player1 === player;
+          legsFor += isPlayer1 ? result.score1 : result.score2;
+          legsAgainst += isPlayer1 ? result.score2 : result.score1;
+          if (result.winner === player) wins += 1;
+          else losses += 1;
+        });
+        return { player, played, wins, losses, legsFor, legsAgainst, legDiff: legsFor - legsAgainst };
+      })
+      .sort((a, b) => b.wins - a.wins || b.legDiff - a.legDiff || b.legsFor - a.legsFor || a.player.localeCompare(b.player));
+  }
+
   function updatePlayer(index: number, value: string) {
     setPlayers((current) => current.map((player, i) => (i === index ? value : player)));
   }
@@ -114,8 +133,25 @@ export default function PrivateCompetitionPage() {
                 {generatedPools.map((pool) => (
                   <div key={pool.name} className="rounded-xl border border-gray-800 bg-gray-950 p-4">
                     <div className="font-black text-orange-400">{pool.name}</div>
-                    <div className="mt-2 space-y-1 text-sm text-gray-300">
-                      {pool.players.map((player) => <div key={player}>{player}</div>)}
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="text-gray-500">
+                          <tr><th className="pb-2">#</th><th className="pb-2">Spiller</th><th className="pb-2 text-center">K</th><th className="pb-2 text-center">V</th><th className="pb-2 text-center">T</th><th className="pb-2 text-center">Legs</th><th className="pb-2 text-center">+/-</th></tr>
+                        </thead>
+                        <tbody>
+                          {getPoolStandings(pool).map((row, index) => (
+                            <tr key={row.player} className="border-t border-gray-900">
+                              <td className="py-2 font-black text-gray-500">{index + 1}</td>
+                              <td className="py-2 font-bold text-gray-200">{row.player}</td>
+                              <td className="py-2 text-center">{row.played}</td>
+                              <td className="py-2 text-center">{row.wins}</td>
+                              <td className="py-2 text-center">{row.losses}</td>
+                              <td className="py-2 text-center">{row.legsFor}–{row.legsAgainst}</td>
+                              <td className="py-2 text-center font-bold">{row.legDiff > 0 ? "+" : ""}{row.legDiff}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 ))}
