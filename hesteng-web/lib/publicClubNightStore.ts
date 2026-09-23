@@ -5,7 +5,9 @@ import { getPrisma } from "@/lib/prisma";
 export type PublicClubNightRecord = {
   id: string;
   clubNightId: string;
-  clubId: string;
+  clubId: string | null;
+  ownerUserId?: string | null;
+  accessType?: string;
   publicToken: string;
   status: string;
   clubNight: unknown;
@@ -20,6 +22,8 @@ export async function findPublicClubNightById(clubNightId: string) {
       "id",
       "clubNightId",
       "clubId",
+      "ownerUserId",
+      "accessType",
       "publicToken",
       "status",
       "clubNight",
