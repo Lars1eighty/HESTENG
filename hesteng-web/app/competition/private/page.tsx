@@ -103,7 +103,7 @@ export default function PrivateCompetitionPage() {
               />
             </div>
           );
-        })() :         {generatedMatches ? (
+        })() : generatedMatches ? (
           <div className="mt-8 rounded-2xl border border-orange-500/40 bg-gray-900 p-6">
             <div className="text-sm font-black uppercase tracking-widest text-orange-400">Turnering oprettet</div>
             <h2 className="mt-2 text-3xl font-black">{name.trim()}</h2>
