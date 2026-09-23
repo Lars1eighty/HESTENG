@@ -25,6 +25,8 @@ export default function PrivateCompetitionPage() {
   const [generatedPools, setGeneratedPools] = useState<GeneratedPool[]>([]);
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [completedMatches, setCompletedMatches] = useState<Record<string, CompletedMatch>>({});
+  const [guestToken, setGuestToken] = useState<string | null>(null);
+  const [guestQrUrl, setGuestQrUrl] = useState("");
   const [advanceCount, setAdvanceCount] = useState(2);
   const [nextPhase, setNextPhase] = useState<"pools" | "knockout">("knockout");
   const [qualifiedPlayers, setQualifiedPlayers] = useState<string[]>([]);
@@ -145,6 +147,21 @@ export default function PrivateCompetitionPage() {
     setPlayers((current) => [...current, ""]);
   }
 
+  async function publishGuestAccess(matches: GeneratedMatch[], pools: GeneratedPool[]) {
+    const competitionId = `competition-${Date.now()}`;
+    const response = await fetch("/api/competition-public", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ competitionId, competition: { name: name.trim(), pools, matches: matches.map((match) => ({ ...match, bestOfLegs })) }, completedMatches: [] }),
+    });
+    if (!response.ok) return;
+    const access = await response.json() as { publicToken?: string };
+    if (!access.publicToken) return;
+    const publicUrl = `${window.location.origin}/g/${access.publicToken}`;
+    setGuestToken(access.publicToken);
+    setGuestQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(publicUrl)}`);
+  }
+
   function generateCompetition() {
     if (!format) return;
     const matches: GeneratedMatch[] = [];
@@ -176,6 +193,7 @@ export default function PrivateCompetitionPage() {
     }
     setGeneratedPools(pools);
     setGeneratedMatches(matches);
+    void publishGuestAccess(matches, pools);
   }
 
   function submit(event: FormEvent) {
@@ -236,7 +254,7 @@ export default function PrivateCompetitionPage() {
             <div className="text-sm font-black uppercase tracking-widest text-orange-400">Turnering oprettet</div>
             <h2 className="mt-2 text-3xl font-black">{name.trim()}</h2>
             <p className="mt-2 text-gray-400">{activePlayers.length} deltagere · {startingScore} · Best of {bestOfLegs}</p>
-            {generatedPools.length > 0 && (
+            {guestToken && guestQrUrl && (\n              <a href={`/g/${guestToken}`} target="_blank" rel="noreferrer" className="mb-6 flex items-center gap-4 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-4">\n                <img src={guestQrUrl} alt="QR-kode til gæsteadgang" width={112} height={112} className="h-28 w-28 rounded bg-white p-1" />\n                <div><div className="text-xs font-black uppercase tracking-widest text-cyan-300">Gæstescorer</div><div className="mt-1 font-black text-white">Scan QR-koden og vælg kamp</div><div className="mt-1 text-sm text-gray-400">Kan åbnes på mobil uden HESTENG-login.</div></div>\n              </a>\n            )}\n\n            {generatedPools.length > 0 && (
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {generatedPools.map((pool) => (
                   <div key={pool.name} className="rounded-xl border border-gray-800 bg-gray-950 p-4">
