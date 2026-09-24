@@ -41,6 +41,21 @@ export default function PrivateCompetitionPage() {
 
   const activePlayers = players.map((player) => player.trim()).filter(Boolean);
 
+  function completeInitialPhaseForTest() {
+    const testResults: Record<string, CompletedMatch> = {};
+    generatedMatches.forEach((match, index) => {
+      const player1Wins = index % 3 !== 2;
+      testResults[match.id] = {
+        ...match,
+        winner: player1Wins ? match.player1 : match.player2,
+        score1: player1Wins ? 1 : 0,
+        score2: player1Wins ? 0 : 1,
+        status: "finished",
+      } as CompletedMatch;
+    });
+    setCompletedMatches(testResults);
+  }
+
   function getPoolStandings(pool: GeneratedPool) {
     return pool.players
       .map((player) => {
@@ -335,6 +350,11 @@ export default function PrivateCompetitionPage() {
                   </div>
                 ))}
               </div>
+            )}
+            {generatedPools.length > 0 && !generatedMatches.every((match) => Boolean(completedMatches[match.id])) && (
+              <button type="button" onClick={completeInitialPhaseForTest} className="mt-6 rounded-lg border border-dashed border-yellow-500 px-4 py-2 text-sm font-black text-yellow-300">
+                TEST: Færdiggør runde 1
+              </button>
             )}
             {generatedPools.length > 0 && generatedMatches.every((match) => Boolean(completedMatches[match.id])) && (
               <div className="mt-6 rounded-xl border border-gray-800 bg-gray-950 p-4">
