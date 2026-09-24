@@ -116,12 +116,23 @@ export default function PrivateCompetitionPage() {
       return;
     }
 
-    const poolCount = Math.max(1, Math.ceil(qualified.length / 5));
+    const rankedQualified = generatedPools
+      .flatMap((pool) => getPoolStandings(pool).slice(0, advanceCount))
+      .sort((a, b) => b.wins - a.wins || b.legDiff - a.legDiff || b.legsFor - a.legsFor || a.player.localeCompare(b.player))
+      .map((row) => row.player);
+
+    const poolCount = Math.max(1, Math.ceil(rankedQualified.length / 5));
     const pools: GeneratedPool[] = Array.from({ length: poolCount }, (_, index) => ({
       name: `Ny pulje ${String.fromCharCode(65 + index)}`,
       players: [],
     }));
-    qualified.forEach((player, index) => pools[index % poolCount].players.push(player));
+
+    rankedQualified.forEach((player, index) => {
+      const cycle = Math.floor(index / poolCount);
+      const offset = index % poolCount;
+      const poolIndex = cycle % 2 === 0 ? offset : poolCount - 1 - offset;
+      pools[poolIndex].players.push(player);
+    });
 
     const matches: GeneratedMatch[] = [];
     pools.forEach((pool, poolIndex) => {
