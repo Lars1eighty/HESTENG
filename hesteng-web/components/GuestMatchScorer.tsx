@@ -197,7 +197,7 @@ function inferCheckoutAttempts(remaining: number, entryDarts: number) {
   return possibleAttempts.length === 1 ? possibleAttempts[0] : null;
 }
 
-function initialPlayerState(): PlayerState {
+function initialPlayerState(startingScore: 301 | 501 = 501): PlayerState {
   return {
     remaining: startingScore,
     legs: 0,
@@ -260,7 +260,7 @@ export default function GuestMatchScorer({
   onComplete,
   onCancel,
 }: Props) {
-  const [players, setPlayers] = useState<[PlayerState, PlayerState]>([initialPlayerState(), initialPlayerState()]);
+  const [players, setPlayers] = useState<[PlayerState, PlayerState]>([initialPlayerState(startingScore), initialPlayerState(startingScore)]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(startingPlayer);
   const [input, setInput] = useState("");
   const [scoreParts, setScoreParts] = useState<number[]>([]);
