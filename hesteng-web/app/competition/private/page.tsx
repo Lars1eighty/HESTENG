@@ -128,9 +128,7 @@ export default function PrivateCompetitionPage() {
     }));
 
     rankedQualified.forEach((player, index) => {
-      const cycle = Math.floor(index / poolCount);
-      const offset = index % poolCount;
-      const poolIndex = cycle % 2 === 0 ? offset : poolCount - 1 - offset;
+      const poolIndex = Math.min(Math.floor(index / 5), poolCount - 1);
       pools[poolIndex].players.push(player);
     });
 
