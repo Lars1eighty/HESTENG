@@ -206,7 +206,9 @@ export default function PrivateCompetitionPage() {
     <main className="min-h-screen bg-gray-950 text-white">
       <Header />
       <section className={`mx-auto px-5 py-8 sm:px-8 ${activeMatchId || activeNextPhaseMatchId ? "max-w-7xl" : "max-w-3xl"}`}>
-        <BackButton />
+        {activeMatchId || activeNextPhaseMatchId ? (
+          <button type="button" onClick={() => { setActiveMatchId(null); setActiveNextPhaseMatchId(null); }} className="mb-8 rounded-xl border border-gray-700 px-4 py-2 text-gray-300 hover:border-orange-500 hover:text-white">← Tilbage</button>
+        ) : <BackButton />}
         <p className="mt-6 text-sm font-black uppercase tracking-[0.3em] text-orange-400">Privat Competition</p>
         <h1 className="mt-2 text-4xl font-black">Ny privat turnering</h1>
         <p className="mt-3 text-gray-400">Ingen klub nødvendig. Start med navn og deltagere.</p>
