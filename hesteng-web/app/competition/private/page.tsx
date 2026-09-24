@@ -128,7 +128,8 @@ export default function PrivateCompetitionPage() {
     }));
 
     rankedQualified.forEach((player, index) => {
-      const poolIndex = Math.min(Math.floor(index / 5), poolCount - 1);
+      const poolSize = Math.ceil(rankedQualified.length / poolCount);
+      const poolIndex = Math.min(Math.floor(index / poolSize), poolCount - 1);
       pools[poolIndex].players.push(player);
     });
 
