@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     INSERT INTO "PublicClubNight"
       ("id","clubNightId","clubId","ownerUserId","accessType","publicToken","status","clubNight","completedMatches","createdAt","updatedAt")
     VALUES
-      (${id}, ${competitionId}, NULL, ${userId}, 'competition', ${publicToken}, 'active', ${JSON.stringify(competition)}::jsonb, ${JSON.stringify(completedMatches)}::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      (${id}, ${competitionId}, NULL, ${userId}, 'competition', ${publicToken}, 'active', ${competitionJson}::jsonb, ${completedMatchesJson}::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `;
 
   return NextResponse.json({ publicToken });
