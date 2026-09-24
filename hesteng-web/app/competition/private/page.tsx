@@ -46,12 +46,20 @@ export default function PrivateCompetitionPage() {
     generatedMatches.forEach((match, index) => {
       const player1Wins = index % 3 !== 2;
       testResults[match.id] = {
-        ...match,
+        id: match.id,
+        player1: match.player1,
+        player2: match.player2,
         winner: player1Wins ? match.player1 : match.player2,
         score1: player1Wins ? 1 : 0,
         score2: player1Wins ? 0 : 1,
+        bestOfLegs,
+        board: null,
+        pool: match.round ?? null,
+        round: null,
         status: "finished",
-      } as CompletedMatch;
+        finishedAt: new Date().toISOString(),
+        players: [],
+      };
     });
     setCompletedMatches(testResults);
   }
