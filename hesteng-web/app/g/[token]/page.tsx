@@ -6,7 +6,7 @@ import GuestMatchScorer from "@/components/GuestMatchScorer";
 import { getGuestClubNight, saveGuestCompletedMatch, type GuestClubNightSnapshot } from "@/lib/publicClubNightClient";
 
 type GuestPool = { name?: unknown; players?: unknown };
-type GuestMatch = { id?: unknown; pool?: unknown; round?: unknown; player1?: unknown; player1Id?: unknown; player2?: unknown; player2Id?: unknown; board?: unknown; status?: unknown; bestOfLegs?: unknown };
+type GuestMatch = { id?: unknown; pool?: unknown; round?: unknown; player1?: unknown; player1Id?: unknown; player2?: unknown; player2Id?: unknown; board?: unknown; status?: unknown; bestOfLegs?: unknown; startingScore?: unknown };
 type GuestClubNight = { name?: unknown; date?: unknown; pools?: unknown; matches?: unknown };
 type ResultPlayerStats = { name?: unknown; average?: unknown; hundredPlus?: unknown; oneFortyPlus?: unknown; oneEighties?: unknown; checkoutPercent?: unknown; highestCheckout?: unknown; fastestLegDarts?: unknown };
 type CompletedResult = GuestMatch & { winner: string; score1: number; score2: number; status: "finished"; players?: unknown };
