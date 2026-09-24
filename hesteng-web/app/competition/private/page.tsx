@@ -163,7 +163,7 @@ export default function PrivateCompetitionPage() {
     const response = await fetch("/api/competition-public", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ competitionId, competition: { name: name.trim(), pools, matches: matches.map((match) => ({ ...match, pool: match.round, bestOfLegs })) }, completedMatches: [] }),
+      body: JSON.stringify({ competitionId, competition: { name: name.trim(), pools, matches: matches.map((match) => ({ ...match, pool: match.round, startingScore, bestOfLegs })) }, completedMatches: [] }),
     });
     if (!response.ok) {
       const data = await response.json().catch(() => ({})) as { error?: string };
