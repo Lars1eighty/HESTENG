@@ -44,6 +44,7 @@ type Props = {
   player2: string;
   player2Id?: string;
   bestOfLegs?: number;
+  startingScore?: 301 | 501;
   disabled?: boolean;
   startingPlayer?: 0 | 1;
   onComplete: (result: GuestMatchScorerResult) => Promise<void> | void;
@@ -198,7 +199,7 @@ function inferCheckoutAttempts(remaining: number, entryDarts: number) {
 
 function initialPlayerState(): PlayerState {
   return {
-    remaining: 501,
+    remaining: startingScore,
     legs: 0,
     totalScored: 0,
     entries: 0,
@@ -253,6 +254,7 @@ export default function GuestMatchScorer({
   player2,
   player2Id,
   bestOfLegs = 1,
+  startingScore = 501,
   disabled = false,
   startingPlayer = 0,
   onComplete,
@@ -373,8 +375,8 @@ export default function GuestMatchScorer({
         return;
       }
 
-      next[0].remaining = 501;
-      next[1].remaining = 501;
+      next[0].remaining = startingScore;
+      next[1].remaining = startingScore;
       next[0].legDarts = 0;
       next[1].legDarts = 0;
     }
