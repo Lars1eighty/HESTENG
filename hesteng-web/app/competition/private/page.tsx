@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import MatchScorer from "@/components/MatchScorer";
@@ -170,6 +170,29 @@ export default function PrivateCompetitionPage() {
     setGuestToken(access.publicToken);
     setGuestQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(publicUrl)}`);
   }
+
+  useEffect(() => {
+    if (!guestToken) return;
+
+    async function syncGuestResults() {
+      const response = await fetch(`/api/g/${guestToken}`, { cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json() as { completedMatches?: CompletedMatch[] };
+      if (!Array.isArray(data.completedMatches)) return;
+
+      setCompletedMatches((current) => {
+        const next = { ...current };
+        for (const match of data.completedMatches ?? []) {
+          if (match?.id) next[match.id] = match;
+        }
+        return next;
+      });
+    }
+
+    void syncGuestResults();
+    const timer = window.setInterval(() => void syncGuestResults(), 3000);
+    return () => window.clearInterval(timer);
+  }, [guestToken]);
 
   function generateCompetition() {
     if (!format) return;
