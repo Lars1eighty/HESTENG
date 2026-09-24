@@ -27,6 +27,7 @@ export default function PrivateCompetitionPage() {
   const [completedMatches, setCompletedMatches] = useState<Record<string, CompletedMatch>>({});
   const [guestToken, setGuestToken] = useState<string | null>(null);
   const [guestQrUrl, setGuestQrUrl] = useState("");
+  const [guestAccessError, setGuestAccessError] = useState("");
   const [advanceCount, setAdvanceCount] = useState(2);
   const [nextPhase, setNextPhase] = useState<"pools" | "knockout">("knockout");
   const [qualifiedPlayers, setQualifiedPlayers] = useState<string[]>([]);
@@ -148,15 +149,23 @@ export default function PrivateCompetitionPage() {
   }
 
   async function publishGuestAccess(matches: GeneratedMatch[], pools: GeneratedPool[]) {
+    setGuestAccessError("");
     const competitionId = `competition-${Date.now()}`;
     const response = await fetch("/api/competition-public", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ competitionId, competition: { name: name.trim(), pools, matches: matches.map((match) => ({ ...match, bestOfLegs })) }, completedMatches: [] }),
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      setGuestAccessError(data.error ?? `Gæsteadgang fejlede (${response.status}).`);
+      return;
+    }
     const access = await response.json() as { publicToken?: string };
-    if (!access.publicToken) return;
+    if (!access.publicToken) {
+      setGuestAccessError("Gæsteadgang blev oprettet uden token.");
+      return;
+    }
     const publicUrl = `${window.location.origin}/g/${access.publicToken}`;
     setGuestToken(access.publicToken);
     setGuestQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(publicUrl)}`);
@@ -256,6 +265,8 @@ export default function PrivateCompetitionPage() {
             <div className="text-sm font-black uppercase tracking-widest text-orange-400">Turnering oprettet</div>
             <h2 className="mt-2 text-3xl font-black">{name.trim()}</h2>
             <p className="mt-2 text-gray-400">{activePlayers.length} deltagere · {startingScore} · Best of {bestOfLegs}</p>
+            {guestAccessError && <div className="mb-6 rounded-2xl border border-red-800 bg-red-950/40 p-4 font-bold text-red-200">QR-fejl: {guestAccessError}</div>}
+
             {guestToken && guestQrUrl && (
               <a href={`/g/${guestToken}`} target="_blank" rel="noreferrer" className="mb-6 flex items-center gap-4 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-4">
                 <img src={guestQrUrl} alt="QR-kode til gæsteadgang" width={112} height={112} className="h-28 w-28 rounded bg-white p-1" />
