@@ -51,6 +51,12 @@ export default function KampScoringPage() {
   const [startError, setStartError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (match?.status === "pending" && match.bestOfLegs) {
+      setSelectedBestOfLegs(match.bestOfLegs);
+    }
+  }, [match?.id, match?.status, match?.bestOfLegs]);
+
+  useEffect(() => {
     if (routeClubNightId) setCurrentClubNightId(routeClubNightId);
   }, [routeClubNightId, setCurrentClubNightId]);
 
