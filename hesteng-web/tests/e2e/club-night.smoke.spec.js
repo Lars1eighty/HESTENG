@@ -121,6 +121,9 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });
 
   await page.goto("http://127.0.0.1:3000/klubaften/e2e-night/kamp/e2e-match");
+  console.log("E2E URL:", page.url());
+  console.log("E2E local state:", await page.evaluate(() => localStorage.getItem("hesteng.klubaftenState")));
+  console.log("E2E body:", (await page.locator("body").innerText()).slice(0, 2000));
   await expect(page.getByText("Henter kamp...")).toBeHidden({ timeout: 10000 });
   await expect(page.getByText("Kampen blev ikke fundet.")).toBeHidden();
   await expect(page.getByText("Test A", { exact: true }).first()).toBeVisible();
