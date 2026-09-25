@@ -94,6 +94,10 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   };
   const sharedState = { clubNights: [clubNight], currentClubNightId: "e2e-night", completedMatches: [] };
 
+  await page.route("**/api/auth/session", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: { id: "e2e-user", name: "E2E Admin", email: "e2e@hesteng.test", playerProfileId: "e2e-player", memberships: [{ clubId: "club-jyden-dartklub", clubName: "Jyden Dartklub", role: "ADMIN" }] }, expires: "2099-01-01T00:00:00.000Z" }) });
+  });
+
   await page.route("**/api/shared-club-data", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ players: [], stats: [] }) });
   });
