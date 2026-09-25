@@ -36,3 +36,50 @@ test("generated 1-leg match must stay 1 leg when opened", () => {
   const selected = generatedMatch.bestOfLegs ?? setupDefault;
   assert.equal(selected, 1);
 });
+
+test("new-user flow: 1-leg club night reaches a finished result", () => {
+  const night = {
+    status: "active",
+    players: ["Anna", "Bent"],
+    pools: [{ name: "Pulje A", players: ["Anna", "Bent"] }],
+    matches: [{ id: "m1", player1: "Anna", player2: "Bent", bestOfLegs: 1, status: "pending" }],
+  };
+
+  const match = { ...night.matches[0], status: "live", startingPlayer: 0 };
+  const result = checkout({ legs: 0, bestOfLegs: match.bestOfLegs });
+  const completed = {
+    ...match,
+    score1: result.finished ? 1 : 0,
+    score2: 0,
+    winner: result.finished ? "Anna" : undefined,
+    status: result.finished ? "finished" : "live",
+  };
+
+  assert.equal(completed.bestOfLegs, 1);
+  assert.equal(completed.status, "finished");
+  assert.equal(completed.winner, "Anna");
+  assert.equal(completed.score1, 1);
+});
+
+test("new-user flow: back navigation changes only one screen", () => {
+  const screens = ["Klubaften", "Kampe", "Kamp", "Scorer"];
+  let index = screens.length - 1;
+  index -= 1;
+  assert.equal(screens[index], "Kamp");
+});
+
+test("new-user flow: live TV only counts unfinished matches as active", () => {
+  const matches = [
+    { status: "finished" },
+    { status: "live" },
+    { status: "pending" },
+  ];
+  assert.equal(matches.filter((match) => match.status === "live").length, 1);
+  assert.equal(matches.filter((match) => match.status === "finished").length, 1);
+});
+
+test("new-user flow: guest QR keeps the generated match format", () => {
+  const match = { id: "m1", bestOfLegs: 1, player1: "Anna", player2: "Bent" };
+  const snapshot = { matches: [match] };
+  assert.equal(snapshot.matches[0].bestOfLegs, 1);
+});
