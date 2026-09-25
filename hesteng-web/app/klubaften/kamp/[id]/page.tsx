@@ -96,7 +96,7 @@ export default function KampScoringPage() {
     }
   }, [clubNight?.clubId, clubNightId, currentClubId, router, scopedMatches, setMatches, shouldReturnToBoard]);
 
-  if (!isSharedStateReady) {
+  if (!isSharedStateReady && !match) {
     return (
       <main className="min-h-screen bg-gray-950 text-white">
         <Header />
