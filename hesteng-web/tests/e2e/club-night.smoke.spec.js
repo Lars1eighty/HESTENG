@@ -103,6 +103,10 @@ test("real one-leg club match finishes at checkout and saves the result", async 
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sharedState) });
       return;
     }
+    const body = route.request().postDataJSON();
+    if (Array.isArray(body?.clubNights)) sharedState.clubNights = body.clubNights;
+    if ("currentClubNightId" in (body ?? {})) sharedState.currentClubNightId = body.currentClubNightId;
+    if (Array.isArray(body?.completedMatches)) sharedState.completedMatches = body.completedMatches;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
   });
 
