@@ -45,10 +45,10 @@ jobs:
       - name: Install
         run: npm ci
       - name: Install browser
-        run: npx --yes playwright@1.55.0 install --with-deps chromium
+        run: npx --yes --package=@playwright/test@1.55.0 playwright install --with-deps chromium
       - name: Start HESTENG
         run: npm run dev > /tmp/hesteng.log 2>&1 &
       - name: Wait for HESTENG
         run: npx --yes wait-on@8.0.4 http://127.0.0.1:3000
       - name: Browser smoke test
-        run: npx --yes playwright@1.55.0 test tests/e2e/club-night.smoke.spec.js --reporter=line
+        run: npx --yes --package=@playwright/test@1.55.0 playwright test tests/e2e/club-night.smoke.spec.js --reporter=line
