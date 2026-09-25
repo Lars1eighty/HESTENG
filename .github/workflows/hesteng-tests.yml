@@ -24,3 +24,28 @@ jobs:
         run: npm ci
       - name: Regression tests
         run: npm test
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hesteng-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: hesteng-web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Install browser
+        run: npx --yes playwright@1.55.0 install --with-deps chromium
+      - name: Start HESTENG
+        run: npm run dev > /tmp/hesteng.log 2>&1 &
+      - name: Wait for HESTENG
+        run: npx --yes wait-on@8.0.4 http://127.0.0.1:3000
+      - name: Browser smoke test
+        run: npx --yes playwright@1.55.0 test tests/e2e/club-night.smoke.spec.js --reporter=line
