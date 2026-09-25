@@ -55,3 +55,12 @@ test("new user understands pool choices and cannot bypass missing players", asyn
     await expect(page.getByText(/Vælg mindst \d+ spillere/)).toBeVisible();
   }
 });
+
+test("match scorer route never silently shows a fake match", async ({ page }) => {
+  await page.goto("http://127.0.0.1:3000/klubaften/test-night/kamp/missing-match");
+  await expect(page.locator("body")).toBeVisible();
+
+  if (page.url().includes("/kamp/")) {
+    await expect(page.getByText(/Kampen blev ikke fundet|Henter kamp/)).toBeVisible();
+  }
+});
