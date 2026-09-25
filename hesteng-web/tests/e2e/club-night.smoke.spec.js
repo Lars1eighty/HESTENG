@@ -103,6 +103,7 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   });
 
   await page.addInitScript((snapshot) => {
+    localStorage.setItem("hesteng.currentClubId", "club-jyden-dartklub");
     localStorage.setItem("hesteng.klubaftenState", JSON.stringify(snapshot));
     localStorage.setItem("hesteng.sharedClubNightMigrated.v2", "true");
   }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });
