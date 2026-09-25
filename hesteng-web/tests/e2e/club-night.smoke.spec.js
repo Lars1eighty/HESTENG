@@ -124,6 +124,7 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });
 
   await page.goto("http://127.0.0.1:3000/klubaften/e2e-night/kamp/e2e-match");
+  await page.waitForTimeout(1000);
   console.log("E2E URL:", page.url());
   console.log("E2E local state:", await page.evaluate(() => localStorage.getItem("hesteng.klubaftenState")));
   console.log("E2E body:", (await page.locator("body").innerText()).slice(0, 2000));
