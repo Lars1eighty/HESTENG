@@ -121,7 +121,10 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });
 
   await page.goto("http://127.0.0.1:3000/klubaften/e2e-night/kamp/e2e-match");
-  await expect(page.getByText("Test A – Test B", { exact: true })).toBeVisible();
+  await expect(page.getByText("Henter kamp...")).toBeHidden({ timeout: 10000 });
+  await expect(page.getByText("Kampen blev ikke fundet.")).toBeHidden();
+  await expect(page.getByText("Test A", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Test B", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("501 Double Out · Bedst af 1 legs")).toBeVisible();
 
   await page.getByRole("button", { name: "Test A" }).click();
