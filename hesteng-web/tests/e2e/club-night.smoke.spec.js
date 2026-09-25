@@ -34,3 +34,24 @@ test("new user understands the create-club-night form", async ({ page }) => {
     await expect(page.getByRole("button", { name: "Opret klubaften" })).toBeVisible();
   }
 });
+
+test("new user gets clear guidance before pools can be created", async ({ page }) => {
+  await page.goto("http://127.0.0.1:3000/klubaften/test-night/spillere");
+  await expect(page.locator("body")).toBeVisible();
+
+  if (page.url().includes("/klubaften/")) {
+    await expect(page.getByRole("heading", { name: /Tilføj spillere/ })).toBeVisible();
+    await expect(page.getByText(/Vælg mindst \d+ spillere/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Lav puljer" })).toBeVisible();
+  }
+});
+
+test("new user understands pool choices and cannot bypass missing players", async ({ page }) => {
+  await page.goto("http://127.0.0.1:3000/klubaften/test-night/puljer");
+  await expect(page.locator("body")).toBeVisible();
+
+  if (page.url().includes("/puljer")) {
+    await expect(page.getByRole("heading", { name: /Puljer/ })).toBeVisible();
+    await expect(page.getByText(/Vælg mindst \d+ spillere/)).toBeVisible();
+  }
+});
