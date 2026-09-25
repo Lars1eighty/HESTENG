@@ -20,3 +20,17 @@ test("start club night is one clear action when accessible", async ({ page }) =>
     await expect(page.locator("body")).toBeVisible();
   }
 });
+
+test("new user understands the create-club-night form", async ({ page }) => {
+  await page.goto("http://127.0.0.1:3000/klubaften/ny");
+  await expect(page.locator("body")).toBeVisible();
+
+  if (page.url().includes("/klubaften/ny")) {
+    await expect(page.getByRole("heading", { name: "Ny klubaften" })).toBeVisible();
+    await expect(page.getByLabel("Navn")).toBeVisible();
+    await expect(page.getByLabel("Dato")).toBeVisible();
+    await expect(page.getByLabel(/Antal baner/)).toBeVisible();
+    await expect(page.getByLabel("Spilleform")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Opret klubaften" })).toBeVisible();
+  }
+});
