@@ -123,6 +123,12 @@ test("real one-leg club match finishes at checkout and saves the result", async 
     localStorage.setItem("hesteng.sharedClubNightMigrated.v2", "true");
   }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });
 
+  await page.goto("http://127.0.0.1:3000/");
+  await page.evaluate((snapshot) => {
+    localStorage.setItem("hesteng.currentClubId", "club-jyden-dartklub");
+    localStorage.setItem("hesteng.klubaftenState", JSON.stringify(snapshot));
+    localStorage.setItem("hesteng.sharedClubNightMigrated.v2", "true");
+  }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });
   await page.goto("http://127.0.0.1:3000/klubaften/e2e-night/kamp/e2e-match");
   await page.waitForTimeout(1000);
   console.log("E2E URL:", page.url());
