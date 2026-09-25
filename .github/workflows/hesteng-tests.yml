@@ -24,7 +24,7 @@ jobs:
           cache: npm
           cache-dependency-path: hesteng-web/package-lock.json
       - name: Install
-        run: npm ci
+        run: npm install
       - name: Regression tests
         run: npm test
 
@@ -43,7 +43,7 @@ jobs:
           cache: npm
           cache-dependency-path: hesteng-web/package-lock.json
       - name: Install
-        run: npm ci
+        run: npm install
       - name: Install browser
         run: npx --yes --package=@playwright/test@1.55.0 playwright install --with-deps chromium
       - name: Start HESTENG
