@@ -474,16 +474,9 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         setMessage("Bust — double out.");
         return;
       }
-      if (shouldAskEntryDartsForCheckout) {
-        setPendingEntryCheckout({ score });
-        setCheckoutDarts("");
-        setInput("");
-        setScoreParts([]);
-        setDartThrows([]);
-        return;
-      }
-      const inferredAttempts = inferCheckoutAttempts(score, entryDarts);
-      completeSuccessfulCheckout(score, entryDarts, inferredAttempts ?? 1);
+      const checkoutDartsUsed = shouldAskEntryDartsForCheckout ? 3 : entryDarts;
+      const inferredAttempts = inferCheckoutAttempts(score, checkoutDartsUsed);
+      completeSuccessfulCheckout(score, checkoutDartsUsed, inferredAttempts ?? 1);
       return;
     }
 
