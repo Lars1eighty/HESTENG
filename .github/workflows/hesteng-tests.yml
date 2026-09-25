@@ -1,5 +1,8 @@
 name: HESTENG Tests
 
+env:
+  DATABASE_URL: postgresql://hesteng:hesteng@127.0.0.1:5432/hesteng_test
+
 on:
   push:
     branches: [main]
@@ -17,7 +20,7 @@ jobs:
       - name: Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: hesteng-web/package-lock.json
       - name: Install
@@ -36,7 +39,7 @@ jobs:
       - name: Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: hesteng-web/package-lock.json
       - name: Install
