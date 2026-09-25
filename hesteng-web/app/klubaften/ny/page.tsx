@@ -155,11 +155,12 @@ export default function NyKlubaftenPage() {
           ) : null}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-300">
+            <label htmlFor="club-night-name" className="mb-2 block text-sm font-medium text-gray-300">
               Navn
             </label>
 
             <input
+              id="club-night-name"
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -169,11 +170,12 @@ export default function NyKlubaftenPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-300">
+            <label htmlFor="club-night-date" className="mb-2 block text-sm font-medium text-gray-300">
               Dato
             </label>
 
             <input
+              id="club-night-date"
               type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
@@ -182,11 +184,12 @@ export default function NyKlubaftenPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-300">
+            <label htmlFor="club-night-board-count" className="mb-2 block text-sm font-medium text-gray-300">
               Antal baner {setupMissing ? "i klubben" : "i brug denne aften"}
             </label>
 
             <input
+              id="club-night-board-count"
               type="number"
               min={1}
               max={setupMissing ? 50 : (clubBoardCount ?? 50)}
@@ -235,11 +238,11 @@ export default function NyKlubaftenPage() {
           )}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-300">
+            <label htmlFor="club-night-format" className="mb-2 block text-sm font-medium text-gray-300">
               Spilleform
             </label>
 
-            <select className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 outline-none focus:border-orange-500">
+            <select id="club-night-format" className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 outline-none focus:border-orange-500">
               <option>501 Double Out</option>
               <option>501 Single Out</option>
             </select>
