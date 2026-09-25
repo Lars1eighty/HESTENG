@@ -94,6 +94,10 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   };
   const sharedState = { clubNights: [clubNight], currentClubNightId: "e2e-night", completedMatches: [] };
 
+  await page.route("**/api/shared-club-data", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ players: [], stats: [] }) });
+  });
+
   await page.route("**/api/club-night-state", async (route) => {
     if (route.request().method() === "GET") {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sharedState) });
