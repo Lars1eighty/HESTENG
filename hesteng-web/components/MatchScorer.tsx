@@ -482,11 +482,8 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         setDartThrows([]);
         return;
       }
-      setPendingCheckout({ score, remaining: 0, entryDarts, possibleAttempts: getPossibleCheckoutAttempts(score, entryDarts) });
-      setCheckoutDarts("");
-      setInput("");
-      setScoreParts([]);
-      setDartThrows([]);
+      const inferredAttempts = inferCheckoutAttempts(score, entryDarts);
+      completeSuccessfulCheckout(score, entryDarts, inferredAttempts ?? 1);
       return;
     }
 
