@@ -102,7 +102,12 @@ test("real one-leg club match finishes at checkout and saves the result", async 
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
   });
 
-  await page.addInitScript((snapshot) => {\n    localStorage.setItem("hesteng.klubaftenState", JSON.stringify(snapshot));\n    localStorage.setItem("hesteng.sharedClubNightMigrated.v2", "true");\n  }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });\n\n  await page.goto("http://127.0.0.1:3000/klubaften/e2e-night/kamp/e2e-match");
+  await page.addInitScript((snapshot) => {
+    localStorage.setItem("hesteng.klubaftenState", JSON.stringify(snapshot));
+    localStorage.setItem("hesteng.sharedClubNightMigrated.v2", "true");
+  }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });
+
+  await page.goto("http://127.0.0.1:3000/klubaften/e2e-night/kamp/e2e-match");
   await expect(page.getByRole("heading", { name: "Test A – Test B" })).toBeVisible();
   await expect(page.getByText("501 Double Out · Bedst af 1 legs")).toBeVisible();
 
