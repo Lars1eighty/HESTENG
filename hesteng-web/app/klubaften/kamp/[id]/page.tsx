@@ -44,7 +44,8 @@ export default function KampScoringPage() {
   const clubNightId = routeClubNightId ?? currentClubNightId;
   const clubNight = clubNights.find((item) => item.id === clubNightId) ?? null;
   const scopedMatches = clubNight?.matches ?? matches;
-  const match = scopedMatches.find((item) => item.id === id);
+  const match = scopedMatches.find((item) => item.id === id)
+    ?? clubNights.flatMap((item) => item.matches ?? []).find((item) => item.id === id);
   const [selectedBestOfLegs, setSelectedBestOfLegs] = useState(5);
   const [selectedScoringMode, setSelectedScoringMode] = useState<NonNullable<ClubMatch["scoringMode"]>>("total");
   const [selectedStartingPlayer, setSelectedStartingPlayer] = useState<0 | 1 | null>(null);
