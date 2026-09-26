@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   const clubNightId = typeof body.clubNightId === "string" ? body.clubNightId.trim() : "";
   const status = typeof body.status === "string" ? body.status.trim() : "active";
   const clubNight = body.clubNight;
-  const completedMatches = Array.isArray(body.completedMatches) ? body.completedMatches : [];
+  const completedMatches = Array.isArray(body.completedMatches) ? body.completedMatches : null;
 
   if (!clubId || !clubNightId || !clubNight) {
     return NextResponse.json({ error: "Klub og klubaften skal udfyldes." }, { status: 400 });
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       clubNightId,
       status,
       clubNight,
-      completedMatches,
+      completedMatches: completedMatches ?? existing.completedMatches,
     });
     return NextResponse.json(updated);
   }
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     clubId,
     status,
     clubNight,
-    completedMatches,
+    completedMatches: completedMatches ?? [],
   });
   return NextResponse.json(record);
 }
