@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { canCheckout, checkoutFinishesMatch, getCheckoutEntryOptions, getPossibleCheckoutAttempts, inferCheckoutAttempts, legsToWin, resolveVisit } from "@/lib/scoringEngine";
 
 type GuestMatchScorerResult = {
   id: string;
@@ -91,112 +92,6 @@ const MAX_SCORE = 180;
 const NUMBER_ROWS = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
 const QUICK_LEFT = [26, 41, 45, 100];
 const QUICK_RIGHT = [60, 81, 85, 140];
-const SCORING_DARTS = [
-  0,
-  ...Array.from({ length: 20 }, (_, index) => index + 1),
-  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 2),
-  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 3),
-  25,
-  50,
-];
-const CHECKOUT_DARTS = [
-  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 2),
-  50,
-];
-
-const CHECKOUTS: Record<number, string> = {
-  170: "T20 T20 Bull", 167: "T20 T19 Bull", 164: "T20 T18 Bull", 161: "T20 T17 Bull",
-  160: "T20 T20 D20", 158: "T20 T20 D19", 157: "T20 T19 D20", 156: "T20 T20 D18",
-  155: "T20 T19 D19", 154: "T20 T18 D20", 153: "T20 T19 D18", 152: "T20 T20 D16",
-  151: "T20 T17 D20", 150: "T20 T18 D18", 149: "T19 T20 D16", 148: "T20 T16 D20",
-  147: "T20 T17 D18", 146: "T20 T18 D16", 145: "T20 T15 D20", 144: "T20 T20 D12",
-  143: "T20 T17 D16", 142: "T20 T14 D20", 141: "T20 T19 D12", 140: "T20 T20 D10",
-  138: "T20 T18 D12", 137: "T20 T19 D10", 136: "T20 T20 D8", 135: "Bull T15 D20",
-  134: "T20 T14 D16", 133: "T20 T19 D8", 132: "Bull Bull D16", 131: "T20 T13 D16",
-  130: "T20 T20 D5", 129: "T19 T16 D12", 128: "T18 T18 D10", 127: "T20 T17 D8",
-  126: "T19 T19 D6", 125: "Bull T17 D12", 124: "T20 T16 D8", 123: "T19 T16 D9",
-  122: "T18 T18 D7", 121: "T20 T11 D14", 120: "T20 20 D20", 119: "T19 T12 D13",
-  118: "T20 18 D20", 117: "T20 17 D20", 116: "T20 16 D20", 115: "T20 15 D20",
-  114: "T20 14 D20", 113: "T20 13 D20", 112: "T20 12 D20", 111: "T20 11 D20",
-  110: "T20 10 D20", 109: "T20 9 D20", 108: "T20 16 D16", 107: "T19 10 D20",
-  106: "T20 14 D16", 105: "T20 13 D16", 104: "T18 18 D16", 103: "T19 14 D16",
-  102: "T20 10 D16", 101: "T17 10 D20", 100: "T20 D20",
-};
-
-function checkoutHint(remaining: number) {
-  if (remaining > 170 || [169, 168, 166, 165, 163, 162, 159].includes(remaining)) return null;
-  if (CHECKOUTS[remaining]) return CHECKOUTS[remaining];
-  if (remaining <= 40 && remaining % 2 === 0) return `D${remaining / 2}`;
-  if (remaining <= 60) {
-    const double = Math.min(20, Math.floor(remaining / 2));
-    const single = remaining - double * 2;
-    if (single >= 0) return single === 0 ? `D${double}` : `${single} D${double}`;
-  }
-  if (remaining <= 99) {
-    const triple = Math.min(20, Math.floor((remaining - 2) / 3));
-    const rest = remaining - triple * 3;
-    if (rest > 0 && rest <= 40 && rest % 2 === 0) return `T${triple} D${rest / 2}`;
-  }
-  return null;
-}
-
-function canCheckout(remaining: number, maxDarts: number) {
-  if (remaining < 2 || remaining > 170) return false;
-
-  for (const checkoutDart of CHECKOUT_DARTS) {
-    if (checkoutDart === remaining) return true;
-    if (maxDarts < 2) continue;
-
-    for (const firstDart of SCORING_DARTS) {
-      if (firstDart + checkoutDart === remaining) return true;
-      if (maxDarts < 3) continue;
-
-      for (const secondDart of SCORING_DARTS) {
-        if (firstDart + secondDart + checkoutDart === remaining) return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-function getCheckoutEntryOptions(remaining: number) {
-  return [1, 2, 3].filter((darts) => canCheckout(remaining, darts));
-}
-
-function isOneDartCheckout(remaining: number) {
-  return CHECKOUT_DARTS.includes(remaining);
-}
-
-function getPossibleCheckoutAttempts(remaining: number, entryDarts: number) {
-  const attempts = new Set<number>();
-
-  function walk(remainingBeforeDart: number, dartsLeft: number, attemptsUsed: number) {
-    if (dartsLeft === 1) {
-      if (CHECKOUT_DARTS.includes(remainingBeforeDart)) attempts.add(attemptsUsed + 1);
-      return;
-    }
-
-    if (isOneDartCheckout(remainingBeforeDart)) {
-      walk(remainingBeforeDart, dartsLeft - 1, attemptsUsed + 1);
-    }
-
-    for (const score of SCORING_DARTS) {
-      const nextRemaining = remainingBeforeDart - score;
-      if (nextRemaining < 2) continue;
-      walk(nextRemaining, dartsLeft - 1, attemptsUsed);
-    }
-  }
-
-  walk(remaining, entryDarts, 0);
-  return [...attempts].sort((a, b) => a - b);
-}
-
-function inferCheckoutAttempts(remaining: number, entryDarts: number) {
-  const possibleAttempts = getPossibleCheckoutAttempts(remaining, entryDarts);
-  return possibleAttempts.length === 1 ? possibleAttempts[0] : null;
-}
-
 function initialPlayerState(startingScore: 301 | 501 = 501): PlayerState {
   return {
     remaining: startingScore,
@@ -270,7 +165,7 @@ export default function GuestMatchScorer({
   const [pendingEntryCheckout, setPendingEntryCheckout] = useState<PendingEntryCheckout | null>(null);
   const [pendingDouble, setPendingDouble] = useState<PendingDouble | null>(null);
 
-  const legsToWin = useMemo(() => Math.floor(bestOfLegs / 2) + 1, [bestOfLegs]);
+  const requiredLegs = useMemo(() => legsToWin(bestOfLegs), [bestOfLegs]);
   const names = [player1, player2] as const;
   const hint = checkoutHint(players[currentPlayer].remaining);
   const scorePartsSum = scoreParts.reduce((sum, part) => sum + part, 0);
@@ -339,7 +234,7 @@ export default function GuestMatchScorer({
         ? active.legDarts
         : Math.min(active.fastestLegDarts, active.legDarts);
 
-      if (active.legs >= legsToWin) {
+      if (active.legs >= requiredLegs) {
         setHistory((items) => [...items, before]);
         setPlayers(next);
         clearInput();
@@ -422,9 +317,8 @@ export default function GuestMatchScorer({
     }
 
     const remaining = players[currentPlayer].remaining;
-    const after = remaining - value;
-    const bust = value > remaining || after === 1 || after < 0;
-    const checkout = !bust && after === 0;
+    const visit = resolveVisit(remaining, value);
+    const { after, bust, checkout } = visit;
 
     if (checkout) {
       if (!canCheckout(remaining, 3)) {
@@ -464,7 +358,7 @@ export default function GuestMatchScorer({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <div className="text-xs font-black uppercase tracking-widest text-orange-400">Scoreboard</div>
-          <div className="text-xs font-semibold text-gray-500">Først til {legsToWin}</div>
+          <div className="text-xs font-semibold text-gray-500">Først til {requiredLegs}</div>
         </div>
         {onCancel && (
           <button type="button" onClick={onCancel} disabled={saving || hasPendingPrompt} className="rounded-lg border border-gray-700 px-3 py-2 text-sm font-bold text-gray-300 disabled:opacity-50">
