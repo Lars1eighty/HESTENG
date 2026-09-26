@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { canCheckout, checkoutFinishesMatch, getCheckoutEntryOptions, getPossibleCheckoutAttempts, inferCheckoutAttempts, legsToWin, resolveVisit } from "@/lib/scoringEngine";
+import { canCheckout, checkoutHint, getCheckoutEntryOptions, getPossibleCheckoutAttempts, inferCheckoutAttempts, legsToWin, resolveVisit } from "@/lib/scoringEngine";
 
 type GuestMatchScorerResult = {
   id: string;
