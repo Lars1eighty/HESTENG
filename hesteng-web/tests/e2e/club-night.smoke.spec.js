@@ -69,7 +69,7 @@ test("match scorer route never silently shows a fake match", async ({ page }) =>
 test("real one-leg club match finishes at checkout and saves the result", async ({ page }) => {
   const browserErrors = [];
   page.on("pageerror", (error) => browserErrors.push(`pageerror: ${error.message}`));
-  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(`console: ${message.text()}`); if (message.text().includes("HESTENG_E2E_SCORER_STATE")) console.log("BROWSER_SCORER_STATE:", message.text()); if (message.text().includes("HESTENG_E2E_WRAPPER_RENDER")) console.log("BROWSER_WRAPPER_STATE:", message.text()); });
+  page.on("console", (message) => { console.log(`BROWSER_CONSOLE_${message.type().toUpperCase()}:`, message.text()); if (message.type() === "error") browserErrors.push(`console: ${message.text()}`); });
   const clubNight = {
     id: "e2e-night",
     clubId: "club-jyden-dartklub",
