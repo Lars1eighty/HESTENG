@@ -97,6 +97,8 @@ export default function KampScoringPage() {
     }
   }, [clubNight?.clubId, clubNightId, currentClubId, router, scopedMatches, setMatches, shouldReturnToBoard]);
 
+  if (process.env.NODE_ENV !== "production") { console.log("HESTENG_E2E_SCORER_STATE", { id, routeClubNightId, clubNightId, currentClubNightId, isSharedStateReady, clubNightCount: clubNights.length, matchCount: scopedMatches.length, matchFound: Boolean(match) }); }
+
   if (!isSharedStateReady && !match) {
     return (
       <main className="min-h-screen bg-gray-950 text-white">
