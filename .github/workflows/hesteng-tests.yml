@@ -47,7 +47,7 @@ jobs:
       - name: Install browser
         run: npx --yes --package=@playwright/test@1.55.0 playwright install --with-deps chromium
       - name: Build HESTENG
-        run: npm run build
+        run: npx next build
       - name: Start HESTENG
         run: npm run start > /tmp/hesteng.log 2>&1 &
       - name: Wait for HESTENG
