@@ -13,9 +13,7 @@ type SharedClubNightState = {
 };
 
 export default function ClubNightServerBootstrap() {
-  console.log("HESTENG_E2E_BOOTSTRAP_RENDER");
   useEffect(() => {
-    console.log("HESTENG_E2E_BOOTSTRAP_EFFECT");
     let cancelled = false;
 
     async function pull() {
