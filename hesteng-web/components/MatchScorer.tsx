@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { saveCompletedMatch, type CompletedMatch } from "@/lib/matchStore";
-import { canCheckout, getCheckoutEntryOptions, getPossibleCheckoutAttempts, inferCheckoutAttempts, legsToWin, resolveVisit } from "@/lib/scoringEngine";
+import { getCheckoutEntryOptions, getPossibleCheckoutAttempts, inferCheckoutAttempts, legsToWin, resolveVisit } from "@/lib/scoringEngine";
 
 type Multiplier = "S" | "D" | "T";
 
