@@ -10,8 +10,6 @@ export default function ScopedKampScoringPage() {
   const { setCurrentClubNightId } = useKlubaften();
   const clubNightId = typeof params.clubNightId === "string" ? params.clubNightId : null;
 
-  console.log("HESTENG_E2E_WRAPPER_RENDER", { clubNightId });
-
   useEffect(() => {
     if (clubNightId) setCurrentClubNightId(clubNightId);
   }, [clubNightId, setCurrentClubNightId]);
