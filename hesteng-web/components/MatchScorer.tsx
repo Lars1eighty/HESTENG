@@ -59,6 +59,18 @@ const QUICK_RIGHT = [60, 81, 85, 140];
 const MULTIPLIERS: Multiplier[] = ["S", "D", "T"];
 const MAX_SCORE = 180;
 const MAX_LEG_ENTRIES = 14;
+function multiplierValue(multiplier: Multiplier) {
+  if (multiplier === "D") return 2;
+  if (multiplier === "T") return 3;
+  return 1;
+}
+
+function dartLabel(dart: DartThrow) {
+  if (dart.target === 0) return "0";
+  if (dart.target === 25 && dart.multiplier === "D") return "BULL";
+  return `${dart.multiplier}${dart.target}`;
+}
+
 function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
