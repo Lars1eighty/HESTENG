@@ -83,3 +83,20 @@ test("new-user flow: guest QR keeps the generated match format", () => {
   const snapshot = { matches: [match] };
   assert.equal(snapshot.matches[0].bestOfLegs, 1);
 });
+
+
+test("shared scorer rule: exact zero on a valid double-out finishes Bo1", async () => {
+  const source = await import("node:fs/promises").then((fs) => fs.readFile(new URL("../lib/scoringEngine.ts", import.meta.url), "utf8"));
+  assert.match(source, /export function resolveVisit/);
+  assert.match(source, /export function checkoutFinishesMatch/);
+  assert.match(source, /after === 0/);
+  assert.match(source, /canCheckout\(remaining, 3\)/);
+});
+
+test("main and QR scorers both use the shared scoring engine", async () => {
+  const fs = await import("node:fs/promises");
+  const main = await fs.readFile(new URL("../components/MatchScorer.tsx", import.meta.url), "utf8");
+  const guest = await fs.readFile(new URL("../components/GuestMatchScorer.tsx", import.meta.url), "utf8");
+  assert.match(main, /@\/lib\/scoringEngine/);
+  assert.match(guest, /@\/lib\/scoringEngine/);
+});
