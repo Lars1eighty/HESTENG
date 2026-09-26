@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useMemo, useSyncExternalStore, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
@@ -101,6 +102,8 @@ function getPersonalBestLegRows(completedMatches: ReturnType<typeof getCompleted
 
 export default function ClubNightDashboardPage({ params }: { params: Promise<{ clubNightId: string }> }) {
   const { clubNightId } = use(params);
+  const searchParams = useSearchParams();
+  const tvMode = searchParams.get("tv") === "1";
   const { currentClubId, clubNights, isSharedStateReady, setCurrentClubNightId } = useKlubaften();
   const [refreshTick, setRefreshTick] = useState(0);
   const [lastUpdated, setLastUpdated] = useState("-");
@@ -173,7 +176,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
   if (!isSharedStateReady) {
     return (
       <main className="min-h-screen bg-gray-950 text-white">
-        <Header />
+        {!tvMode && <Header />}
         <section className="mx-auto max-w-5xl p-10">
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center font-bold text-gray-300">
             Henter klubaften...
@@ -188,7 +191,7 @@ export default function ClubNightDashboardPage({ params }: { params: Promise<{ c
       <main className="min-h-screen bg-gray-950 text-white">
         <Header />
         <section className="mx-auto max-w-5xl p-10">
-          <BackButton />
+          {!tvMode && <BackButton />}
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">
             Klubaftenen blev ikke fundet.
           </div>
