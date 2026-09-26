@@ -137,6 +137,7 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   console.log("E2E body:", (await page.locator("body").innerText()).slice(0, 2000));
   console.log("E2E hydration:", await page.evaluate(() => ({ readyState: document.readyState, next: !!document.querySelector("next-route-announcer"), scripts: document.scripts.length })));
   console.log("E2E browser errors:", browserErrors);
+  console.log("E2E root html:", (await page.locator("html").innerHTML()).includes("__next_error__"), (await page.locator("html").getAttribute("class")) ?? "no-class");
   await expect(page.getByText("Henter kamp...")).toBeHidden({ timeout: 10000 });
   await expect(page.getByText("Kampen blev ikke fundet.")).toBeHidden();
   await expect(page.getByText("Test A", { exact: true }).first()).toBeVisible();
