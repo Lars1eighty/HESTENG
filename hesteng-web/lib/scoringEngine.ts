@@ -82,3 +82,26 @@ export function resolveVisit(remaining: number, score: number) {
 export function checkoutFinishesMatch(currentLegs: number, bestOfLegs: number) {
   return currentLegs + 1 >= legsToWin(bestOfLegs);
 }
+
+export function checkoutHint(remaining: number) {
+  const common: Record<number, string> = {
+    170: "T20 T20 Bull", 167: "T20 T19 Bull", 164: "T20 T18 Bull", 161: "T20 T17 Bull",
+    160: "T20 T20 D20", 158: "T20 T20 D19", 157: "T20 T19 D20", 156: "T20 T20 D18",
+    154: "T20 T18 D20", 152: "T20 T20 D16", 150: "T20 T18 D18", 141: "T20 T19 D12",
+    140: "T20 T20 D10", 121: "T20 T11 D14", 120: "T20 20 D20", 100: "T20 D20",
+  };
+  if (remaining > 170 || [169, 168, 166, 165, 163, 162, 159].includes(remaining)) return null;
+  if (common[remaining]) return common[remaining];
+  if (remaining <= 40 && remaining % 2 === 0) return `D${remaining / 2}`;
+  if (remaining <= 60) {
+    const double = Math.min(20, Math.floor(remaining / 2));
+    const single = remaining - double * 2;
+    if (single >= 0) return single === 0 ? `D${double}` : `${single} D${double}`;
+  }
+  if (remaining <= 99) {
+    const triple = Math.min(20, Math.floor((remaining - 2) / 3));
+    const rest = remaining - triple * 3;
+    if (rest > 0 && rest <= 40 && rest % 2 === 0) return `T${triple} D${rest / 2}`;
+  }
+  return null;
+}
