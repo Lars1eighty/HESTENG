@@ -67,9 +67,6 @@ test("match scorer route never silently shows a fake match", async ({ page }) =>
 
 
 test("real one-leg club match finishes at checkout and saves the result", async ({ page }) => {
-  const browserErrors = [];
-  page.on("pageerror", (error) => browserErrors.push(`pageerror: ${error.message}`));
-  page.on("console", (message) => { console.log(`BROWSER_CONSOLE_${message.type().toUpperCase()}:`, message.text()); if (message.type() === "error") browserErrors.push(`console: ${message.text()}`); });
   const clubNight = {
     id: "e2e-night",
     clubId: "club-jyden-dartklub",
@@ -130,18 +127,6 @@ test("real one-leg club match finishes at checkout and saves the result", async 
     localStorage.setItem("hesteng.sharedClubNightMigrated.v2", "true");
   }, { clubNights: [clubNight], currentClubNightId: "e2e-night" });
   await page.goto("http://127.0.0.1:3000/klubaften/e2e-night/kamp/e2e-match");
-  await page.evaluate(() => console.log("HESTENG_E2E_BROWSER_PROBE", { href: location.href, state: localStorage.getItem("hesteng.klubaftenState")?.length ?? 0 }));
-  await page.waitForTimeout(1000);
-  console.log("E2E URL:", page.url());
-  console.log("E2E local state:", await page.evaluate(() => localStorage.getItem("hesteng.klubaftenState")));
-  console.log("E2E route params:", await page.evaluate(() => ({ pathname: location.pathname, href: location.href })));
-  console.log("E2E body:", (await page.locator("body").innerText()).slice(0, 2000));
-  console.log("E2E hydration:", await page.evaluate(() => ({ readyState: document.readyState, next: !!document.querySelector("next-route-announcer"), scripts: document.scripts.length })));
-  console.log("E2E browser errors:", browserErrors);
-  console.log("E2E root html:", (await page.locator("html").innerHTML()).includes("__next_error__"), (await page.locator("html").getAttribute("class")) ?? "no-class");
-  console.log("E2E script srcs:", await page.locator("script[src]").evaluateAll((nodes) => nodes.map((node) => node.src)));
-  console.log("E2E failed resources:", browserErrors.filter((entry) => !entry.includes("webpack-hmr")));
-  console.log("E2E performance scripts:", await page.evaluate(() => performance.getEntriesByType("resource").filter((entry) => entry.name.includes("_next/static/chunks")).map((entry) => ({ name: entry.name, duration: entry.duration, size: entry.transferSize }))));
   await expect(page.getByText("Henter kamp...")).toBeHidden({ timeout: 10000 });
   await expect(page.getByText("Kampen blev ikke fundet.")).toBeHidden();
   await expect(page.getByText("Test A", { exact: true }).first()).toBeVisible();
