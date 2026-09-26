@@ -116,6 +116,13 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
     }
   }
 
+  useEffect(() => {
+    if (access || busy || !clubNight.clubId || clubNight.status !== "active") return;
+    void enableGuestAccess();
+    // Guest access is automatic for active club nights.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access, busy, clubNight.clubId, clubNight.id, clubNight.status]);
+
   async function importGuestResults(silent = false) {
     if (!access || !clubNight.clubId) return;
     if (!silent) {
@@ -203,15 +210,9 @@ export default function GuestAccessControl({ clubNight, completedMatches }: Prop
     <div>
       <div className="flex flex-wrap items-center gap-2">
         {!access ? (
-          <button
-            type="button"
-            onClick={() => void enableGuestAccess()}
-            disabled={busy || clubNight.status !== "active"}
-            className="rounded-xl border border-cyan-500/60 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-            title={error || "Opret offentligt link til denne klubaften"}
-          >
-            {busy ? "Opretter gæsteadgang..." : "Aktivér gæsteadgang"}
-          </button>
+          <span className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-200">
+            {clubNight.status === "active" ? "Gør QR klar..." : "Gæsteadgang er lukket"}
+          </span>
         ) : (
           <>
             <a href={`/g/${access.publicToken}`} target="_blank" rel="noreferrer" className="rounded-xl border border-cyan-500/60 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20">Åbn gæsteside</a>
