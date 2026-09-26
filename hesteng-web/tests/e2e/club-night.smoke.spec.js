@@ -155,3 +155,90 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   await expect(page.getByText("Test A vinder")).toBeVisible();
   await expect(page.getByText("1 – 0")).toBeVisible();
 });
+
+
+test("guest QR result reaches the Live TV dashboard", async ({ page, browser }) => {
+  const clubNight = {
+    id: "e2e-guest-night",
+    clubId: "club-jyden-dartklub",
+    name: "E2E QR klubaften",
+    date: "2026-09-26",
+    status: "active",
+    selectedPlayers: ["QR A", "QR B"],
+    pools: [{ name: "Pulje A", players: ["QR A", "QR B"] }],
+    matches: [{
+      id: "e2e-guest-match", clubId: "club-jyden-dartklub", clubNightId: "e2e-guest-night",
+      player1: "QR A", player2: "QR B", pool: "Pulje A", round: 1, order: 1,
+      scheduleSlot: 1, board: 1, bestOfLegs: 1, scoringMode: "total",
+      score1: 0, score2: 0, status: "pending"
+    }],
+    boardCount: 1, handicapBoards: [], createdAt: "2026-09-26T18:00:00.000Z"
+  };
+  const sharedState = { clubNights: [clubNight], currentClubNightId: clubNight.id, completedMatches: [] };
+  let publicRecord = {
+    clubNightId: clubNight.id, clubId: clubNight.clubId, publicToken: "e2e-guest-token",
+    status: "active", clubNight, completedMatches: []
+  };
+
+  await page.route("**/api/auth/session", async (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ user: { id: "e2e-user", name: "E2E Admin", email: "e2e@hesteng.test",
+      memberships: [{ clubId: clubNight.clubId, clubName: "Jyden Dartklub", role: "ADMIN" }] },
+      expires: "2099-01-01T00:00:00.000Z" })
+  }));
+  await page.route("**/api/shared-club-data", async (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ players: [], stats: [] })
+  }));
+  await page.route("**/api/club-night-state", async (route) => {
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sharedState) });
+    const body = route.request().postDataJSON();
+    if (Array.isArray(body?.clubNights)) sharedState.clubNights = body.clubNights;
+    if (Array.isArray(body?.completedMatches)) sharedState.completedMatches = body.completedMatches;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+  });
+  await page.route("**/api/guest-club-night**", async (route) => {
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ record: publicRecord }) });
+    const body = route.request().postDataJSON();
+    publicRecord = { ...publicRecord, ...body, completedMatches: body.completedMatches ?? publicRecord.completedMatches };
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(publicRecord) });
+  });
+
+  await page.addInitScript((snapshot) => {
+    localStorage.setItem("hesteng.currentClubId", "club-jyden-dartklub");
+    localStorage.setItem("hesteng.klubaftenState", JSON.stringify(snapshot));
+    localStorage.setItem("hesteng.sharedClubNightMigrated.v2", "true");
+  }, { clubNights: [clubNight], currentClubNightId: clubNight.id });
+
+  await page.goto(`http://127.0.0.1:3000/klubaften/${clubNight.id}/gaest`);
+  await expect(page.getByText("Scan og spil")).toBeVisible();
+
+  publicRecord.completedMatches = [{
+    id: "e2e-guest-match", clubId: clubNight.clubId, clubNightId: clubNight.id,
+    player1: "QR A", player2: "QR B", score1: 1, score2: 0, winner: "QR A",
+    bestOfLegs: 1, board: 1, pool: "Pulje A", round: 1,
+    finishedAt: "2026-09-26T19:00:00.000Z"
+  }];
+
+  await page.getByRole("button", { name: /Hent gæsteresultater/ }).click();
+  await expect(page.getByText(/gæsteresultat/)).toBeVisible();
+
+  const tv = await browser.newPage();
+  await tv.route("**/api/auth/session", async (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ user: { id: "e2e-user", memberships: [{ clubId: clubNight.clubId, clubName: "Jyden Dartklub", role: "ADMIN" }] }, expires: "2099-01-01T00:00:00.000Z" })
+  }));
+  await tv.route("**/api/shared-club-data", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ players: [], stats: [] }) }));
+  await tv.route("**/api/club-night-state", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sharedState) }));
+  await tv.route("**/api/guest-club-night**", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ record: publicRecord }) }));
+  await tv.addInitScript((snapshot) => {
+    localStorage.setItem("hesteng.currentClubId", "club-jyden-dartklub");
+    localStorage.setItem("hesteng.klubaftenState", JSON.stringify(snapshot));
+    localStorage.setItem("hesteng.sharedClubNightMigrated.v2", "true");
+  }, { clubNights: sharedState.clubNights, currentClubNightId: clubNight.id });
+
+  await tv.goto(`http://127.0.0.1:3000/klubaften/${clubNight.id}?tv=1`);
+  await expect(tv.getByRole("heading", { name: clubNight.name })).toBeVisible();
+  await expect(tv.getByText("QR A", { exact: true }).first()).toBeVisible();
+  await expect(tv.getByText("1", { exact: true }).first()).toBeVisible();
+  await tv.close();
+});
