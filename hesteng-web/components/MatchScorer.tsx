@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { saveCompletedMatch, type CompletedMatch } from "@/lib/matchStore";
+import { canCheckout, getCheckoutEntryOptions, getPossibleCheckoutAttempts, inferCheckoutAttempts, legsToWin, resolveVisit } from "@/lib/scoringEngine";
 
 type Multiplier = "S" | "D" | "T";
 
@@ -57,95 +58,6 @@ const QUICK_LEFT = [26, 41, 45, 100];
 const QUICK_RIGHT = [60, 81, 85, 140];
 const MULTIPLIERS: Multiplier[] = ["S", "D", "T"];
 const MAX_SCORE = 180;
-const SCORING_DARTS = [
-  0,
-  ...Array.from({ length: 20 }, (_, index) => index + 1),
-  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 2),
-  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 3),
-  25,
-  50,
-];
-const CHECKOUT_DARTS = [
-  ...Array.from({ length: 20 }, (_, index) => (index + 1) * 2),
-  50,
-];
-const MAX_LEG_ENTRIES = 14;
-
-function isValidCheckout(score: number) {
-  return canCheckout(score, 3);
-}
-
-function multiplierValue(multiplier: Multiplier) {
-  if (multiplier === "D") return 2;
-  if (multiplier === "T") return 3;
-  return 1;
-}
-
-function dartLabel(dart: DartThrow) {
-  if (dart.target === 0) return "0";
-  if (dart.target === 25 && dart.multiplier === "D") return "BULL";
-  return `${dart.multiplier}${dart.target}`;
-}
-
-function getCheckoutEntryOptions(remaining: number) {
-  return [1, 2, 3].filter((darts) => canCheckout(remaining, darts));
-}
-
-function isOneDartCheckout(remaining: number) {
-  return CHECKOUT_DARTS.includes(remaining);
-}
-
-function inferCheckoutAttempts(remaining: number, entryDarts: number) {
-  const possibleAttempts = getPossibleCheckoutAttempts(remaining, entryDarts);
-  return possibleAttempts.length === 1 ? possibleAttempts[0] : null;
-}
-
-function getPossibleCheckoutAttempts(remaining: number, entryDarts: number) {
-  const attempts = new Set<number>();
-
-  function walk(remainingBeforeDart: number, dartsLeft: number, attemptsUsed: number) {
-    if (dartsLeft === 1) {
-      if (CHECKOUT_DARTS.includes(remainingBeforeDart)) {
-        attempts.add(attemptsUsed + 1);
-      }
-      return;
-    }
-
-    if (isOneDartCheckout(remainingBeforeDart)) {
-      walk(remainingBeforeDart, dartsLeft - 1, attemptsUsed + 1);
-    }
-
-    for (const score of SCORING_DARTS) {
-      const nextRemaining = remainingBeforeDart - score;
-      if (nextRemaining < 2) continue;
-      walk(nextRemaining, dartsLeft - 1, attemptsUsed);
-    }
-  }
-
-  walk(remaining, entryDarts, 0);
-  return [...attempts].sort((a, b) => a - b);
-}
-
-function canCheckout(remaining: number, maxDarts: number) {
-  if (remaining < 2 || remaining > 170) return false;
-
-  for (const checkoutDart of CHECKOUT_DARTS) {
-    if (checkoutDart === remaining) return true;
-    if (maxDarts < 2) continue;
-
-    for (const firstDart of SCORING_DARTS) {
-      if (firstDart + checkoutDart === remaining) return true;
-      if (maxDarts < 3) continue;
-
-      for (const secondDart of SCORING_DARTS) {
-        if (firstDart + secondDart + checkoutDart === remaining) return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
@@ -171,7 +83,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
   const [saved, setSaved] = useState(false);
 
   const current = players[currentPlayer];
-  const neededLegs = Math.ceil(bestOfLegs / 2);
+  const neededLegs = legsToWin(bestOfLegs);
   const matchWinner = useMemo(() => players.find((player) => player.legs >= neededLegs), [players, neededLegs]);
   const isDartByDartScoring = scoringMode === "dart-by-dart";
   const activeInputMode = isDartByDartScoring ? "darts" : "score";
@@ -457,23 +369,18 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       setMessage("Ugyldig score.");
       return;
     }
-    const nextRemaining = current.remaining - score;
+    const visit = resolveVisit(current.remaining, score);
+    const nextRemaining = visit.after;
     setHistory((items) => [...items, { players: players.map((player) => ({ ...player })), currentPlayer }]);
 
-    if (nextRemaining < 0 || nextRemaining === 1) {
+    if (visit.bust) {
       resetInputState();
       setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
       setMessage("Bust — ingen score.");
       return;
     }
 
-    if (nextRemaining === 0) {
-      if (!isValidCheckout(score)) {
-        resetInputState();
-        setCurrentPlayer(currentPlayer === 0 ? 1 : 0);
-        setMessage("Bust — double out.");
-        return;
-      }
+    if (visit.checkout) {
       const checkoutDartsUsed = shouldAskEntryDartsForCheckout ? 3 : entryDarts;
       const inferredAttempts = inferCheckoutAttempts(score, checkoutDartsUsed);
       completeSuccessfulCheckout(score, checkoutDartsUsed, inferredAttempts ?? 1);
