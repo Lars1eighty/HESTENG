@@ -58,6 +58,7 @@ const QUICK_LEFT = [26, 41, 45, 100];
 const QUICK_RIGHT = [60, 81, 85, 140];
 const MULTIPLIERS: Multiplier[] = ["S", "D", "T"];
 const MAX_SCORE = 180;
+const MAX_LEG_ENTRIES = 14;
 function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
