@@ -145,7 +145,7 @@ export default function KlubaftenPage() {
                         Åbn klubaften
                       </Link>
                       <Link
-                        href={`/klubaften/${clubNight.id}`}
+                        href={`/klubaften/${clubNight.id}?tv=1`}
                         target="_blank"
                         onClick={() => setCurrentClubNightId(clubNight.id)}
                         className="flex-1 rounded-xl bg-orange-500 px-4 py-2 text-center text-sm font-bold text-black hover:bg-orange-400"
