@@ -133,6 +133,7 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   await page.waitForTimeout(1000);
   console.log("E2E URL:", page.url());
   console.log("E2E local state:", await page.evaluate(() => localStorage.getItem("hesteng.klubaftenState")));
+  console.log("E2E route params:", await page.evaluate(() => ({ pathname: location.pathname, href: location.href })));
   console.log("E2E body:", (await page.locator("body").innerText()).slice(0, 2000));
   console.log("E2E hydration:", await page.evaluate(() => ({ readyState: document.readyState, next: !!document.querySelector("next-route-announcer"), scripts: document.scripts.length })));
   console.log("E2E browser errors:", browserErrors);
