@@ -140,6 +140,7 @@ test("real one-leg club match finishes at checkout and saves the result", async 
   console.log("E2E root html:", (await page.locator("html").innerHTML()).includes("__next_error__"), (await page.locator("html").getAttribute("class")) ?? "no-class");
   console.log("E2E script srcs:", await page.locator("script[src]").evaluateAll((nodes) => nodes.map((node) => node.src)));
   console.log("E2E failed resources:", browserErrors.filter((entry) => !entry.includes("webpack-hmr")));
+  console.log("E2E performance scripts:", await page.evaluate(() => performance.getEntriesByType("resource").filter((entry) => entry.name.includes("_next/static/chunks")).map((entry) => ({ name: entry.name, duration: entry.duration, size: entry.transferSize }))));
   await expect(page.getByText("Henter kamp...")).toBeHidden({ timeout: 10000 });
   await expect(page.getByText("Kampen blev ikke fundet.")).toBeHidden();
   await expect(page.getByText("Test A", { exact: true }).first()).toBeVisible();
