@@ -40,7 +40,7 @@ export default function KampScoringPage() {
     ? params.clubNightId
     : searchParams.get("clubNightId");
   const shouldReturnToBoard = searchParams.get("returnTo") === "board";
-  const { currentClubId, clubNights, matches, isSharedStateReady, setMatches, currentClubNightId, setCurrentClubNightId } = useKlubaften();
+  const { currentClubId, clubNights, matches, isSharedStateReady, setMatches, updateClubNight, currentClubNightId, setCurrentClubNightId } = useKlubaften();
   const clubNightId = routeClubNightId ?? currentClubNightId;
   const clubNight = clubNights.find((item) => item.id === clubNightId) ?? null;
   const scopedMatches = clubNight?.matches ?? matches;
@@ -68,7 +68,7 @@ export default function KampScoringPage() {
       clubNightId: completedMatch.clubNightId ?? clubNightId ?? undefined,
     };
     applyEloForCompletedMatch(scopedCompletedMatch);
-    setMatches(scopedMatches.map((item) => {
+    const finishedMatches = scopedMatches.map((item) => {
       if (item.id !== scopedCompletedMatch.id) return item;
       const loser = completedMatch.winner === item.player1 ? item.player2 : item.player1;
       return {
@@ -88,14 +88,20 @@ export default function KampScoringPage() {
         legsPlayed: scopedCompletedMatch.legsPlayed,
         avgSecondsPerLeg: scopedCompletedMatch.avgSecondsPerLeg,
         timingSource: scopedCompletedMatch.timingSource,
-        status: "finished",
+        status: "finished" as const,
       };
-    }));
+    });
+
+    if (clubNightId) {
+      updateClubNight(clubNightId, (night) => ({ ...night, matches: finishedMatches }));
+    } else {
+      setMatches(finishedMatches);
+    }
 
     if (shouldReturnToBoard && clubNightId) {
       router.replace(`/klubaften/${clubNightId}/bane`);
     }
-  }, [clubNight?.clubId, clubNightId, currentClubId, router, scopedMatches, setMatches, shouldReturnToBoard]);
+  }, [clubNight?.clubId, clubNightId, currentClubId, router, scopedMatches, setMatches, shouldReturnToBoard, updateClubNight]);
 
   if (!isSharedStateReady && !match) {
     return (
