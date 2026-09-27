@@ -43,7 +43,7 @@ export default function PuljerPage() {
 
   function generatePools(mode: PoolMode) {
     if (displayedPools.length > 0) {
-      const matchesStarted = Boolean(routeClubNight?.matches?.some((match) => match.status === "in_progress" || match.status === "finished"));
+      const matchesStarted = Boolean(routeClubNight?.matches?.some((match) => match.status === "live" || match.status === "finished"));
       if (matchesStarted) {
         window.alert("Puljerne kan ikke laves om, når kampene er startet.");
         return;
