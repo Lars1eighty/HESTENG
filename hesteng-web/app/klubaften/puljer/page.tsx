@@ -42,6 +42,17 @@ export default function PuljerPage() {
   }
 
   function generatePools(mode: PoolMode) {
+    if (displayedPools.length > 0) {
+      const matchesStarted = Boolean(routeClubNight?.matches?.some((match) => match.status === "in_progress" || match.status === "finished"));
+      if (matchesStarted) {
+        window.alert("Puljerne kan ikke laves om, når kampene er startet.");
+        return;
+      }
+
+      const confirmed = window.confirm("Lav puljerne om? De nuværende puljer bliver slettet og trukket på ny.");
+      if (!confirmed) return;
+    }
+
     setPoolMode(mode);
     savePools(createClubNightPools(displayedSelectedPlayers, currentClubId, mode, poolSizeProfile));
   }
@@ -88,7 +99,7 @@ export default function PuljerPage() {
 
         <div className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
           <h2 className="text-xl font-bold">Hvordan skal puljerne laves?</h2>
-          <p className="mt-1 text-sm text-gray-400">Vælg lodtrækning eller niveauinddeling. Du kan trække om, indtil kampene er genereret.</p>
+          <p className="mt-1 text-sm text-gray-400">Vælg lodtrækning eller niveauinddeling. Når puljerne er oprettet, kræver en ny lodtrækning bekræftelse.</p>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={() => generatePools("draw")} className={`rounded-xl border px-5 py-4 text-left transition ${poolMode === "draw" && displayedPools.length > 0 ? "border-orange-500 bg-orange-500/10" : "border-gray-700 bg-gray-800 hover:border-gray-600"}`}>
