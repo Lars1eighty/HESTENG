@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
-import MatchScorer from "@/components/MatchScorer";
+import ScoringModule from "@/components/scoring/ScoringModule";
 import type { CompletedMatch } from "@/lib/matchStore";
 
 type CompetitionFormat = "pools" | "roundRobin" | "knockout";
@@ -261,7 +261,7 @@ export default function PrivateCompetitionPage() {
           return (
             <div className="mt-8">
               <button type="button" onClick={() => setActiveNextPhaseMatchId(null)} className="mb-4 rounded-xl border border-gray-700 px-4 py-2 font-bold text-gray-300">← Tilbage til turnering</button>
-              <MatchScorer
+              <ScoringModule
                 matchId={match.id}
                 player1={match.player1}
                 player2={match.player2}
@@ -281,7 +281,7 @@ export default function PrivateCompetitionPage() {
               <button type="button" onClick={() => setActiveMatchId(null)} className="mb-4 rounded-xl border border-gray-700 px-4 py-2 font-bold text-gray-300">
                 ← Tilbage til turnering
               </button>
-              <MatchScorer
+              <ScoringModule
                 matchId={match.id}
                 player1={match.player1}
                 player2={match.player2}
