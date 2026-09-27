@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import MatchScorer from "@/components/MatchScorer";
+import ScoringModule from "@/components/scoring/ScoringModule";
 import { useKlubaften } from "@/context/KlubaftenContext";
 import { getCompletedMatchInClub, type CompletedMatch } from "@/lib/matchStore";
 import { applyEloForCompletedMatch } from "@/lib/eloRatingEngine";
@@ -281,7 +281,7 @@ export default function KampScoringPage() {
 
       {!isFinished && !isReadOnly && !isSetupRequired ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-950 text-white">
-          <MatchScorer
+          <ScoringModule
             matchId={match.id}
             clubId={clubNight?.clubId ?? currentClubId}
             clubNightId={clubNightId ?? undefined}
