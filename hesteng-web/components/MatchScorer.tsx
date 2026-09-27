@@ -31,7 +31,7 @@ type PlayerScore = {
   fastLegDarts: number[];
 };
 
-type Props = {
+export type MatchScorerProps = {
   matchId: string;
   clubId?: string;
   clubNightId?: string;
@@ -75,7 +75,7 @@ function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
 
-export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, scoringMode = "total", board = null, pool = null, round = null, startedAt, startingPlayer = 0, onMatchComplete }: Props) {
+export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, scoringMode = "total", board = null, pool = null, round = null, startedAt, startingPlayer = 0, onMatchComplete }: MatchScorerProps) {
   const [players, setPlayers] = useState<PlayerScore[]>([
     { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
     { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
