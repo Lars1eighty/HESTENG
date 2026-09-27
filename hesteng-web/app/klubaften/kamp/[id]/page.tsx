@@ -50,6 +50,7 @@ export default function KampScoringPage() {
   const [selectedScoringMode, setSelectedScoringMode] = useState<NonNullable<ClubMatch["scoringMode"]>>("total");
   const [selectedStartingPlayer, setSelectedStartingPlayer] = useState<0 | 1 | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  const [localCompletedMatch, setLocalCompletedMatch] = useState<CompletedMatch | null>(null);
 
   useEffect(() => {
     if (match?.status === "pending" && match.bestOfLegs) {
@@ -67,6 +68,7 @@ export default function KampScoringPage() {
       clubId: completedMatch.clubId ?? clubNight?.clubId ?? currentClubId,
       clubNightId: completedMatch.clubNightId ?? clubNightId ?? undefined,
     };
+    setLocalCompletedMatch(scopedCompletedMatch);
     applyEloForCompletedMatch(scopedCompletedMatch);
     const finishedMatches = scopedMatches.map((item) => {
       if (item.id !== scopedCompletedMatch.id) return item;
@@ -134,9 +136,9 @@ export default function KampScoringPage() {
   const scoringMode = match.scoringMode ?? "total";
   const isReadOnly = clubNight?.status !== "active";
   const isSetupRequired = match.status === "pending" && !isReadOnly;
-  const isFinished = match.status === "finished";
+  const isFinished = match.status === "finished" || localCompletedMatch?.id === match.id;
   const matchId = match.id;
-  const completedMatch = isFinished ? getCompletedMatchInClub(currentClubId, match.id) : null;
+  const completedMatch = localCompletedMatch ?? (isFinished ? getCompletedMatchInClub(currentClubId, match.id) : null);
   const matchDuration = formatMatchDuration(completedMatch?.durationSeconds ?? match.durationSeconds);
 
   function startMatch() {
@@ -190,8 +192,8 @@ export default function KampScoringPage() {
         {isFinished ? (
           <div className="rounded-2xl border border-green-800 bg-green-500/10 p-6 text-center">
             <div className="text-sm font-semibold text-green-400">KAMP FÆRDIG</div>
-            <div className="mt-2 text-3xl font-bold">{match.winner ?? "Vinderen"} vinder</div>
-            <div className="mt-2 text-xl text-gray-300">{match.score1} – {match.score2}</div>
+            <div className="mt-2 text-3xl font-bold">{completedMatch?.winner ?? match.winner ?? "Vinderen"} vinder</div>
+            <div className="mt-2 text-xl text-gray-300">{completedMatch?.score1 ?? match.score1} – {completedMatch?.score2 ?? match.score2}</div>
             {matchDuration && (
               <div className="mx-auto mt-4 max-w-xs rounded-xl border border-green-800/60 bg-gray-950/40 px-4 py-3">
                 <div className="text-xs font-bold uppercase tracking-wide text-gray-400">Kampvarighed</div>
