@@ -36,15 +36,21 @@ export type MatchScorerProps = {
   clubId?: string;
   clubNightId?: string;
   player1: string;
+  player1Id?: string;
   player2: string;
+  player2Id?: string;
   bestOfLegs?: number;
+  startingScore?: 301 | 501;
+  persistResult?: boolean;
+  disabled?: boolean;
   scoringMode?: "total" | "dart-by-dart";
   board?: number | null;
   pool?: string | null;
   round?: number | null;
   startedAt?: string;
   startingPlayer?: 0 | 1;
-  onMatchComplete?: (match: CompletedMatch) => void;
+  onMatchComplete?: (match: CompletedMatch) => Promise<void> | void;
+  onCancel?: () => void;
 };
 
 type MatchSnapshot = {
@@ -75,10 +81,10 @@ function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
 
-export default function MatchScorer({ matchId, clubId, clubNightId, player1, player2, bestOfLegs = 3, scoringMode = "total", board = null, pool = null, round = null, startedAt, startingPlayer = 0, onMatchComplete }: MatchScorerProps) {
+export default function MatchScorer({ matchId, clubId, clubNightId, player1, player1Id, player2, player2Id, bestOfLegs = 3, startingScore = 501, persistResult = true, disabled = false, scoringMode = "total", board = null, pool = null, round = null, startedAt, startingPlayer = 0, onMatchComplete, onCancel }: MatchScorerProps) {
   const [players, setPlayers] = useState<PlayerScore[]>([
-    { name: player1, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
-    { name: player2, remaining: 501, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
+    { name: player1, remaining: startingScore, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
+    { name: player2, remaining: startingScore, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
   ]);
   const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(startingPlayer);
   const [input, setInput] = useState("");
@@ -142,7 +148,9 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       clubId,
       clubNightId,
       player1: players[0].name,
+      player1Id,
       player2: players[1].name,
+      player2Id,
       winner: matchWinner.name,
       score1: players[0].legs,
       score2: players[1].legs,
@@ -167,12 +175,12 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     if (!matchWinner || saved) return;
     const completedMatch = buildCompletedMatch();
     if (!completedMatch) return;
-    saveCompletedMatch(completedMatch);
-    onMatchComplete?.(completedMatch);
+    if (persistResult) saveCompletedMatch(completedMatch);
+    void onMatchComplete?.(completedMatch);
     // Preserve the existing once-per-match save guard after syncing MatchStore.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaved(true);
-  }, [buildCompletedMatch, matchWinner, onMatchComplete, saved]);
+  }, [buildCompletedMatch, matchWinner, onMatchComplete, persistResult, saved]);
 
   function resetInputState() {
     setInput("");
