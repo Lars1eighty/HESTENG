@@ -323,7 +323,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       if (index !== currentPlayer) {
         return {
           ...player,
-          remaining: matchIsFinished ? player.remaining : 501,
+          remaining: matchIsFinished ? player.remaining : startingScore,
           legDarts: matchIsFinished ? player.legDarts : 0,
           legEntries: matchIsFinished ? player.legEntries : 0,
           recentScores: matchIsFinished ? player.recentScores : [],
@@ -334,7 +334,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       const fastLegDarts = completedLegDarts <= 21 ? [...player.fastLegDarts, completedLegDarts] : player.fastLegDarts;
       return {
         ...player,
-        remaining: matchIsFinished ? 0 : 501,
+        remaining: matchIsFinished ? 0 : startingScore,
         legs: player.legs + 1,
         totalScored: player.totalScored + score,
         entries: player.entries + 1,
@@ -371,7 +371,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     const matchIsFinished = players[winnerIndex].legs + 1 >= neededLegs;
     setPlayers((items) => items.map((player, index) => ({
       ...player,
-      remaining: matchIsFinished ? player.remaining : 501,
+      remaining: matchIsFinished ? player.remaining : startingScore,
       legs: index === winnerIndex ? player.legs + 1 : player.legs,
       legDarts: matchIsFinished ? player.legDarts : 0,
       legEntries: matchIsFinished ? player.legEntries : 0,
