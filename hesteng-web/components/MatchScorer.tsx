@@ -81,7 +81,7 @@ function appendRecentScore(scores: number[], score: number) {
   return [...scores, score].slice(-5);
 }
 
-export default function MatchScorer({ matchId, clubId, clubNightId, player1, player1Id, player2, player2Id, bestOfLegs = 3, startingScore = 501, persistResult = true, disabled = false, scoringMode = "total", board = null, pool = null, round = null, startedAt, startingPlayer = 0, onMatchComplete, onCancel }: MatchScorerProps) {
+export default function MatchScorer({ matchId, clubId, clubNightId, player1, player1Id, player2, player2Id, bestOfLegs = 3, startingScore = 501, persistResult = true, scoringMode = "total", board = null, pool = null, round = null, startedAt, startingPlayer = 0, onMatchComplete }: MatchScorerProps) {
   const [players, setPlayers] = useState<PlayerScore[]>([
     { name: player1, remaining: startingScore, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
     { name: player2, remaining: startingScore, legs: 0, totalScored: 0, entries: 0, checkouts: 0, checkoutAttempts: 0, highestCheckout: 0, highCheckouts: [], oneEighties: 0, lastInput: null, legDarts: 0, legEntries: 0, recentScores: [], fastestLegDarts: null, fastLegDarts: [] },
