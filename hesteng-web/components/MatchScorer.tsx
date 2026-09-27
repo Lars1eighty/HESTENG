@@ -42,7 +42,6 @@ export type MatchScorerProps = {
   bestOfLegs?: number;
   startingScore?: 301 | 501;
   persistResult?: boolean;
-  disabled?: boolean;
   scoringMode?: "total" | "dart-by-dart";
   board?: number | null;
   pool?: string | null;
@@ -50,7 +49,6 @@ export type MatchScorerProps = {
   startedAt?: string;
   startingPlayer?: 0 | 1;
   onMatchComplete?: (match: CompletedMatch) => Promise<void> | void;
-  onCancel?: () => void;
 };
 
 type MatchSnapshot = {
