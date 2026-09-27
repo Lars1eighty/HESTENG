@@ -63,9 +63,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Klubaftenen tilhører en anden klub." }, { status: 409 });
     }
 
+    // A normal snapshot sync must never close an already-active QR session.
+    // Guest access is closed only by the explicit finish/abort flow.
+    const stableStatus = existing.status === "active" ? "active" : status;
     const updated = await updatePublicClubNightSnapshot({
       clubNightId,
-      status,
+      status: stableStatus,
       clubNight,
       completedMatches: completedMatches ?? existing.completedMatches,
     });
