@@ -169,7 +169,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       timingSource: durationSeconds ? "hesteng-scorer" as const : undefined,
       players: stats,
     };
-  }, [bestOfLegs, board, clubId, clubNightId, matchId, matchWinner, players, pool, round, scoringMode, startedAt]);
+  }, [bestOfLegs, board, clubId, clubNightId, matchId, matchWinner, player1Id, player2Id, players, pool, round, scoringMode, startedAt]);
 
   useEffect(() => {
     if (!matchWinner || saved) return;
