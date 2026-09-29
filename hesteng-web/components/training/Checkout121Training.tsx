@@ -7,6 +7,7 @@ const SESSION_SECONDS = 20 * 60;
 type Checkout121Attempt = {
   target: number;
   closed: boolean;
+  checkoutDart?: number;
 };
 
 type Checkout121TrainingProps = {
@@ -35,6 +36,7 @@ export default function Checkout121Training({
   const [currentTarget, setCurrentTarget] = useState(121);
   const [attempts, setAttempts] = useState<Checkout121Attempt[]>([]);
   const [finishAfterAttempt, setFinishAfterAttempt] = useState(false);
+  const [checkoutDartPickerOpen, setCheckoutDartPickerOpen] = useState(false);
 
   const successfulAttempts = useMemo(
     () => attempts.filter((attempt) => attempt.closed),
@@ -93,7 +95,7 @@ export default function Checkout121Training({
     });
   }
 
-  function registerAttempt(closed: boolean) {
+  function registerAttempt(closed: boolean, checkoutDart?: number) {
     if (!started || finished) return;
 
     const nextAttempts = [
@@ -101,6 +103,7 @@ export default function Checkout121Training({
       {
         target: currentTarget,
         closed,
+        ...(closed && checkoutDart ? { checkoutDart } : {}),
       },
     ];
 
@@ -176,7 +179,7 @@ export default function Checkout121Training({
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => registerAttempt(true)}
+            onClick={() => setCheckoutDartPickerOpen(true)}
             className="min-h-20 rounded-2xl bg-emerald-500 px-5 py-5 text-xl font-black text-white transition hover:bg-emerald-400"
           >
             Lukket
@@ -189,6 +192,39 @@ export default function Checkout121Training({
             Ikke lukket
           </button>
         </div>
+
+        {checkoutDartPickerOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="w-full max-w-md rounded-3xl border border-white/10 bg-gray-950 p-5 text-center shadow-2xl">
+              <div className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-300">
+                Lukket
+              </div>
+              <h3 className="mt-2 text-2xl font-bold text-white">På hvilken pil lukkede du?</h3>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                {[4, 5, 6, 7, 8, 9].map((dart) => (
+                  <button
+                    key={dart}
+                    type="button"
+                    onClick={() => {
+                      setCheckoutDartPickerOpen(false);
+                      registerAttempt(true, dart);
+                    }}
+                    className="min-h-16 rounded-2xl bg-emerald-500 px-4 py-4 text-2xl font-black text-white transition hover:bg-emerald-400"
+                  >
+                    {dart}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setCheckoutDartPickerOpen(false)}
+                className="mt-4 w-full rounded-2xl bg-white/10 px-4 py-3 font-semibold text-white hover:bg-white/15"
+              >
+                Annuller
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <p className="mt-4 text-center text-xs leading-5 text-gray-500">
           En lukning sender dig videre til næste tal. En miss betyder nyt forsøg på samme tal.
