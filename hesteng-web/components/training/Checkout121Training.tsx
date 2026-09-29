@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import MasterScoreInput from "@/components/scoring/MasterScoreInput";
+
 const SESSION_SECONDS = 20 * 60;
 
 type Checkout121Attempt = {
@@ -39,6 +41,8 @@ export default function Checkout121Training({
   const [checkoutDartPickerOpen, setCheckoutDartPickerOpen] = useState(false);
   const [remaining, setRemaining] = useState(121);
   const [scoreInput, setScoreInput] = useState("");
+  const [scoreParts, setScoreParts] = useState<number[]>([]);
+  const [remainingHistory, setRemainingHistory] = useState<number[]>([]);
 
   const successfulAttempts = useMemo(
     () => attempts.filter((attempt) => attempt.closed),
@@ -97,13 +101,21 @@ export default function Checkout121Training({
     });
   }
 
-  function registerScore() {
+  function registerScore(score: number) {
     if (!started || finished) return;
-    const score = Number(scoreInput);
     if (!Number.isInteger(score) || score < 0 || score > 180) return;
     if (score >= remaining) return;
+    setRemainingHistory((history) => [...history, remaining]);
     setRemaining((value) => value - score);
+  }
+
+  function undoScore() {
+    const previous = remainingHistory.at(-1);
+    if (previous === undefined) return;
+    setRemaining(previous);
+    setRemainingHistory((history) => history.slice(0, -1));
     setScoreInput("");
+    setScoreParts([]);
   }
 
   function registerAttempt(closed: boolean, checkoutDart?: number) {
@@ -127,6 +139,8 @@ export default function Checkout121Training({
       setRemaining(currentTarget);
     }
     setScoreInput("");
+    setScoreParts([]);
+    setRemainingHistory([]);
 
     if (finishAfterAttempt) {
       completeSession(nextAttempts);
@@ -185,37 +199,20 @@ export default function Checkout121Training({
           <div className="mt-3 text-sm text-gray-400">9 pile til at lukke</div>
         </div>
 
-        <div className="mb-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-          <div className="text-center">
+        <div className="mb-5 space-y-3">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center">
             <div className="text-xs uppercase tracking-wide text-gray-400">Tilbage</div>
             <div className="mt-1 text-5xl font-black tabular-nums text-white">{remaining}</div>
           </div>
-          <div className="mt-4 flex gap-2">
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              max="180"
-              value={scoreInput}
-              onChange={(event) => setScoreInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") registerScore();
-              }}
-              placeholder="Score"
-              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/10 px-4 py-4 text-center text-2xl font-bold text-white outline-none focus:border-orange-400"
-            />
-            <button
-              type="button"
-              onClick={registerScore}
-              disabled={!scoreInput}
-              className="rounded-2xl bg-orange-500 px-5 py-4 text-lg font-bold text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              OK
-            </button>
-          </div>
-          <p className="mt-2 text-center text-xs text-gray-500">
-            Tast din samlede score for kastet. Du kan stadig selv regne undervejs.
-          </p>
+          <MasterScoreInput
+            input={scoreInput}
+            parts={scoreParts}
+            onInputChange={setScoreInput}
+            onPartsChange={setScoreParts}
+            onEnter={registerScore}
+            onUndo={undoScore}
+            canUndo={remainingHistory.length > 0}
+          />
         </div>
 
         {finishAfterAttempt ? (
