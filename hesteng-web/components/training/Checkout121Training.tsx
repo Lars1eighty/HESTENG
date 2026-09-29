@@ -37,6 +37,8 @@ export default function Checkout121Training({
   const [attempts, setAttempts] = useState<Checkout121Attempt[]>([]);
   const [finishAfterAttempt, setFinishAfterAttempt] = useState(false);
   const [checkoutDartPickerOpen, setCheckoutDartPickerOpen] = useState(false);
+  const [remaining, setRemaining] = useState(121);
+  const [scoreInput, setScoreInput] = useState("");
 
   const successfulAttempts = useMemo(
     () => attempts.filter((attempt) => attempt.closed),
@@ -95,6 +97,15 @@ export default function Checkout121Training({
     });
   }
 
+  function registerScore() {
+    if (!started || finished) return;
+    const score = Number(scoreInput);
+    if (!Number.isInteger(score) || score < 0 || score > 180) return;
+    if (score >= remaining) return;
+    setRemaining((value) => value - score);
+    setScoreInput("");
+  }
+
   function registerAttempt(closed: boolean, checkoutDart?: number) {
     if (!started || finished) return;
 
@@ -111,7 +122,11 @@ export default function Checkout121Training({
 
     if (closed) {
       setCurrentTarget((target) => target + 1);
+      setRemaining(currentTarget + 1);
+    } else {
+      setRemaining(currentTarget);
     }
+    setScoreInput("");
 
     if (finishAfterAttempt) {
       completeSession(nextAttempts);
@@ -168,6 +183,39 @@ export default function Checkout121Training({
             {currentTarget}
           </div>
           <div className="mt-3 text-sm text-gray-400">9 pile til at lukke</div>
+        </div>
+
+        <div className="mb-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+          <div className="text-center">
+            <div className="text-xs uppercase tracking-wide text-gray-400">Tilbage</div>
+            <div className="mt-1 text-5xl font-black tabular-nums text-white">{remaining}</div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              max="180"
+              value={scoreInput}
+              onChange={(event) => setScoreInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") registerScore();
+              }}
+              placeholder="Score"
+              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/10 px-4 py-4 text-center text-2xl font-bold text-white outline-none focus:border-orange-400"
+            />
+            <button
+              type="button"
+              onClick={registerScore}
+              disabled={!scoreInput}
+              className="rounded-2xl bg-orange-500 px-5 py-4 text-lg font-bold text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              OK
+            </button>
+          </div>
+          <p className="mt-2 text-center text-xs text-gray-500">
+            Tast din samlede score for kastet. Du kan stadig selv regne undervejs.
+          </p>
         </div>
 
         {finishAfterAttempt ? (
