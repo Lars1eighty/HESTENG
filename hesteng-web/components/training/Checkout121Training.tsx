@@ -248,8 +248,8 @@ export default function Checkout121Training({
                 Lukket
               </div>
               <h3 className="mt-2 text-2xl font-bold text-white">På hvilken pil lukkede du?</h3>
-              <div className="mt-5 grid grid-cols-3 gap-3">
-                {[4, 5, 6, 7, 8, 9].map((dart) => (
+              <div className="mt-5 grid grid-cols-4 gap-3">
+                {[3, 4, 5, 6, 7, 8, 9].map((dart) => (
                   <button
                     key={dart}
                     type="button"
