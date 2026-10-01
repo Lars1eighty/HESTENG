@@ -104,11 +104,11 @@ export function deleteTrainingResult(resultId: string): TrainingResult[] {
   return next;
 }
 
-export async function saveTrainingResultToSharedStore(result: TrainingResult): Promise<TrainingResult[]> {
+export async function saveTrainingResultToSharedStore(result: TrainingResult, options: { trainingTest?: boolean } = {}): Promise<TrainingResult[]> {
   if (typeof window === "undefined") return [];
 
   try {
-    const response = await fetch(`${SHARED_TRAINING_RESULTS_API}?playerId=${encodeURIComponent(result.playerId)}`, {
+    const response = await fetch(`${SHARED_TRAINING_RESULTS_API}?playerId=${encodeURIComponent(result.playerId)}${options.trainingTest ? "&trainingTest=true" : ""}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -135,7 +135,7 @@ export async function saveTrainingResultToSharedStore(result: TrainingResult): P
   }
 }
 
-export async function syncTrainingResultsFromSharedStore(playerId?: string): Promise<TrainingResult[]> {
+export async function syncTrainingResultsFromSharedStore(playerId?: string, options: { trainingTest?: boolean } = {}): Promise<TrainingResult[]> {
   if (typeof window === "undefined") return [];
 
   const localResults = getTrainingResults();
@@ -147,7 +147,7 @@ export async function syncTrainingResultsFromSharedStore(playerId?: string): Pro
     // Synchronizing a page is read-only. Previously this used POST for a player,
     // which merged the entire local cache back into Prisma before returning it.
     // GET lets the server read the authenticated player's current results directly.
-    const response = await fetch(SHARED_TRAINING_RESULTS_API, {
+    const response = await fetch(`${SHARED_TRAINING_RESULTS_API}${options.trainingTest ? "?trainingTest=true" : ""}`, {
       method: "GET",
       cache: "no-store",
     });
