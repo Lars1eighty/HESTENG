@@ -26,7 +26,7 @@ async function requireTrainingTester() {
     return { error: "Admin access required", status: 403 as const };
   }
 
-  return { session };
+  return { userId: session.user.id };
 }
 
 export async function POST() {
@@ -35,7 +35,7 @@ export async function POST() {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
   }
 
-  const ownerUserId = resolved.session.user!.id!;
+  const ownerUserId = resolved.userId;
   const userId = testUserId(ownerUserId);
   const playerId = testPlayerId(ownerUserId);
   const prisma = getPrisma();
