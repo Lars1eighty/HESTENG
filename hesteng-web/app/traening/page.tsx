@@ -348,7 +348,10 @@ export default function TrainingPage() {
 }
 
 function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNullable<ReturnType<typeof useOptionalCurrentUser>> }) {
-  const { currentPlayer, currentPlayerId, currentUser } = currentUserContext;
+  const { currentPlayer, currentPlayerId: realPlayerId, currentUser } = currentUserContext;
+  const isTrainingTest = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("test") === "1";
+  const currentPlayerId = isTrainingTest ? `training-test-player:${currentUser.id}` : realPlayerId;
+  const activePlayerName = isTrainingTest ? "HESTENG Testspiller" : currentPlayer.name;
   const trainingClubId = currentUser.memberships[0]?.clubId;
   const trainingClubName = currentUser.memberships[0]?.clubName;
   const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId | null>(null);
@@ -372,6 +375,23 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   const [targetTrainingDarts, setTargetTrainingDarts] = useState<TargetTrainingDart[]>([]);
   const [showDetails, setShowDetails] = useState(false);
   const [pendingBackTargetHash, setPendingBackTargetHash] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isTrainingTest) return;
+    void fetch("/api/training-test-player", { method: "POST" });
+  }, [isTrainingTest]);
+
+  async function deleteTestPlayer() {
+    if (!isTrainingTest) return;
+    const confirmed = window.confirm("Slet Testspilleren og alle hans træningsresultater?");
+    if (!confirmed) return;
+    const response = await fetch("/api/training-test-player", { method: "DELETE" });
+    if (response.ok) {
+      setResults([]);
+      window.localStorage.removeItem("hesteng.trainingResults");
+      window.location.href = "/traening";
+    }
+  }
 
   const activeVariant = activeExerciseId === SCORING_EXERCISE_ID
     ? scoringTarget?.variant
@@ -444,7 +464,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   };
 
   function refreshResults() {
-    void syncTrainingResultsFromSharedStore(currentPlayerId).then(setResults);
+    void syncTrainingResultsFromSharedStore(currentPlayerId, { trainingTest: isTrainingTest }).then(setResults);
   }
 
   function resetGameplayState() {
@@ -529,7 +549,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     let cancelled = false;
 
     async function syncResults() {
-      const nextResults = await syncTrainingResultsFromSharedStore(currentPlayerId);
+      const nextResults = await syncTrainingResultsFromSharedStore(currentPlayerId, { trainingTest: isTrainingTest });
       if (!cancelled) setResults(nextResults);
     }
 
@@ -544,7 +564,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
       unsubscribe();
       window.clearInterval(interval);
     };
-  }, [currentPlayerId]);
+  }, [currentPlayerId, isTrainingTest]);
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -611,7 +631,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     setLastSavedResult(result);
     setShowDetails(false);
     replaceTrainingHash(getTrainingHash("result", result.exerciseId));
-    void saveTrainingResultToSharedStore(result).then(setResults);
+    void saveTrainingResultToSharedStore(result, { trainingTest: isTrainingTest }).then(setResults);
   }
 
   function handleJdcInput(value: JdcThrow) {
@@ -992,7 +1012,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
             {activeExercise?.name ?? "Træning"}
           </h1>
           <p className={`${activeExerciseId === null ? "mt-2" : "mt-1 hidden sm:block"} text-base text-gray-400`}>
-            {trainingClubName ? `${trainingClubName} · træner som ${currentPlayer.name}` : `Træner som ${currentPlayer.name}`}
+            {trainingClubName ? `${trainingClubName} · træner som ${activePlayerName}` : `Træner som ${currentPlayer.name}`}
           </p>
         </div>
 
