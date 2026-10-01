@@ -35,7 +35,7 @@ export async function POST() {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
   }
 
-  const ownerUserId = resolved.session.user.id;
+  const ownerUserId = resolved.session.user!.id!;
   const userId = testUserId(ownerUserId);
   const playerId = testPlayerId(ownerUserId);
   const prisma = getPrisma();
