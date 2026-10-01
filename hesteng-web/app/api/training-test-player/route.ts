@@ -21,7 +21,7 @@ async function requireTrainingTester() {
     return { error: "Authentication required", status: 401 as const };
   }
 
-  const isAdmin = (session.user.memberships ?? []).some((membership) => membership.role === "ADMIN");
+  const isAdmin = (session.user.memberships ?? []).some((membership: { role: string }) => membership.role === "ADMIN");
   if (!isAdmin) {
     return { error: "Admin access required", status: 403 as const };
   }
