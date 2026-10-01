@@ -15,6 +15,18 @@ export const runtime = "nodejs";
 async function resolveRequestPlayerId(request: NextRequest, body?: unknown) {
   const session = await getServerSession(authOptions);
   const sessionPlayerId = session?.user?.playerProfileId;
+  const useTestPlayer = request.nextUrl.searchParams.get("trainingTest") === "true";
+  const isAdmin = (session?.user?.memberships ?? []).some((membership) => membership.role === "ADMIN");
+
+  if (useTestPlayer) {
+    if (!session?.user?.id) {
+      return { error: "Authentication required", status: 401 as const };
+    }
+    if (!isAdmin) {
+      return { error: "Admin access required", status: 403 as const };
+    }
+    return { playerId: `training-test-player:${session.user.id}` };
+  }
   const allowDevPlayerId = process.env.NODE_ENV !== "production";
   const fromQuery = request.nextUrl.searchParams.get("playerId");
   const fromHeader = request.headers.get("x-hesteng-player-id");
