@@ -1000,6 +1000,12 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   return (
     <main className="min-h-screen bg-gray-950 text-white">
       <Header />
+      {isTrainingTest ? (
+        <div className="border-b border-yellow-700 bg-yellow-500/10 px-4 py-2 text-center text-sm font-black text-yellow-300">
+          TESTMODE · HESTENG Testspiller
+          <button type="button" onClick={deleteTestPlayer} className="ml-3 underline">Slet testdata</button>
+        </div>
+      ) : null}
 
       <section className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
         <div className={activeExerciseId === null ? "" : "[&>button]:mb-2 [&>button]:px-3 [&>button]:py-2"}>
@@ -1012,7 +1018,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
             {activeExercise?.name ?? "Træning"}
           </h1>
           <p className={`${activeExerciseId === null ? "mt-2" : "mt-1 hidden sm:block"} text-base text-gray-400`}>
-            {trainingClubName ? `${trainingClubName} · træner som ${activePlayerName}` : `Træner som ${currentPlayer.name}`}
+            {trainingClubName ? `${trainingClubName} · træner som ${activePlayerName}` : `Træner som ${activePlayerName}`}
           </p>
         </div>
 
