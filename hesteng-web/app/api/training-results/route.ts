@@ -16,7 +16,7 @@ async function resolveRequestPlayerId(request: NextRequest, body?: unknown) {
   const session = await getServerSession(authOptions);
   const sessionPlayerId = session?.user?.playerProfileId;
   const useTestPlayer = request.nextUrl.searchParams.get("trainingTest") === "true";
-  const isAdmin = (session?.user?.memberships ?? []).some((membership) => membership.role === "ADMIN");
+  const isAdmin = (session?.user?.memberships ?? []).some((membership: { role: string }) => membership.role === "ADMIN");
 
   if (useTestPlayer) {
     if (!session?.user?.id) {
