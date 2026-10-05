@@ -147,7 +147,7 @@ export async function syncTrainingResultsFromSharedStore(playerId?: string): Pro
     // Synchronizing a page is read-only. Previously this used POST for a player,
     // which merged the entire local cache back into Prisma before returning it.
     // GET lets the server read the authenticated player's current results directly.
-    const response = await fetch(SHARED_TRAINING_RESULTS_API, {
+    const response = await fetch(playerId ? `${SHARED_TRAINING_RESULTS_API}?playerId=${encodeURIComponent(playerId)}` : SHARED_TRAINING_RESULTS_API, {
       method: "GET",
       cache: "no-store",
     });
