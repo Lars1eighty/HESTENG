@@ -605,9 +605,9 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
 
   function buildTrainingResult(exerciseId: ExerciseId, metrics: TrainingResult["metrics"], details?: TrainingResult["details"]) {
     return {
-      id: `training-${exerciseId}-${currentPlayerId}-${Date.now()}`,
+      id: `training-${exerciseId}-${trainingPlayerId}-${Date.now()}`,
       clubId: trainingClubId,
-      playerId: currentPlayerId,
+      playerId: trainingPlayerId,
       exerciseId,
       variant: exerciseId === SCORING_EXERCISE_ID
         ? scoringTarget?.variant
