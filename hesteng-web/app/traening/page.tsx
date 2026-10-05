@@ -349,6 +349,9 @@ export default function TrainingPage() {
 
 function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNullable<ReturnType<typeof useOptionalCurrentUser>> }) {
   const { currentPlayer, currentPlayerId, currentUser } = currentUserContext;
+  const [trainingPlayerId, setTrainingPlayerId] = useState(currentPlayerId);
+  const [trainingPlayerName, setTrainingPlayerName] = useState(currentPlayer.name);
+  const [clubPlayers, setClubPlayers] = useState<Array<{ id: string; name: string }>>([]);
   const trainingClubId = currentUser.memberships[0]?.clubId;
   const trainingClubName = currentUser.memberships[0]?.clubName;
   const [activeExerciseId, setActiveExerciseId] = useState<ExerciseId | null>(null);
@@ -373,6 +376,18 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   const [showDetails, setShowDetails] = useState(false);
   const [pendingBackTargetHash, setPendingBackTargetHash] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!trainingClubId) return;
+    let cancelled = false;
+    fetch(`/api/club-players?clubId=${encodeURIComponent(trainingClubId)}`, { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() : { players: [] })
+      .then((body) => {
+        if (!cancelled) setClubPlayers(Array.isArray(body.players) ? body.players : []);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [trainingClubId]);
+
   const activeVariant = activeExerciseId === SCORING_EXERCISE_ID
     ? scoringTarget?.variant
     : activeExerciseId === AROUND_THE_WORLD_EXERCISE_ID
@@ -381,13 +396,13 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
         ? targetTrainingTargets.length > 0 ? buildTargetTrainingVariant(targetTrainingTargets, targetTrainingRounds) : undefined
       : undefined;
   const selectedPlayerResults = results.filter((result) => (
-    result.playerId === currentPlayerId &&
+    result.playerId === trainingPlayerId &&
     result.exerciseId === activeExerciseId &&
     (activeVariant === undefined || result.variant === activeVariant)
   ));
   const monthlyStats = activeExercise
     ? calculateTrainingMonthlyStats(results, activeExercise, {
-        playerId: currentPlayerId,
+        playerId: trainingPlayerId,
         variant: activeVariant,
         month: currentMonthKey(),
       })
@@ -444,7 +459,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   };
 
   function refreshResults() {
-    void syncTrainingResultsFromSharedStore(currentPlayerId).then(setResults);
+    void syncTrainingResultsFromSharedStore(trainingPlayerId).then(setResults);
   }
 
   function resetGameplayState() {
@@ -529,13 +544,13 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     let cancelled = false;
 
     async function syncResults() {
-      const nextResults = await syncTrainingResultsFromSharedStore(currentPlayerId);
+      const nextResults = await syncTrainingResultsFromSharedStore(trainingPlayerId);
       if (!cancelled) setResults(nextResults);
     }
 
     void syncResults();
     const unsubscribe = subscribeToTrainingResults(() => {
-      setResults(getTrainingResultsForPlayer(currentPlayerId));
+      setResults(getTrainingResultsForPlayer(trainingPlayerId));
     });
     const interval = window.setInterval(syncResults, 5000);
 
@@ -544,7 +559,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
       unsubscribe();
       window.clearInterval(interval);
     };
-  }, [currentPlayerId]);
+  }, [trainingPlayerId]);
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -992,14 +1007,35 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
             {activeExercise?.name ?? "Træning"}
           </h1>
           <p className={`${activeExerciseId === null ? "mt-2" : "mt-1 hidden sm:block"} text-base text-gray-400`}>
-            {trainingClubName ? `${trainingClubName} · træner som ${currentPlayer.name}` : `Træner som ${currentPlayer.name}`}
+            {trainingClubName ? `${trainingClubName} · træner som ${trainingPlayerName}` : `Træner som ${trainingPlayerName}`}
           </p>
+          {activeExerciseId === null && clubPlayers.length > 0 ? (
+            <label className="mt-3 block max-w-sm text-sm font-bold text-gray-400">
+              Spiller
+              <select
+                value={trainingPlayerId}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  const player = clubPlayers.find((item) => item.id === id);
+                  setTrainingPlayerId(id);
+                  setTrainingPlayerName(id === currentPlayerId ? currentPlayer.name : player?.name ?? currentPlayer.name);
+                  setResults([]);
+                }}
+                className="mt-1 min-h-12 w-full rounded-xl border border-gray-700 bg-gray-900 px-3 font-bold text-white"
+              >
+                <option value={currentPlayerId}>{currentPlayer.name}</option>
+                {clubPlayers.filter((player) => player.id !== currentPlayerId).map((player) => (
+                  <option key={player.id} value={player.id}>{player.name}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
 
         {activeExerciseId === null ? (
           <TrainingDashboard
             results={results}
-            currentPlayerId={currentPlayerId}
+            currentPlayerId={trainingPlayerId}
             selectedExerciseId={selectedDashboardExerciseId}
             onToggleExerciseDetails={handleDashboardDetailsToggle}
             onStartExercise={handleExerciseChange}
@@ -1372,7 +1408,7 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
   const summaryVariant = getSummaryVariant(exercise.id, results, currentPlayerId);
   const exerciseResults = results
     .filter((result) => (
-      result.playerId === currentPlayerId &&
+      result.playerId === trainingPlayerId &&
       result.exerciseId === exercise.id &&
       (summaryVariant === undefined || result.variant === summaryVariant)
     ))
@@ -1408,7 +1444,7 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
 function getSummaryVariant(exerciseId: string, results: TrainingResult[], currentPlayerId: string) {
   if (exerciseId !== SCORING_EXERCISE_ID && exerciseId !== AROUND_THE_WORLD_EXERCISE_ID && exerciseId !== TARGET_TRAINING_EXERCISE_ID) return undefined;
   const latestVariantResult = results
-    .filter((result) => result.playerId === currentPlayerId && result.exerciseId === exerciseId && result.variant)
+    .filter((result) => result.playerId === trainingPlayerId && result.exerciseId === exerciseId && result.variant)
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
 
   if (latestVariantResult?.variant) return latestVariantResult.variant;
