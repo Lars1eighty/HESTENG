@@ -1408,7 +1408,7 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
   const summaryVariant = getSummaryVariant(exercise.id, results, currentPlayerId);
   const exerciseResults = results
     .filter((result) => (
-      result.playerId === trainingPlayerId &&
+      result.playerId === currentPlayerId &&
       result.exerciseId === exercise.id &&
       (summaryVariant === undefined || result.variant === summaryVariant)
     ))
@@ -1444,7 +1444,7 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
 function getSummaryVariant(exerciseId: string, results: TrainingResult[], currentPlayerId: string) {
   if (exerciseId !== SCORING_EXERCISE_ID && exerciseId !== AROUND_THE_WORLD_EXERCISE_ID && exerciseId !== TARGET_TRAINING_EXERCISE_ID) return undefined;
   const latestVariantResult = results
-    .filter((result) => result.playerId === trainingPlayerId && result.exerciseId === exerciseId && result.variant)
+    .filter((result) => result.playerId === currentPlayerId && result.exerciseId === exerciseId && result.variant)
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
 
   if (latestVariantResult?.variant) return latestVariantResult.variant;
