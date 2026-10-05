@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
+import { getPrisma } from "@/lib/prisma";
 import {
   deletePrismaTrainingResult,
   mergePrismaTrainingResultsForPlayer,
@@ -15,6 +16,7 @@ export const runtime = "nodejs";
 async function resolveRequestPlayerId(request: NextRequest, body?: unknown) {
   const session = await getServerSession(authOptions);
   const sessionPlayerId = session?.user?.playerProfileId;
+  const sessionUserId = session?.user?.id;
   const allowDevPlayerId = process.env.NODE_ENV !== "production";
   const fromQuery = request.nextUrl.searchParams.get("playerId");
   const fromHeader = request.headers.get("x-hesteng-player-id");
@@ -23,12 +25,28 @@ async function resolveRequestPlayerId(request: NextRequest, body?: unknown) {
     : null;
   const requestPlayerId = fromQuery ?? fromHeader ?? fromBody;
 
-  if (sessionPlayerId) {
-    if (requestPlayerId && requestPlayerId !== sessionPlayerId) {
-      return { error: "Training result playerId does not match current session", status: 403 as const };
+  if (sessionPlayerId && sessionUserId) {
+    if (!requestPlayerId || requestPlayerId === sessionPlayerId) {
+      return { playerId: sessionPlayerId };
     }
 
-    return { playerId: sessionPlayerId };
+    const requestedClubPlayer = await getPrisma().clubPlayer.findUnique({
+      where: { id: requestPlayerId },
+      select: { id: true, clubId: true },
+    });
+    if (!requestedClubPlayer) {
+      return { error: "Training player not found", status: 404 as const };
+    }
+
+    const membership = await getPrisma().clubMembership.findUnique({
+      where: { userId_clubId: { userId: sessionUserId, clubId: requestedClubPlayer.clubId } },
+      select: { id: true },
+    });
+    if (!membership) {
+      return { error: "No access to training player", status: 403 as const };
+    }
+
+    return { playerId: requestedClubPlayer.id };
   }
 
   if (!allowDevPlayerId) {
