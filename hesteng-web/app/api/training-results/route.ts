@@ -23,7 +23,8 @@ async function resolveRequestPlayerId(request: NextRequest, body?: unknown) {
   const fromBody = body && typeof body === "object" && "playerId" in body
     ? (body as { playerId?: unknown }).playerId
     : null;
-  const requestPlayerId = fromQuery ?? fromHeader ?? fromBody;
+  const rawRequestPlayerId = fromQuery ?? fromHeader ?? fromBody;
+  const requestPlayerId = typeof rawRequestPlayerId === "string" ? rawRequestPlayerId.trim() : "";
 
   if (sessionPlayerId && sessionUserId) {
     if (!requestPlayerId || requestPlayerId === sessionPlayerId) {
