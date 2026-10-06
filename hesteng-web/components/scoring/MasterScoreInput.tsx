@@ -25,7 +25,12 @@ export default function MasterScoreInput({ input, parts, onInputChange, onPartsC
   }
 
   function choose(n: number) {
-    if (partsTotal + n <= 180) onInputChange(String(n));
+    if (parts.length || input) {
+      if (partsTotal + n <= 180) onInputChange(String(n));
+      return;
+    }
+    onEnter(n);
+    clear();
   }
 
   function plus() {
@@ -52,7 +57,7 @@ export default function MasterScoreInput({ input, parts, onInputChange, onPartsC
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-[minmax(180px,0.34fr)_96px_minmax(0,1fr)] gap-2">
-        <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 px-6">
+        <div className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 px-6">
           <div className="text-2xl font-bold">{parts.length ? total : input}</div>
           <div className="text-gray-500">INDTASTET TAL</div>
         </div>
@@ -62,22 +67,22 @@ export default function MasterScoreInput({ input, parts, onInputChange, onPartsC
 
       <div className="grid grid-cols-5 gap-2">
         <div className="grid gap-2">
-          {QUICK_LEFT.map((x) => <button type="button" key={x} onClick={() => choose(x)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{x}</button>)}
+          {QUICK_LEFT.map((x) => <button type="button" key={x} onClick={() => choose(x)} className="rounded-xl border border-green-800 bg-green-500/10 py-3 text-2xl font-bold text-green-400">{x}</button>)}
         </div>
         <div className="col-span-3 grid gap-2">
           {ROWS.map((row) => (
             <div key={row[0]} className="grid grid-cols-3 gap-2">
-              {row.map((x) => <button type="button" key={x} onClick={() => digit(x)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">{x}</button>)}
+              {row.map((x) => <button type="button" key={x} onClick={() => digit(x)} className="rounded-xl border border-gray-800 bg-gray-900 py-3 text-3xl font-bold">{x}</button>)}
             </div>
           ))}
           <div className="grid grid-cols-3 gap-2">
-            <button type="button" onClick={() => digit(0)} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold">0</button>
-            <button type="button" onClick={plus} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-2xl font-bold">+</button>
-            <button type="button" onClick={enter} className="rounded-xl bg-green-500 py-5 text-xl font-bold text-black">ENTER</button>
+            <button type="button" onClick={() => digit(0)} className="rounded-xl border border-gray-800 bg-gray-900 py-3 text-3xl font-bold">0</button>
+            <button type="button" onClick={plus} className="rounded-xl border border-gray-800 bg-gray-900 py-3 text-2xl font-bold">+</button>
+            <button type="button" onClick={enter} className="rounded-xl bg-green-500 py-3 text-xl font-bold text-black">ENTER</button>
           </div>
         </div>
         <div className="grid gap-2">
-          {QUICK_RIGHT.map((x) => <button type="button" key={x} onClick={() => choose(x)} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400">{x}</button>)}
+          {QUICK_RIGHT.map((x) => <button type="button" key={x} onClick={() => choose(x)} className="rounded-xl border border-green-800 bg-green-500/10 py-3 text-2xl font-bold text-green-400">{x}</button>)}
         </div>
       </div>
 
