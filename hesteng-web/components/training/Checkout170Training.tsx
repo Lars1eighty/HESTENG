@@ -15,7 +15,7 @@ export default function Checkout170Training({ onComplete }: Checkout170TrainingP
       title="170"
       startScore={170}
       mode="solo"
-      attemptLabel="FORSØG 1 / 10"
+      soloAttempts={10}
       onComplete={onComplete}
     />
   );
