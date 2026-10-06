@@ -26,6 +26,39 @@ export default function Checkout170Training({ onComplete }: Checkout170TrainingP
     [attempts]
   );
 
+  function completeSession(completedAttempts: Checkout170Attempt[]) {
+    if (finished || completedAttempts.length === 0) return;
+
+    const closed = completedAttempts.filter(
+      (attempt): attempt is Checkout170Attempt & { darts: number } =>
+        attempt.closed && typeof attempt.darts === "number"
+    );
+    const checkouts = closed.length;
+    const checkoutAttempts = completedAttempts.length;
+    const checkoutPercent = (checkouts / checkoutAttempts) * 100;
+    const bestDarts = closed.length ? Math.min(...closed.map((attempt) => attempt.darts)) : 0;
+    const averageDarts = closed.length
+      ? closed.reduce((sum, attempt) => sum + attempt.darts, 0) / closed.length
+      : 0;
+
+    setFinished(true);
+    onComplete({
+      metrics: {
+        score: checkouts,
+        checkouts,
+        checkoutAttempts,
+        checkoutPercent,
+        bestDarts,
+        averageDarts,
+      },
+      details: {
+        startTarget: 170,
+        maxDartsPerAttempt: 9,
+        attempts: completedAttempts,
+      },
+    });
+  }
+
   function registerAttempt(darts: number | null) {
     if (!started || finished || attempts.length >= TOTAL_ATTEMPTS) return;
 
@@ -39,35 +72,9 @@ export default function Checkout170Training({ onComplete }: Checkout170TrainingP
 
     setAttempts(nextAttempts);
 
-    if (nextAttempts.length !== TOTAL_ATTEMPTS) return;
-
-    const closed = nextAttempts.filter(
-      (attempt): attempt is Checkout170Attempt & { darts: number } =>
-        attempt.closed && typeof attempt.darts === "number"
-    );
-    const checkouts = closed.length;
-    const checkoutPercent = (checkouts / TOTAL_ATTEMPTS) * 100;
-    const bestDarts = closed.length ? Math.min(...closed.map((attempt) => attempt.darts)) : 0;
-    const averageDarts = closed.length
-      ? closed.reduce((sum, attempt) => sum + attempt.darts, 0) / closed.length
-      : 0;
-
-    setFinished(true);
-    onComplete({
-      metrics: {
-        score: checkouts,
-        checkouts,
-        checkoutAttempts: TOTAL_ATTEMPTS,
-        checkoutPercent,
-        bestDarts,
-        averageDarts,
-      },
-      details: {
-        startTarget: 170,
-        maxDartsPerAttempt: 9,
-        attempts: nextAttempts,
-      },
-    });
+    if (nextAttempts.length === TOTAL_ATTEMPTS) {
+      completeSession(nextAttempts);
+    }
   }
 
   if (!started) {
@@ -136,9 +143,20 @@ export default function Checkout170Training({ onComplete }: Checkout170TrainingP
           </button>
         </div>
 
-        <p className="mt-4 text-center text-xs leading-5 text-gray-500">
-          Efter 10 forsøg gemmer HESTENG automatisk resultatet.
-        </p>
+        <div className="mt-4 flex flex-col items-center gap-3">
+          <p className="text-center text-xs leading-5 text-gray-500">
+            Efter 10 forsøg gemmer HESTENG automatisk resultatet.
+          </p>
+          {attempts.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => completeSession(attempts)}
+              className="rounded-xl border border-white/20 px-4 py-2 text-sm font-bold text-gray-200 transition hover:bg-white/10"
+            >
+              Afslut træning
+            </button>
+          ) : null}
+        </div>
       </div>
     </section>
   );
