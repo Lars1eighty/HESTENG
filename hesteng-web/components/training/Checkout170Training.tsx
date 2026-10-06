@@ -38,6 +38,7 @@ export default function Checkout170Training({ onComplete }: Checkout170TrainingP
         mode="solo"
         soloAttempts={10}
         maxDartsPerAttempt={maxDarts}
+        trackEntryAndDoubles
         onComplete={onComplete}
       />
     </div>
