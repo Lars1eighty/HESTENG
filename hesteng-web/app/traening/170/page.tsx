@@ -7,7 +7,7 @@ import Header from "@/components/Header";
 import Checkout170Training from "@/components/training/Checkout170Training";
 import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import { CHECKOUT_170_EXERCISE_ID } from "@/data/trainingExercises";
-import { saveTrainingResultToSharedStore } from "@/lib/trainingResultStore";
+import { saveTrainingResult } from "@/lib/trainingResultStore";
 import type { TrainingResult } from "@/lib/trainingTypes";
 
 export default function Checkout170Page() {
@@ -47,7 +47,7 @@ export default function Checkout170Page() {
     setSaveError(null);
 
     try {
-      await saveTrainingResultToSharedStore(result);
+      saveTrainingResult(result);
       setSavedResult(result);
     } catch (error) {
       console.error("Failed to save 170 training result", error);
@@ -80,13 +80,13 @@ export default function Checkout170Page() {
         {savedResult ? (
           <section className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-center sm:p-7">
             <div className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-300">Gennemført</div>
-            <div className="mt-3 text-5xl font-black text-white">{savedResult.metrics.checkouts ?? 0} / 10</div>
-            <div className="mt-1 text-sm text-gray-300">Lukkede 170</div>
+            <div className="mt-3 text-5xl font-black text-white">{formatAverage(savedResult.metrics.threeDartAverage)}</div>
+            <div className="mt-1 text-sm text-gray-300">3-pils snit</div>
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <ResultStat label="Checkout %" value={formatPercent(savedResult.metrics.checkoutPercent)} />
-              <ResultStat label="Bedste" value={formatDarts(savedResult.metrics.bestDarts)} />
-              <ResultStat label="Snit pile" value={formatAverage(savedResult.metrics.averageDarts)} />
-              <ResultStat label="Forsøg" value={savedResult.metrics.checkoutAttempts} />
+              <ResultStat label="Pile" value={savedResult.metrics.darts} />
+              <ResultStat label="Checkout" value={savedResult.metrics.checkout} />
+              <ResultStat label="Visits" value={savedResult.metrics.visits} />
+              <ResultStat label="3-pils snit" value={formatAverage(savedResult.metrics.threeDartAverage)} />
             </div>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/player/historik" className="rounded-2xl bg-white px-5 py-3 font-bold text-gray-950 transition hover:bg-gray-200">
