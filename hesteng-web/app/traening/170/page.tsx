@@ -65,18 +65,8 @@ export default function Checkout170Page() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
-      <Header />
-      <section className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.22em] text-orange-400">HESTENG Training</div>
-            <h1 className="mt-1 text-3xl font-black sm:text-4xl">170</h1>
-          </div>
-          <Link href="/traening" className="rounded-xl border border-gray-700 px-4 py-2 text-sm font-bold text-gray-200 transition hover:border-orange-400 hover:text-orange-300">
-            Til træning
-          </Link>
-        </div>
-
+      {savedResult ? <Header /> : null}
+      <section className={savedResult ? "mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10" : "mx-auto h-[100dvh] max-w-4xl overflow-hidden px-2 py-2 sm:px-4"}>
         {savedResult ? (
           <section className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-center sm:p-7">
             <div className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-300">Gennemført</div>
