@@ -15,7 +15,7 @@ type Props = {
 
 export default function TrainingPlayBoard({ title, status, option, score, recent = [], average = 0, controls, action }: Props) {
   return (
-    <div className="fixed inset-0 z-30 grid h-[100dvh] w-screen grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-1 overflow-hidden overscroll-none bg-gray-950 p-1 text-white touch-none">
+    <div className="fixed inset-0 z-30 grid h-[100dvh] w-screen grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-1 overflow-hidden overscroll-none bg-gray-950 p-1 text-white">
       <header className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-gray-900 px-3 py-2">
         <div className="text-xl font-black">{title}</div>
         <div className="flex items-center gap-3 text-xs font-bold text-gray-300">
