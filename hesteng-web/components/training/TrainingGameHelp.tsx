@@ -63,7 +63,7 @@ export default function TrainingGameHelp() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-4 top-[19rem] z-40 rounded-xl border border-orange-400/40 bg-gray-900/95 px-3 py-2 text-xs font-black text-orange-300 shadow-lg shadow-black/30 backdrop-blur transition hover:border-orange-400 hover:text-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:right-8 sm:top-[21rem] sm:px-4 sm:py-2 sm:text-sm"
+        className="fixed right-4 top-[22rem] z-40 rounded-xl border border-orange-400/40 bg-gray-900/95 px-3 py-2 text-xs font-black text-orange-300 shadow-lg shadow-black/30 backdrop-blur transition hover:border-orange-400 hover:text-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:right-8 sm:top-[24rem] sm:px-4 sm:py-2 sm:text-sm"
       >
         Sådan spiller du
       </button>
