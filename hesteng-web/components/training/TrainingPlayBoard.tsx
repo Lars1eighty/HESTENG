@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 type Props = {
   title: string;
   status?: string;
-  option?: string;
+  option?: ReactNode;
   score: number;
   recent?: number[];
   average?: number;
