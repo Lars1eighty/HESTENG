@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import Header from "@/components/Header";
 import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
-import { getTrainingExercise } from "@/data/trainingExercises";
+import { CHECKOUT_170_EXERCISE_ID, getTrainingExercise } from "@/data/trainingExercises";
 import {
   getTrainingResultsForPlayer,
   subscribeToTrainingResults,
@@ -38,6 +38,24 @@ function formatMetricValue(value: TrainingMetricValue | undefined, metric: Train
 }
 
 function getVisibleMetrics(result: TrainingResult, exercise: TrainingExercise | null) {
+  if (result.exerciseId === CHECKOUT_170_EXERCISE_ID) {
+    const checkouts = typeof result.metrics.checkouts === "number" ? result.metrics.checkouts : 0;
+    const attempts = typeof result.metrics.attempts === "number"
+      ? result.metrics.attempts
+      : typeof result.details?.attempts === "number"
+        ? result.details.attempts
+        : 10;
+    const percent = attempts > 0 ? Math.round((checkouts / attempts) * 1000) / 10 : 0;
+    const metrics = [
+      { label: "Lukkede", value: String(checkouts) },
+      { label: "Forsøg", value: String(attempts) },
+      { label: "Lukke %", value: `${percent}%` },
+    ];
+    if (typeof result.metrics.bestDarts === "number" && result.metrics.bestDarts > 0) metrics.push({ label: "Bedste antal pile", value: String(result.metrics.bestDarts) });
+    if (typeof result.metrics.averageDarts === "number" && result.metrics.averageDarts > 0) metrics.push({ label: "Snit pile", value: String(Number(result.metrics.averageDarts.toFixed(2))) });
+    return metrics;
+  }
+
   if (!exercise) {
     return Object.entries(result.metrics)
       .filter(([, value]) => value !== undefined && value !== null && value !== "")
