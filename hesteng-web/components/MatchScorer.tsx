@@ -472,6 +472,21 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     setCheckoutDarts("");
   }
 
+  function editLastEntry() {
+    if (hasPendingCheckoutPrompt || matchWinner) return;
+    const previous = history.at(-1);
+    if (!previous) return;
+    const editedPlayer = previous.currentPlayer;
+    const oldScore = players[editedPlayer].lastInput ?? 0;
+    setPlayers(previous.players.map((player) => ({ ...player })));
+    setCurrentPlayer(editedPlayer);
+    setHistory((items) => items.slice(0, -1));
+    resetInputState();
+    if (!isDartByDartScoring) setInput(String(oldScore));
+    setMessage("Ret tallet og tryk ENTER.");
+    setSaved(false);
+  }
+
   function undo() {
     if (hasPendingCheckoutPrompt) return;
     const previous = history.at(-1);
@@ -493,54 +508,34 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
     : "";
 
   const playerCard = (player: PlayerScore, index: 0 | 1) => (
-    <div className={`rounded-2xl border-2 ${index === 0 ? "border-blue-600" : "border-red-600"} bg-gray-900 p-5`}>
-      <div className={`text-sm font-semibold ${index === 0 ? "text-blue-400" : "text-red-400"}`}>SPILLER {index + 1}</div>
-      <div className="mt-1 text-2xl font-bold">{player.name}</div>
-      <div className="text-xs text-gray-500">Sidste indtastning: {player.lastInput ?? "—"}</div>
-      <div className="mt-2 flex items-center justify-between gap-4">
-        <div className="text-7xl font-bold tabular-nums">{player.remaining}</div>
-        <div className={`min-w-28 rounded-xl px-4 py-3 ${index === 0 ? "bg-blue-500/10 text-blue-400" : "bg-red-500/10 text-red-400"}`}>
-          <div className="text-center text-xs font-bold">SENESTE 5</div>
-          <div className="mt-2 space-y-1 text-center text-sm font-bold tabular-nums text-white">
-            {player.recentScores.length ? player.recentScores.map((score, scoreIndex) => (
-              <div key={`${player.name}-${scoreIndex}-${score}`}>{score}</div>
-            )) : (
-              <div className="text-gray-600">—</div>
-            )}
-          </div>
-          <div className="mt-3 border-t border-gray-700 pt-2 text-center text-xs text-gray-400">INDGANGE <b className="text-white">{player.legEntries}</b></div>
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-5 border-t border-gray-800 pt-3 text-center text-xs text-gray-400">
-        <div>SNIT / LEG<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
-        <div>SNIT / KAMP<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].avg.toFixed(2)}</b></div>
-        <div>LUKKET / FORSØGT<br /><b>{player.checkouts} / {player.checkoutAttempts}</b></div>
-        <div>LUKKE %<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{stats[index].closePercent}%</b></div>
-        <div>180&apos;ERE<br /><b className={index === 0 ? "text-blue-400" : "text-red-400"}>{player.oneEighties}</b></div>
-      </div>
+    <div className={`min-w-0 rounded-xl border-2 p-2 sm:p-3 ${currentPlayer === index ? "border-green-500 bg-gray-800" : "border-gray-700 bg-gray-900"}`}>
+      <div className="truncate text-center text-sm font-bold sm:text-lg">{player.name}</div>
+      <div className="text-center text-4xl font-black tabular-nums sm:text-6xl">{player.remaining}</div>
+      <div className="text-center text-[10px] text-gray-400 sm:text-xs">Snit {stats[index].avg.toFixed(1)} · Sidst {player.lastInput ?? "—"}</div>
     </div>
   );
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_260px_minmax(0,1fr)]">
-        {playerCard(players[0], 0)}
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-center">
-          <div className="text-sm text-gray-400">LEGS · BEDST AF {bestOfLegs}</div>
-          <div className="mt-4 text-4xl font-bold tabular-nums"><span className="text-blue-400">{players[0].legs}</span><span className="text-gray-600"> – </span><span className="text-red-400">{players[1].legs}</span></div>
-          <div className="mt-8 text-sm text-gray-500">NÆSTE SPILLER</div>
-          <div className={`mt-1 text-xl font-bold ${currentPlayer === 0 ? "text-blue-400" : "text-red-400"}`}>{current.name}</div>
+    <div className="flex h-[100dvh] min-h-0 flex-col gap-1 overflow-hidden bg-gray-950 p-2 text-white sm:gap-2 sm:p-3">
+      <div className="shrink-0">
+        <div className="grid grid-cols-2 gap-2">
+          {playerCard(players[0], 0)}
+          {playerCard(players[1], 1)}
         </div>
-        {playerCard(players[1], 1)}
+        <div className="mt-1 text-center text-sm font-bold tabular-nums">
+          LEGS · <span className="text-blue-400">{players[0].legs}</span> – <span className="text-red-400">{players[1].legs}</span>
+          <span className="ml-2 text-xs font-normal text-gray-400">Bedst af {bestOfLegs}</span>
+        </div>
       </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto">
       {pendingBull && !matchWinner && (
         <div className="rounded-2xl border border-yellow-600 bg-gray-900 p-5 text-center">
           <div className="text-sm font-semibold text-yellow-400">TÆTTEST PÅ BULL</div>
           <div className="mt-1 text-2xl font-bold">Vælg hvem der vinder leget</div>
           <div className="mt-4 grid gap-2 md:grid-cols-2">
             {players.map((player, index) => (
-              <button key={player.name} onClick={() => awardBullLeg(index as 0 | 1)} className={`rounded-2xl border py-5 text-xl font-bold ${index === 0 ? "border-blue-600 bg-blue-500/10 text-blue-400" : "border-red-600 bg-red-500/10 text-red-400"}`}>
+              <button key={player.name} onClick={() => awardBullLeg(index as 0 | 1)} className={`rounded-2xl border py-2 text-xl font-bold ${index === 0 ? "border-blue-600 bg-blue-500/10 text-blue-400" : "border-red-600 bg-red-500/10 text-red-400"}`}>
                 {player.name}
               </button>
             ))}
@@ -555,7 +550,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
           <div className="mt-1 text-gray-400">Checkout: {pendingEntryCheckout.score}</div>
           <div className={`mt-4 grid gap-2 ${getCheckoutEntryOptions(pendingEntryCheckout.score).length === 1 ? "grid-cols-1" : getCheckoutEntryOptions(pendingEntryCheckout.score).length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
             {getCheckoutEntryOptions(pendingEntryCheckout.score).map((darts) => (
-              <button key={darts} onClick={() => choosePendingEntryDarts(darts)} className={`rounded-xl border py-5 text-3xl font-bold ${darts === 3 ? "border-green-600 bg-green-500 text-black" : darts === 2 ? "border-yellow-500 bg-yellow-400 text-black" : "border-red-600 bg-red-500 text-white"}`}>{darts}</button>
+              <button key={darts} onClick={() => choosePendingEntryDarts(darts)} className={`rounded-xl border py-2 text-3xl font-bold ${darts === 3 ? "border-green-600 bg-green-500 text-black" : darts === 2 ? "border-yellow-500 bg-yellow-400 text-black" : "border-red-600 bg-red-500 text-white"}`}>{darts}</button>
             ))}
           </div>
         </div>
@@ -566,8 +561,8 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
           <div className="text-sm text-blue-400">BUST / MISS</div>
           <div className="mt-1 text-2xl font-bold">Hvor mange pile brugt på double?</div>
           <div className="mt-1 text-gray-400">Rest: {current.remaining}</div>
-          <div className="mt-4 grid grid-cols-4 gap-2">{[0, 1, 2, 3].map((darts) => <button key={darts} onClick={() => setCheckoutDarts(darts.toString())} className={`rounded-xl border py-5 text-2xl font-bold ${checkoutDarts === darts.toString() ? "border-blue-500 bg-blue-500/20" : "border-gray-800 bg-gray-900"}`}>{darts}</button>)}</div>
-          <button onClick={saveBustMissDarts} disabled={!checkoutDarts} className="mt-3 w-full rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">GEM BUST / MISS</button>
+          <div className="mt-4 grid grid-cols-4 gap-2">{[0, 1, 2, 3].map((darts) => <button key={darts} onClick={() => setCheckoutDarts(darts.toString())} className={`rounded-xl border py-2 text-2xl font-bold ${checkoutDarts === darts.toString() ? "border-blue-500 bg-blue-500/20" : "border-gray-800 bg-gray-900"}`}>{darts}</button>)}</div>
+          <button onClick={saveBustMissDarts} disabled={!checkoutDarts} className="mt-3 w-full rounded-xl bg-green-500 py-2 text-xl font-bold text-black disabled:opacity-40">GEM BUST / MISS</button>
         </div>
       )}
 
@@ -579,14 +574,14 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
           <div className="mt-1 text-xs text-gray-500">Indgangspile: {pendingCheckout.entryDarts}</div>
           <div className="mt-4 grid grid-cols-4 gap-2">{[0, 1, 2, 3].map((darts) => {
             const isAllowed = pendingCheckout.remaining !== 0 || !pendingCheckout.possibleAttempts || pendingCheckout.possibleAttempts.includes(darts);
-            return <button key={darts} onClick={() => setCheckoutDarts(darts.toString())} disabled={!isAllowed} className={`rounded-xl border py-5 text-2xl font-bold disabled:opacity-30 ${checkoutDarts === darts.toString() ? "border-blue-500 bg-blue-500/20" : "border-gray-800 bg-gray-900"}`}>{darts}</button>;
+            return <button key={darts} onClick={() => setCheckoutDarts(darts.toString())} disabled={!isAllowed} className={`rounded-xl border py-2 text-2xl font-bold disabled:opacity-30 ${checkoutDarts === darts.toString() ? "border-blue-500 bg-blue-500/20" : "border-gray-800 bg-gray-900"}`}>{darts}</button>;
           })}</div>
-          <button onClick={saveCheckoutDarts} disabled={!checkoutDarts || (pendingCheckout.remaining === 0 && checkoutDarts === "0")} className="mt-3 w-full rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">GEM LUKNING</button>
+          <button onClick={saveCheckoutDarts} disabled={!checkoutDarts || (pendingCheckout.remaining === 0 && checkoutDarts === "0")} className="mt-3 w-full rounded-xl bg-green-500 py-2 text-xl font-bold text-black disabled:opacity-40">GEM LUKNING</button>
         </div>
       )}
 
-      <div className="grid grid-cols-[minmax(180px,0.34fr)_96px_minmax(0,1fr)] gap-2">
-        <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 px-6">
+      <div className="grid grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)] gap-1 sm:gap-2">
+        <div className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 px-2">
           {activeInputMode === "darts" ? (
             <>
               <div className="text-2xl font-bold tabular-nums text-white">{dartScore}</div>
@@ -606,7 +601,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
         <button onClick={clearInput} disabled={hasPendingCheckoutPrompt} className="rounded-2xl border border-gray-800 bg-gray-900 text-xl font-bold disabled:opacity-40">CLR</button>
         <div className={`grid gap-2 ${checkoutEntryOptions.length === 1 ? "grid-cols-1" : checkoutEntryOptions.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
           {[...checkoutEntryOptions].sort((a, b) => b - a).map((darts) => (
-            <button key={darts} onClick={() => chooseCheckoutEntryDarts(darts)} disabled={!canUseCheckoutEntry && checkoutEntryDarts !== darts} title="Antal pile brugt på indgangen" className={`min-h-[76px] rounded-2xl border text-4xl font-bold ${checkoutEntryDarts === darts ? "border-white/80 ring-4 ring-white/30" : "border-transparent disabled:opacity-40"} ${darts === 3 ? "bg-green-500 text-black" : darts === 2 ? "bg-yellow-400 text-black" : "bg-red-500 text-white"}`}>{darts}</button>
+            <button key={darts} onClick={() => chooseCheckoutEntryDarts(darts)} disabled={!canUseCheckoutEntry && checkoutEntryDarts !== darts} title="Antal pile brugt på indgangen" className={`min-h-[76px] rounded-2xl border text-xl font-bold ${checkoutEntryDarts === darts ? "border-white/80 ring-4 ring-white/30" : "border-transparent disabled:opacity-40"} ${darts === 3 ? "bg-green-500 text-black" : darts === 2 ? "bg-yellow-400 text-black" : "bg-red-500 text-white"}`}>{darts}</button>
           ))}
         </div>
       </div>
@@ -623,21 +618,21 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       </div>
 
       {!isDartByDartScoring && (
-        <div className="grid grid-cols-5 gap-2">
-          <div className="grid gap-2">{QUICK_LEFT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
-          <div className="col-span-3 grid gap-2">{NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-2">{row.map((score) => <button key={score} onClick={() => addDigit(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-gray-800 bg-gray-900 py-5 text-3xl font-bold disabled:opacity-40">{score}</button>)}</div>)}</div>
-          <div className="grid gap-2">{QUICK_RIGHT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-green-800 bg-green-500/10 py-5 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
+        <div className="grid grid-cols-5 gap-1">
+          <div className="grid gap-1">{QUICK_LEFT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-green-800 bg-green-500/10 py-2 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
+          <div className="col-span-3 grid gap-2">{NUMBER_ROWS.map((row) => <div key={row[0]} className="grid grid-cols-3 gap-1">{row.map((score) => <button key={score} onClick={() => addDigit(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-gray-800 bg-gray-900 py-2 text-3xl font-bold disabled:opacity-40">{score}</button>)}</div>)}</div>
+          <div className="grid gap-1">{QUICK_RIGHT.map((score) => <button key={score} onClick={() => chooseScore(score)} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-green-800 bg-green-500/10 py-2 text-2xl font-bold text-green-400 disabled:opacity-40">{score}</button>)}</div>
         </div>
       )}
 
       {activeInputMode === "darts" && (
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1">
             {MULTIPLIERS.map((multiplier) => (
               <button key={multiplier} onClick={() => setDartMultiplier(multiplier)} disabled={hasPendingCheckoutPrompt || dartThrows.length >= 3} className={`rounded-xl border py-3 text-lg font-bold disabled:opacity-40 ${dartMultiplier === multiplier ? "border-blue-500 bg-blue-500/20 text-blue-300" : "border-gray-800 bg-gray-950 text-gray-300"}`}>{multiplier}</button>
             ))}
           </div>
-          <div className="mt-2 grid grid-cols-5 gap-2">
+          <div className="mt-2 grid grid-cols-5 gap-1">
             <button onClick={() => addDart(0)} disabled={hasPendingCheckoutPrompt || dartThrows.length >= 3} className="rounded-xl border border-gray-800 bg-gray-950 py-4 text-xl font-bold disabled:opacity-40">0</button>
             {DART_TARGET_ROWS.flat().map((target) => (
               <button key={target} onClick={() => addDart(target)} disabled={hasPendingCheckoutPrompt || dartThrows.length >= 3 || (target === 25 && dartMultiplier === "T")} className="rounded-xl border border-gray-800 bg-gray-950 py-4 text-xl font-bold disabled:opacity-40">{target}</button>
@@ -648,13 +643,13 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       )}
 
       <div className="grid grid-cols-4 gap-2">
-        <button onClick={undo} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-red-900 bg-red-500/10 py-5 text-xl font-bold text-red-400 disabled:opacity-40">↶ UNDO</button>
-        <button onClick={addScorePart} disabled={hasPendingCheckoutPrompt || isDartByDartScoring || !input} className="rounded-xl border border-orange-500/70 bg-orange-500/10 py-5 text-3xl font-black text-orange-300 disabled:opacity-40">+</button>
-        <button onClick={() => (input ? addDigit(0) : chooseScore(180))} disabled={hasPendingCheckoutPrompt || isDartByDartScoring} className="rounded-xl border border-blue-600 bg-blue-600 py-5 text-2xl font-bold text-white disabled:opacity-40">{input ? "0" : "180"}</button>
-        <button onClick={showBustMiss ? startBustMiss : enterScore} disabled={hasPendingCheckoutPrompt} className="rounded-xl bg-green-500 py-5 text-xl font-bold text-black disabled:opacity-40">{showBustMiss ? "BUST / MISS" : "ENTER →"}</button>
+        <button onClick={undo} disabled={hasPendingCheckoutPrompt} className="rounded-xl border border-red-900 bg-red-500/10 py-2 text-xl font-bold text-red-400 disabled:opacity-40">↶ UNDO</button>
+        <button onClick={addScorePart} disabled={hasPendingCheckoutPrompt || isDartByDartScoring || !input} className="rounded-xl border border-orange-500/70 bg-orange-500/10 py-2 text-3xl font-black text-orange-300 disabled:opacity-40">+</button>
+        <button onClick={() => (input ? addDigit(0) : chooseScore(180))} disabled={hasPendingCheckoutPrompt || isDartByDartScoring} className="rounded-xl border border-blue-600 bg-blue-600 py-2 text-2xl font-bold text-white disabled:opacity-40">{input ? "0" : "180"}</button>
+        <button onClick={showBustMiss ? startBustMiss : enterScore} disabled={hasPendingCheckoutPrompt} className="rounded-xl bg-green-500 py-2 text-xl font-bold text-black disabled:opacity-40">{showBustMiss ? "BUST / MISS" : "ENTER →"}</button>
       </div>
 
-      <div className="text-center text-sm text-gray-500">Hver indgang registreres som én samlet score.</div>
+      <button onClick={editLastEntry} disabled={!history.length || hasPendingCheckoutPrompt || !!matchWinner} className="w-full rounded-lg border border-amber-600/70 py-1 text-sm font-semibold text-amber-300 disabled:opacity-30">RET SIDSTE INDTASTNING</button>
       {message && <div className="text-center text-sm text-gray-400">{message}</div>}
       {matchWinner && (
         <div className="rounded-2xl border border-green-800 bg-green-500/10 p-5">
@@ -665,4 +660,4 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       )}
     </div>
   );
-}
+}      </div>\n
