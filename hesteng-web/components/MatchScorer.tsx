@@ -660,4 +660,4 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
       )}
     </div>
   );
-}      </div>\n
+}
