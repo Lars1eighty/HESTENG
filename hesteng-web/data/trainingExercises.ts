@@ -42,6 +42,12 @@ export const trainingExercises: TrainingExercise[] = [
     isActive: true,
     metrics: [
       { key: "durationSeconds", label: "Tid", valueType: "duration", personalBest: "lowerIsBetter" },
+      { key: "dartsUsed", label: "Pile brugt", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "visits", label: "Indgange", valueType: "count" },
+      { key: "hits", label: "Doubler ramt", valueType: "count" },
+      { key: "hitPercent", label: "Doubleprocent", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "firstDartHits", label: "1. pils træffere", valueType: "count" },
+      { key: "firstDartHitPercent", label: "1. pils træf %", valueType: "percent", personalBest: "higherIsBetter" },
     ],
   },
   {
@@ -52,6 +58,9 @@ export const trainingExercises: TrainingExercise[] = [
     isActive: true,
     metrics: [
       { key: "durationSeconds", label: "Tid", valueType: "duration", personalBest: "lowerIsBetter" },
+      { key: "visits", label: "Indgange", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "successes", label: "Klarede singler", valueType: "count" },
+      { key: "successPercent", label: "Succesprocent", valueType: "percent", personalBest: "higherIsBetter" },
     ],
   },
   {
@@ -76,6 +85,43 @@ export const trainingExercises: TrainingExercise[] = [
       { key: "visits", label: "Indgange", valueType: "count", personalBest: "lowerIsBetter" },
       { key: "points", label: "Point", valueType: "count" },
       { key: "dartsUsed", label: "Pile brugt", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "pointsPerVisit", label: "Point pr. indgang", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "scoring100Plus", label: "Indgange på 100+", valueType: "count", personalBest: "higherIsBetter" },
+    ],
+  },
+  {
+    id: "mobile-checkout-60-69", name: "Lukninger 60–69 (mobil)", type: "historical-mobile",
+    description: "Ti lukninger fra 60 til 69 med tre pile pr. lukning.", isActive: true,
+    metrics: [
+      { key: "checkoutPercent", label: "Lukkeprocent", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "checkouts", label: "Lukninger", valueType: "count" },
+      { key: "checkoutAttempts", label: "Indgange", valueType: "count" },
+    ],
+  },
+  {
+    id: "mobile-double-combos", name: "Double-kombinationer (mobil)", type: "historical-mobile",
+    description: "D20–D10–D5, D16–D8–D4, D12–D6–D3 og D8–D4–D2, gentaget 5 gange.", isActive: true,
+    metrics: [
+      { key: "hitPercent", label: "Doubleprocent", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "hits", label: "Træffere", valueType: "count" },
+      { key: "attempts", label: "Pile", valueType: "count" },
+    ],
+  },
+  {
+    id: "mobile-501-five-legs", name: "501 – 5 legs (mobil)", type: "historical-mobile",
+    description: "En samlet fem-legs-træning i HESTENG mobil v7.", isActive: true,
+    metrics: [
+      { key: "threeDartAverage", label: "3-pils snit", valueType: "number", personalBest: "higherIsBetter" },
+      { key: "legs", label: "Afsluttede legs", valueType: "count" },
+      { key: "visits", label: "Indgange", valueType: "count" },
+      { key: "dartsUsed", label: "Pile", valueType: "count" },
+      { key: "checkouts", label: "Lukninger", valueType: "count" },
+      { key: "checkoutAttempts", label: "Doubleforsøg", valueType: "count" },
+      { key: "checkoutPercent", label: "Lukkeprocent", valueType: "percent", personalBest: "higherIsBetter" },
+      { key: "high100", label: "100+", valueType: "count" },
+      { key: "high140", label: "140+", valueType: "count" },
+      { key: "high180", label: "180", valueType: "count" },
+      { key: "busts", label: "Busts", valueType: "count" },
     ],
   },
 
