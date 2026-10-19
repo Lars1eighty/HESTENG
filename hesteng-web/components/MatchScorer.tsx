@@ -658,6 +658,7 @@ export default function MatchScorer({ matchId, clubId, clubNightId, player1, pla
           <div className="mt-4 text-center text-sm font-semibold text-green-400">{saved ? "Kampen er gemt." : "Gemmer kamp…"}</div>
         </div>
       )}
+      </div>
     </div>
   );
 }
