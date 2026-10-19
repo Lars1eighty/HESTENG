@@ -32,5 +32,52 @@ export const trainingExercises: TrainingExercise[] = [
   { id: PRIESTLEY_TRIPLES_EXERCISE_ID, name: "Priestley's Triples", type: "triple-training", description: "3 pile mod hver triple fra T10 til T20. Kun triple-hits tæller.", isActive: true, metrics: [{ key: "score", label: "Score", valueType: "number", personalBest: "higherIsBetter" }, { key: "hits", label: "Hits", valueType: "count" }, { key: "attempts", label: "Forsøg", valueType: "count" }, { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" }, { key: "triples", label: "Triples", valueType: "count", personalBest: "higherIsBetter" }, { key: "singles", label: "Singles", valueType: "count" }, { key: "doubles", label: "Doubles", valueType: "count" }, { key: "misses", label: "Misses", valueType: "count" }] },
   { id: AROUND_THE_WORLD_EXERCISE_ID, name: "Around the World", type: "accuracy-training", description: "Ram 1-20 og Bull i rækkefølge. Variant afgør segmentet.", isActive: true, metrics: [{ key: "dartsUsed", label: "Pile brugt", valueType: "count", personalBest: "lowerIsBetter" }, { key: "hits", label: "Hits", valueType: "count" }, { key: "attempts", label: "Forsøg", valueType: "count" }, { key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" }, { key: "misses", label: "Misses", valueType: "count" }] },
   { id: TARGET_TRAINING_EXERCISE_ID, name: "Target Training", type: "custom-target-training", description: "Sammensæt 1-3 targets og træn hits over valgte runder.", isActive: true, metrics: [{ key: "hitPercent", label: "Træf %", valueType: "percent", personalBest: "higherIsBetter" }, { key: "hits", label: "Hits", valueType: "count", personalBest: "higherIsBetter" }, { key: "attempts", label: "Forsøg", valueType: "count" }] },
+  // Historiske resultater fra den separate HESTENG-mobiltræningsapp.
+  // De må ikke sammenblandes med øvelser, der bruger andre regler eller andre mål.
+  {
+    id: "mobile-around-the-world-doubles",
+    name: "Jorden rundt – Doubler (mobil)",
+    type: "historical-mobile",
+    description: "Historisk mobiløvelse: jorden rundt på doubler målt i tid.",
+    isActive: true,
+    metrics: [
+      { key: "durationSeconds", label: "Tid", valueType: "duration", personalBest: "lowerIsBetter" },
+    ],
+  },
+  {
+    id: "mobile-big-singles",
+    name: "Jorden rundt – Store singler (mobil)",
+    type: "historical-mobile",
+    description: "Historisk mobiløvelse: store singler målt i tid.",
+    isActive: true,
+    metrics: [
+      { key: "durationSeconds", label: "Tid", valueType: "duration", personalBest: "lowerIsBetter" },
+    ],
+  },
+  {
+    id: "mobile-60-challenge",
+    name: "60 Challenge (mobil)",
+    type: "historical-mobile",
+    description: "Nå mindst 60 point i 10 godkendte indgange. Færre indgange er bedre.",
+    isActive: true,
+    metrics: [
+      { key: "visits", label: "Indgange", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "successes", label: "Godkendte", valueType: "count" },
+      { key: "successPercent", label: "Godkendte indgange %", valueType: "percent", personalBest: "higherIsBetter" },
+    ],
+  },
+  {
+    id: "mobile-scoring-20",
+    name: "Scoring 20 (mobil)",
+    type: "historical-mobile",
+    description: "Nå 20 point. Færre indgange og pile er bedre.",
+    isActive: true,
+    metrics: [
+      { key: "visits", label: "Indgange", valueType: "count", personalBest: "lowerIsBetter" },
+      { key: "points", label: "Point", valueType: "count" },
+      { key: "dartsUsed", label: "Pile brugt", valueType: "count", personalBest: "lowerIsBetter" },
+    ],
+  },
+
 ];
 export function getTrainingExercise(exerciseId: string) { return trainingExercises.find((exercise) => exercise.id === exerciseId) ?? null; }
