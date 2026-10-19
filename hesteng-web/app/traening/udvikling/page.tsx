@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import { getTrainingExercise, trainingExercises } from "@/data/trainingExercises";
 import { syncTrainingResultsFromSharedStore } from "@/lib/trainingResultStore";
+import { convertMobileV7Backup } from "@/lib/mobileTrainingImport";
 import type { TrainingExercise, TrainingMetricDefinition, TrainingResult } from "@/lib/trainingTypes";
 
 type HistoricalEntry = Pick<TrainingResult, "exerciseId" | "completedAt" | "metrics"> & {
@@ -295,13 +296,20 @@ function ProgressContent({ playerId, clubId, playerName }: { playerId: string; c
   async function handleImportFile(file: File | undefined) {
     setError(""); setNotice(""); setImportRows([]); setImportFileName("");
     if (!file) return;
-    if (file.size > 100_000) { setError("Filen er for stor. Maks. 100 KB."); return; }
+    if (file.size > 4_000_000) { setError("Filen er for stor. Maks. 4 MB."); return; }
     try {
       const parsed: unknown = JSON.parse(await file.text());
-      if (!Array.isArray(parsed) || parsed.length > 100 || parsed.length === 0) {
-        throw new Error("Brug en JSON-liste med 1-100 træningsresultater.");
+      let entries: unknown[];
+      if (Array.isArray(parsed)) {
+        if (parsed.length > 100 || parsed.length === 0) {
+          throw new Error("Brug en JSON-liste med 1-100 træningsresultater.");
+        }
+        entries = parsed;
+      } else {
+        // The full mobile backup stays on the phone. Import only finished sessions.
+        entries = convertMobileV7Backup(parsed);
       }
-      const normalized = parsed.map(validateEntry);
+      const normalized = entries.map(validateEntry);
       if (normalized.some((row) => !row)) {
         throw new Error("Et eller flere resultater indeholder ugyldig øvelse, dato eller tal.");
       }
@@ -453,9 +461,9 @@ function ProgressContent({ playerId, clubId, playerName }: { playerId: string; c
           </form>
 
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-            <h2 className="text-xl font-black">Indlæs flere gamle resultater</h2>
+            <h2 className="text-xl font-black">Overfør træning fra mobilappen</h2>
             <p className="mt-2 text-sm text-gray-400">
-              Har du tidligere træningstal samlet i en JSON-fil, kan du indlæse dem. Du ser dem, før noget gemmes.
+              Har du en v7-sikkerhedskopi fra den lille mobilapp eller en JSON-fil med tidligere træningstal, kan du indlæse den direkte. Kun afsluttede træninger overføres. Du ser tallene, før noget gemmes.
               Dine tal knyttes kun til den spiller, du er logget ind som.
             </p>
             <label className="mt-4 block text-sm font-bold text-gray-300">Vælg resultatfil
@@ -478,7 +486,7 @@ function ProgressContent({ playerId, clubId, playerName }: { playerId: string; c
               </button>
             </div>}
             <p className="mt-5 text-xs font-semibold text-gray-500">
-              Eksisterende resultater overskrives ikke. Fejl ved gemning bliver vist, så du ikke tror, noget er gemt, når det ikke er.
+              I mobilapp v7: Åbn Statistik eller Historik → Eksportér sikkerhedskopi. Vælg den hentede JSON-fil her. Eksisterende resultater overskrives ikke, og dine mobilregistreringer bliver ikke slettet.
             </p>
           </div>
         </section>
