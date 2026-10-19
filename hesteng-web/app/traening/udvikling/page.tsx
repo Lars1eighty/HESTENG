@@ -23,6 +23,27 @@ function formatNumber(value: number | null, digits = 1) {
   return value === null ? "–" : value.toLocaleString("da-DK", { maximumFractionDigits: digits });
 }
 
+function formatMetricValue(value: number | null, metric: TrainingMetricDefinition) {
+  if (value === null) return "–";
+  if (metric.valueType === "duration") {
+    const centiseconds = Math.round(Math.abs(value) * 100);
+    const minutes = Math.floor(centiseconds / 6000);
+    const seconds = Math.floor((centiseconds % 6000) / 100);
+    const fractions = centiseconds % 100;
+    return `${value < 0 ? "-" : ""}${minutes}:${String(seconds).padStart(2, "0")},${String(fractions).padStart(2, "0")}`;
+  }
+  return `${formatNumber(value, 2)}${metric.valueType === "percent" ? "%" : ""}`;
+}
+
+function formatMetricChange(improvement: number | null, metric: TrainingMetricDefinition) {
+  if (improvement === null) return "–";
+  if (metric.valueType === "duration") {
+    const amount = formatMetricValue(Math.abs(improvement), metric);
+    return improvement > 0 ? `Bedre ${amount}` : improvement < 0 ? `Langsommere ${amount}` : "Uændret";
+  }
+  return `${improvement > 0 ? "+" : ""}${formatMetricValue(improvement, metric)}`;
+}
+
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" });
 }
@@ -107,7 +128,7 @@ function fingerprint(entry: HistoricalEntry) {
   return `hesteng-historical-${(a >>> 0).toString(16)}-${(b >>> 0).toString(16)}`;
 }
 
-function MiniChart({ points, label }: { points: ChartPoint[]; label: string }) {
+function MiniChart({ points, metric }: { points: ChartPoint[]; metric: TrainingMetricDefinition }) {
   if (!points.length) {
     return <p className="py-8 text-sm font-semibold text-gray-400">Ingen registrerede tal for denne måling endnu.</p>;
   }
@@ -126,7 +147,7 @@ function MiniChart({ points, label }: { points: ChartPoint[]; label: string }) {
   });
   return (
     <div>
-      <svg role="img" aria-label={`Udvikling i ${label} over ${points.length} målinger`}
+      <svg role="img" aria-label={`Udvikling i ${metric.label} over ${points.length} målinger`}
         viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible">
         {[0.25, 0.5, 0.75].map((fraction) => (
           <line key={fraction} x1="12" y1={height * fraction} x2={width - 12} y2={height * fraction}
@@ -138,7 +159,7 @@ function MiniChart({ points, label }: { points: ChartPoint[]; label: string }) {
         {coordinates.map(({ x, y, date, value }, i) => (
           <circle key={`${date}-${i}`} cx={x} cy={y} r="5" fill="#fb923c"
             stroke="#111827" strokeWidth="2">
-            <title>{`${formatDate(date)}: ${formatNumber(value, 2)}`}</title>
+            <title>{`${formatDate(date)}: ${formatMetricValue(value, metric)}`}</title>
           </circle>
         ))}
       </svg>
@@ -370,16 +391,16 @@ function ProgressContent({ playerId, clubId, playerName }: { playerId: string; c
           </div>
           <div className="mt-5 grid grid-cols-3 gap-2">
             {[
-              ["Seneste", formatNumber(last, 2)],
-              ["Snit", formatNumber(averages, 2)],
-              ["Udvikling", improvement === null ? "–" : `${improvement >= 0 ? "+" : ""}${formatNumber(improvement, 2)}`],
+              ["Seneste", formatMetricValue(last, metric)],
+              ["Snit", formatMetricValue(averages, metric)],
+              ["Udvikling", formatMetricChange(improvement, metric)],
             ].map(([label, value]) => <div key={label} className="rounded-xl bg-gray-950 p-3">
               <p className="text-xs font-bold text-gray-400">{label}</p>
               <p className="mt-1 text-xl font-black tabular-nums sm:text-2xl">{value}</p>
             </div>)}
           </div>
           <div className="mt-5 rounded-xl bg-gray-950 p-3">
-            <MiniChart points={chartPoints.slice(-16)} label={metric.label} />
+            <MiniChart points={chartPoints.slice(-16)} metric={metric} />
           </div>
           <p className="mt-4 text-sm font-semibold text-gray-300">
             {chartPoints.length < 2
@@ -394,7 +415,7 @@ function ProgressContent({ playerId, clubId, playerName }: { playerId: string; c
             {selectedResults.slice(-5).reverse().map((row) => (
               <div key={row.id} className="flex justify-between gap-3 border-t border-gray-800 py-2 text-sm">
                 <span className="text-gray-400">{formatDate(row.completedAt)}</span>
-                <span className="font-black">{formatNumber(getMetricValue(row, metric.key), 2)} {metric.valueType === "percent" ? "%" : ""}</span>
+                <span className="font-black">{formatMetricValue(getMetricValue(row, metric.key), metric)}</span>
               </div>
             ))}
           </div>
