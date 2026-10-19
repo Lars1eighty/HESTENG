@@ -1263,6 +1263,9 @@ function TrainingDashboard({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-2xl font-black">Min træning</h2>
+            <a href="/traening/udvikling" className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-orange-500/60 px-4 py-2 text-sm font-black text-orange-300 hover:bg-orange-500/10">
+              Mine træningstal og tidligere resultater →
+            </a>
             <p className="mt-1 text-sm font-semibold text-gray-500">Overblik, udvikling og næste mål</p>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:w-full sm:max-w-md">
