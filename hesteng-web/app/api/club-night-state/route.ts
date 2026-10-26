@@ -39,8 +39,9 @@ export async function GET() {
   const access = await getAccess();
   if (!access) return error("Authentication required", 401);
 
+  if (access.readable.size === 0) return error("Ingen klubadgang.", 403);
   const state = await readSharedClubNightState();
-  return NextResponse.json(scopeClubNightState(state, access.readable));
+  return NextResponse.json({ ...scopeClubNightState(state, access.readable), accessibleClubIds: [...access.readable] });
 }
 
 export async function POST(request: NextRequest) {
@@ -49,6 +50,10 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") return error("Ugyldig anmodning.", 400);
+
+  if (body.type && body.type !== "snapshot" && body.type !== "completedMatch" && body.type !== "matches") {
+    return error("Ukendt handling.", 400);
+  }
 
   const existing = await readSharedClubNightState();
 
