@@ -19,6 +19,7 @@ const state = {
     { id: "match-a", clubId: "club-a", clubNightId: "a-night" },
     { id: "match-b", clubId: "club-b", clubNightId: "b-night" },
     { id: "historical-a", clubId: "club-a", clubNightId: "removed-a-night" },
+    { id: "forged-a", clubId: "club-a", clubNightId: "b-night" },
   ],
 };
 
