@@ -134,7 +134,7 @@ export async function replaceSharedClubNightSnapshot(input: {
     const clubNights = replaceScopedClubNights(
       current.clubNights, input.clubNights, input.clubId, mergeConcurrentMatchProgress,
     );
-    const requestedCurrentId = clubNights.some((night) => night.id === input.currentClubNightId)
+    const requestedCurrentId = clubNights.some((night) => night.clubId === input.clubId && night.id === input.currentClubNightId)
       ? input.currentClubNightId
       : current.currentClubNightId;
 
