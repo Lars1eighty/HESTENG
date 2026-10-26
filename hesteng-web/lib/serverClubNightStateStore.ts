@@ -3,11 +3,14 @@ import path from "path";
 import type { ClubNight, KlubaftenSnapshot } from "@/context/KlubaftenContext";
 import type { CompletedMatch } from "@/lib/matchStore";
 import type { ClubMatch } from "@/lib/matchEngine";
+import { replaceScopedClubNights } from "@/lib/clubNightAccess.mjs";
 
 export type SharedClubNightState = KlubaftenSnapshot & {
   version: 1;
   completedMatches: CompletedMatch[];
   updatedAt: string;
+  /** Included in API responses, never written to the shared JSON store. */
+  accessibleClubIds?: string[];
 };
 
 const STORE_DIR = path.join(process.cwd(), ".hesteng-shared");
@@ -120,18 +123,28 @@ export async function writeSharedClubNightState(input: Partial<SharedClubNightSt
 }
 
 export async function replaceSharedClubNightSnapshot(input: {
+  clubId: string;
   clubNights: ClubNight[];
   currentClubNightId: string | null;
   completedMatches?: CompletedMatch[];
 }): Promise<SharedClubNightState> {
   return serializeWrite(async () => {
     const current = await readSharedClubNightState();
-    const currentById = new Map(current.clubNights.map((clubNight) => [clubNight.id, clubNight]));
-    const clubNights = input.clubNights.map((clubNight) => mergeConcurrentMatchProgress(clubNight, currentById.get(clubNight.id)));
+    // Never replace another club's data when one club saves its browser snapshot.
+    const clubNights = replaceScopedClubNights(
+      current.clubNights, input.clubNights, input.clubId, mergeConcurrentMatchProgress,
+    );
+    const requestedCurrentId = clubNights.some((night) => night.clubId === input.clubId && night.id === input.currentClubNightId)
+      ? input.currentClubNightId
+      : current.currentClubNightId;
+
     return writeStateNow({
       clubNights,
-      currentClubNightId: input.currentClubNightId,
-      completedMatches: normalizeCompletedMatches([...(input.completedMatches ?? []), ...current.completedMatches]),
+      currentClubNightId: requestedCurrentId,
+      completedMatches: normalizeCompletedMatches([
+        ...(input.completedMatches ?? []).filter((match) => match.clubId === input.clubId),
+        ...current.completedMatches,
+      ]),
     });
   });
 }
