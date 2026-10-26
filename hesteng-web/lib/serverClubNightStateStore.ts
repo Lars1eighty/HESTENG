@@ -8,6 +8,8 @@ export type SharedClubNightState = KlubaftenSnapshot & {
   version: 1;
   completedMatches: CompletedMatch[];
   updatedAt: string;
+  /** Included in API responses, never written to the shared JSON store. */
+  accessibleClubIds?: string[];
 };
 
 const STORE_DIR = path.join(process.cwd(), ".hesteng-shared");
