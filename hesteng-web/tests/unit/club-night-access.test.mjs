@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   knownMatchBelongsToClub,
+  replaceScopedClubNights,
   scopeClubNightState,
   validClubNightSnapshot,
 } from "../../lib/clubNightAccess.mjs";
@@ -58,4 +59,15 @@ test("club-night snapshot rejects duplicate nights and forged nested clubs", () 
     ...valid,
     matches: [{ id: "match-a", clubNightId: "b-night" }],
   }], "club-a"), false);
+});
+
+test("snapshot replacement changes only the selected club", () => {
+  const edited = { ...state.clubNights[0], name: "Updated club A" };
+  const merged = replaceScopedClubNights(state.clubNights, [edited], "club-a", (night) => night);
+  assert.equal(merged.length, 2);
+  assert.equal(merged.find((night) => night.clubId === "club-a").name, "Updated club A");
+  assert.equal(merged.find((night) => night.clubId === "club-b"), state.clubNights[1]);
+
+  const afterDeletingLastClubANight = replaceScopedClubNights(state.clubNights, [], "club-a", (night) => night);
+  assert.deepEqual(afterDeletingLastClubANight, [state.clubNights[1]]);
 });
