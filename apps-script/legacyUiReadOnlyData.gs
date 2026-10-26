@@ -38,9 +38,9 @@ function hestengLegacyReadOnlyDiagnosis() {
 }
 
 /**
- * Initial read-only UI snapshot. Only fields confirmed in the saved Legacy
- * source files are mapped. Pools, total AVG and live rankings remain pending
- * until their actual sheet layouts have been verified.
+ * Read-only UI snapshot. Players/Tilmelding/DC_Matches/Live Aktiv column layouts
+ * checked against the active ELO - Torsdagslisten workbook on 2026-10-26.
+ * Pools, total AVG and other statistics remain pending verification.
  */
 function hestengLegacyReadOnlySnapshot() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -53,39 +53,41 @@ function hestengLegacyReadOnlySnapshot() {
   if (!playersSheet) warnings.push("Mangler Players; ingen spillere kan vises.");
   if (!matchesSheet) warnings.push("Mangler DC_Matches; ingen kampresultater kan vises.");
 
-  // Players: A = navn, B = ELO (confirmed in the existing Legacy scripts).
-  const byName = {};
-  hestengLegacyReadRows_(playersSheet, 2, 5000).forEach(function (row) {
-    const name = String(row[0] || "").trim();
-    const key = hestengLegacyNameKey_(name);
-    if (!name || !key) return;
-    const rating = hestengLegacyNumber_(row[1]);
-    if (rating === null) warnings.push("Ugyldig ELO for " + name + " i Players.");
-    if (byName[key]) {
-      warnings.push("Dubletnavn i Players: " + name);
-      return;
-    }
-    byName[key] = { name: name, elo: rating, registered: false };
-  });
+  // Confirmed active headers: Players = Navn / ELO / Sidst Spillet / Aktiv.
+  const byName = Object.create(null);
+  hestengLegacyReadObjectRows_(playersSheet, ["Navn", "ELO"], 5000, warnings)
+    .forEach(function (row) {
+      const name = String(row.Navn || "").trim();
+      const key = hestengLegacyNameKey_(name);
+      if (!name || !key) return;
+      const rating = hestengLegacyNumber_(row.ELO);
+      if (rating === null) warnings.push("Ugyldig ELO for " + name + " i Players.");
+      if (byName[key]) {
+        warnings.push("Dubletnavn i Players: " + name);
+        return;
+      }
+      byName[key] = { name: name, elo: rating, registered: false };
+    });
 
-  // Tilmelding / Øvrige spillere: A = checkbox, B = navn, C = ELO.
-  // ELO is ALWAYS read from Players, never from the signup list.
+  // Confirmed active signup headers: Med / Navn / ELO.
+  // ELO in these two sheets may be displayed, but Players is authoritative.
   ["Tilmelding", "Øvrige spillere"].forEach(function (sheetName) {
     const sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
       warnings.push("Mangler " + sheetName + ".");
       return;
     }
-    hestengLegacyReadRows_(sheet, 3, 5000).forEach(function (row) {
-      const name = String(row[1] || "").trim();
-      if (!name) return;
-      const key = hestengLegacyNameKey_(name);
-      if (!byName[key]) {
-        warnings.push("Ukendt spiller i " + sheetName + ": " + name + " (udeladt).");
-        return;
-      }
-      if (row[0] === true) byName[key].registered = true;
-    });
+    hestengLegacyReadObjectRows_(sheet, ["Med", "Navn", "ELO"], 5000, warnings)
+      .forEach(function (row) {
+        const name = String(row.Navn || "").trim();
+        if (!name) return;
+        const key = hestengLegacyNameKey_(name);
+        if (!byName[key]) {
+          warnings.push("Ukendt spiller i " + sheetName + ": " + name + " (udeladt).");
+          return;
+        }
+        if (row.Med === true) byName[key].registered = true;
+      });
   });
 
   const players = Object.keys(byName).map(function (key) { return byName[key]; });
@@ -94,6 +96,32 @@ function hestengLegacyReadOnlySnapshot() {
       - (a.elo === null ? -Infinity : a.elo)
       || a.name.localeCompare(b.name, "da");
   });
+
+  // V42 can show the confirmed Live Aktiv ranking, but its ELO values
+  // are taken from Players to keep every HESTENG screen consistent.
+  const liveElo = [];
+  const liveSheet = ss.getSheetByName("Live Aktiv");
+  if (!liveSheet) warnings.push("Mangler Live Aktiv; ELO-visning er ikke tilgængelig.");
+  hestengLegacyReadObjectRows_(liveSheet, ["Rank", "Name", "ELO"], 1000, warnings)
+    .forEach(function (row) {
+      const key = hestengLegacyNameKey_(row.Name);
+      const rank = hestengLegacyNumber_(row.Rank);
+      if (!key) return;
+      if (!byName[key]) {
+        warnings.push("Ukendt spiller i Live Aktiv: " + String(row.Name) + " (udeladt).");
+        return;
+      }
+      if (rank === null || !Number.isInteger(rank) || rank < 1) {
+        warnings.push("Ugyldig rangering i Live Aktiv for " + byName[key].name + ".");
+        return;
+      }
+      const liveRating = hestengLegacyNumber_(row.ELO);
+      if (liveRating !== byName[key].elo) {
+        warnings.push("ELO-forskel i Live Aktiv for " + byName[key].name + "; Players anvendes.");
+      }
+      liveElo.push({ rank: rank, name: byName[key].name, elo: byName[key].elo });
+    });
+  liveElo.sort(function (a, b) { return a.rank - b.rank; });
 
   const matches = [];
   if (matchesSheet && matchesSheet.getLastRow() > 1 && matchesSheet.getLastColumn() > 0) {
@@ -137,17 +165,49 @@ function hestengLegacyReadOnlySnapshot() {
     readOnly: true,
     generatedAt: new Date().toISOString(),
     players: players,
+    liveElo: liveElo,
     matches: matches,
     warnings: warnings,
-    // Intentionally missing: pools, live TV stats, and all-time AVG.
+    // Intentionally missing: live pool standings, other stats, all-time AVG.
     // Never fabricate these from sample data.
   };
 }
 
-function hestengLegacyReadRows_(sheet, columns, limit) {
-  if (!sheet || sheet.getLastRow() < 2) return [];
-  const count = Math.min(sheet.getLastRow() - 1, limit);
-  return sheet.getRange(2, 1, count, columns).getValues();
+/**
+ * Header-aware sheet reader. A changed schema fails closed instead of
+ * accidentally treating unrelated columns as names, ELO or checkboxes.
+ */
+function hestengLegacyReadObjectRows_(sheet, requiredHeaders, limit, warnings) {
+  if (!sheet) return [];
+  const total = sheet.getLastRow();
+  const width = sheet.getLastColumn();
+  if (total < 1 || width < 1) {
+    warnings.push(sheet.getName() + " er tomt.");
+    return [];
+  }
+
+  const headers = sheet.getRange(1, 1, 1, width).getDisplayValues()[0]
+    .map(function (value) { return String(value || "").trim(); });
+  const missing = requiredHeaders.filter(function (name) {
+    return headers.indexOf(name) < 0;
+  });
+  if (missing.length) {
+    warnings.push(sheet.getName() + " mangler kolonner: " + missing.join(", "));
+    return [];
+  }
+  if (total <= 1) return [];
+
+  const count = Math.min(total - 1, limit);
+  if (total - 1 > limit) {
+    warnings.push(sheet.getName() + ": viser kun de første " + count + " rækker.");
+  }
+  return sheet.getRange(2, 1, count, width).getValues().map(function (cells) {
+    const obj = {};
+    requiredHeaders.forEach(function (name) {
+      obj[name] = cells[headers.indexOf(name)];
+    });
+    return obj;
+  });
 }
 
 function hestengLegacyNameKey_(value) {
