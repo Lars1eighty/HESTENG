@@ -123,8 +123,8 @@ test("V9.1 signup model can be derived without demo ELO", () => {
   const snapshot = run(cases).hestengLegacyReadOnlySnapshot();
   const signupPlayers = snapshot.players.map((p, i) =>
     ({ id: i, name: p.name, elo: p.elo, checked: p.registered }));
-  assert.deepEqual(signupPlayers.map((p) => p.elo), [1400, 1300, 1250]);
-  assert.deepEqual(signupPlayers.map((p) => p.checked), [false, true, true]);
+  assert.deepEqual(JSON.parse(JSON.stringify(signupPlayers.map((p) => p.elo))), [1400, 1300, 1250]);
+  assert.deepEqual(JSON.parse(JSON.stringify(signupPlayers.map((p) => p.checked))), [false, true, true]);
 });
 
 test("incorrect signup header is rejected without reading wrong columns", () => {
