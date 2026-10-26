@@ -3,6 +3,7 @@ import path from "path";
 import type { ClubNight, KlubaftenSnapshot } from "@/context/KlubaftenContext";
 import type { CompletedMatch } from "@/lib/matchStore";
 import type { ClubMatch } from "@/lib/matchEngine";
+import { replaceScopedClubNights } from "@/lib/clubNightAccess.mjs";
 
 export type SharedClubNightState = KlubaftenSnapshot & {
   version: 1;
@@ -129,18 +130,16 @@ export async function replaceSharedClubNightSnapshot(input: {
 }): Promise<SharedClubNightState> {
   return serializeWrite(async () => {
     const current = await readSharedClubNightState();
-    const currentById = new Map(current.clubNights.map((clubNight) => [clubNight.id, clubNight]));
     // Never replace another club's data when one club saves its browser snapshot.
-    const untouched = current.clubNights.filter((night) => night.clubId !== input.clubId);
-    const incoming = input.clubNights
-      .filter((night) => night.clubId === input.clubId)
-      .map((night) => mergeConcurrentMatchProgress(night, currentById.get(night.id)));
-    const requestedCurrentId = incoming.some((night) => night.id === input.currentClubNightId)
+    const clubNights = replaceScopedClubNights(
+      current.clubNights, input.clubNights, input.clubId, mergeConcurrentMatchProgress,
+    );
+    const requestedCurrentId = clubNights.some((night) => night.id === input.currentClubNightId)
       ? input.currentClubNightId
       : current.currentClubNightId;
 
     return writeStateNow({
-      clubNights: [...untouched, ...incoming],
+      clubNights,
       currentClubNightId: requestedCurrentId,
       completedMatches: normalizeCompletedMatches([
         ...(input.completedMatches ?? []).filter((match) => match.clubId === input.clubId),
