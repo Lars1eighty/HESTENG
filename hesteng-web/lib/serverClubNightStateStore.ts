@@ -120,6 +120,7 @@ export async function writeSharedClubNightState(input: Partial<SharedClubNightSt
 }
 
 export async function replaceSharedClubNightSnapshot(input: {
+  clubId: string;
   clubNights: ClubNight[];
   currentClubNightId: string | null;
   completedMatches?: CompletedMatch[];
@@ -127,11 +128,22 @@ export async function replaceSharedClubNightSnapshot(input: {
   return serializeWrite(async () => {
     const current = await readSharedClubNightState();
     const currentById = new Map(current.clubNights.map((clubNight) => [clubNight.id, clubNight]));
-    const clubNights = input.clubNights.map((clubNight) => mergeConcurrentMatchProgress(clubNight, currentById.get(clubNight.id)));
+    // Never replace another club's data when one club saves its browser snapshot.
+    const untouched = current.clubNights.filter((night) => night.clubId !== input.clubId);
+    const incoming = input.clubNights
+      .filter((night) => night.clubId === input.clubId)
+      .map((night) => mergeConcurrentMatchProgress(night, currentById.get(night.id)));
+    const requestedCurrentId = incoming.some((night) => night.id === input.currentClubNightId)
+      ? input.currentClubNightId
+      : current.currentClubNightId;
+
     return writeStateNow({
-      clubNights,
-      currentClubNightId: input.currentClubNightId,
-      completedMatches: normalizeCompletedMatches([...(input.completedMatches ?? []), ...current.completedMatches]),
+      clubNights: [...untouched, ...incoming],
+      currentClubNightId: requestedCurrentId,
+      completedMatches: normalizeCompletedMatches([
+        ...(input.completedMatches ?? []).filter((match) => match.clubId === input.clubId),
+        ...current.completedMatches,
+      ]),
     });
   });
 }
