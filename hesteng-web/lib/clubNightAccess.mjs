@@ -8,10 +8,11 @@ export function scopeClubNightState(state, permittedClubIds) {
     (night) => night && permittedClubIds.has(night.clubId),
   );
   const nightsById = new Map(clubNights.map((night) => [night.id, night]));
+  const allNightsById = new Map(state.clubNights.map((night) => [night.id, night]));
   const completedMatches = state.completedMatches.filter((match) => {
     if (!match || typeof match !== "object") return false;
     if (typeof match.clubId === "string") {
-      const night = nightsById.get(match.clubNightId);
+      const night = allNightsById.get(match.clubNightId);
       return permittedClubIds.has(match.clubId) && (!night || night.clubId === match.clubId);
     }
     return nightsById.has(match.clubNightId);
