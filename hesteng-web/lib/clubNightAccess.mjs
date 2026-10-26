@@ -52,3 +52,13 @@ export function validClubNightSnapshot(nights, clubId) {
     );
   });
 }
+
+export function replaceScopedClubNights(currentNights, submittedNights, clubId, mergeNight) {
+  const currentById = new Map(currentNights.map((night) => [night.id, night]));
+  return [
+    ...currentNights.filter((night) => night.clubId !== clubId),
+    ...submittedNights
+      .filter((night) => night.clubId === clubId)
+      .map((night) => mergeNight(night, currentById.get(night.id))),
+  ];
+}
