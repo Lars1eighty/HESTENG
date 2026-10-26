@@ -27,6 +27,8 @@ jobs:
         run: npm install
       - name: Regression tests
         run: npm test
+      - name: Legacy read-only adapter tests
+        run: node --test ../apps-script/tests/legacyUiReadOnlyData.test.cjs
 
   browser-smoke:
     runs-on: ubuntu-latest
