@@ -1,4 +1,5 @@
 import type { SharedClubNightState } from "./serverClubNightStateStore";
+import type { ClubNight } from "@/context/KlubaftenContext";
 
 export function scopeClubNightState(
   state: SharedClubNightState,
@@ -13,3 +14,10 @@ export function knownMatchBelongsToClub(
 ): boolean;
 
 export function validClubNightSnapshot(nights: unknown, clubId: string): boolean;
+
+export function replaceScopedClubNights(
+  currentNights: ClubNight[],
+  submittedNights: ClubNight[],
+  clubId: string,
+  mergeNight: (night: ClubNight, oldNight?: ClubNight) => ClubNight,
+): ClubNight[];
