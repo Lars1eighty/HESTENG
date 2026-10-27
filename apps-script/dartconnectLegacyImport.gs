@@ -929,7 +929,7 @@ function isTruthyWin_(value) {
   if (value === true) return true;
   if (typeof value === "number") return value === 1;
   const normalized = String(value || "").trim().toLowerCase();
-  return ["1", "true", "yes", "y", "win", "winner", "vinder", "ja"].indexOf(normalized) !== -1;
+  return ["1", "true", "yes", "y", "w", "win", "winner", "vinder", "ja"].indexOf(normalized) !== -1;
 }
 
 function decodeHtmlEntities_(value) {
