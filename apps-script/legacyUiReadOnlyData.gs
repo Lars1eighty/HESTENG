@@ -42,7 +42,8 @@ function hestengLegacyReadOnlyDiagnosis() {
  * checked against the active ELO - Torsdagslisten workbook on 2026-10-26.
  * Pools, total AVG and other statistics remain pending verification.
  */
-function hestengLegacyReadOnlySnapshot() {
+function hestengLegacyReadOnlySnapshot(options) {
+  const includeMatches = !options || options.includeMatches !== false;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error("HESTENG Legacy: Intet aktivt regneark.");
 
@@ -102,7 +103,7 @@ function hestengLegacyReadOnlySnapshot() {
   const liveElo = [];
   const liveSheet = ss.getSheetByName("Live Aktiv");
   if (!liveSheet) warnings.push("Mangler Live Aktiv; ELO-visning er ikke tilgængelig.");
-  hestengLegacyReadObjectRows_(liveSheet, ["Rank", "Name", "ELO"], 1000, warnings)
+  hestengLegacyReadObjectRows_(liveSheet, ["Rank", "Name", "ELO", "Rank Δ", "ELO Δ"], 1000, warnings)
     .forEach(function (row) {
       const key = hestengLegacyNameKey_(row.Name);
       const rank = hestengLegacyNumber_(row.Rank);
@@ -119,12 +120,18 @@ function hestengLegacyReadOnlySnapshot() {
       if (liveRating !== byName[key].elo) {
         warnings.push("ELO-forskel i Live Aktiv for " + byName[key].name + "; Players anvendes.");
       }
-      liveElo.push({ rank: rank, name: byName[key].name, elo: byName[key].elo });
+      liveElo.push({
+        rank: rank,
+        name: byName[key].name,
+        elo: byName[key].elo,
+        rankDelta: hestengLegacyOptionalNumber_(row["Rank Δ"]),
+        eloDelta: hestengLegacyOptionalNumber_(row["ELO Δ"]),
+      });
     });
   liveElo.sort(function (a, b) { return a.rank - b.rank; });
 
   const matches = [];
-  if (matchesSheet && matchesSheet.getLastRow() > 1 && matchesSheet.getLastColumn() > 0) {
+  if (includeMatches && matchesSheet && matchesSheet.getLastRow() > 1 && matchesSheet.getLastColumn() > 0) {
     const headers = matchesSheet.getRange(1, 1, 1, matchesSheet.getLastColumn())
       .getDisplayValues()[0].map(function (h) { return String(h || "").trim(); });
     const names = ["MatchID", "Dato", "Vinder", "Taber", "VinderLegs", "TaberLegs"];
@@ -177,6 +184,20 @@ function hestengLegacyReadOnlySnapshot() {
  * Header-aware sheet reader. A changed schema fails closed instead of
  * accidentally treating unrelated columns as names, ELO or checkboxes.
  */
+/**
+ * Compatibility with the existing Leaderboard.html, which calls
+ * google.script.run.getELOData(). This is only staged in GitHub:
+ * the Apps Script project and its doGet have NOT been changed.
+ */
+function getELOData() {
+  return hestengLegacyReadOnlySnapshot({ includeMatches: false }).liveElo;
+}
+
+function hestengLegacyOptionalNumber_(value) {
+  const n = hestengLegacyNumber_(value);
+  return n === null ? "" : n;
+}
+
 function hestengLegacyReadObjectRows_(sheet, requiredHeaders, limit, warnings) {
   if (!sheet) return [];
   const total = sheet.getLastRow();
