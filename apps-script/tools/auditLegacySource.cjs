@@ -88,6 +88,30 @@ function inspect(files) {
   };
 }
 
+/**
+ * Convert a Google Apps Script project JSON export into a local, read-only
+ * source map. The source is NEVER included in the audit output or uploaded.
+ * The official project JSON uses files[].{name,type,source}.
+ */
+function parseAppsScriptExport(value) {
+  if (!value || !Array.isArray(value.files)) {
+    throw new Error("Ugyldig Apps Script JSON-eksport (mangler files).");
+  }
+  const files = {};
+  for (const entry of value.files) {
+    if (!entry || entry.type !== "server_js") continue;
+    if (typeof entry.name !== "string" || typeof entry.source !== "string") {
+      throw new Error("Apps Script-kildefil mangler navn eller source.");
+    }
+    const key = entry.name + ".gs";
+    if (Object.prototype.hasOwnProperty.call(files, key)) {
+      throw new Error("Dubletfil i eksport: " + key);
+    }
+    files[key] = entry.source;
+  }
+  return files;
+}
+
 function walk(folder) {
   const files = {};
   for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
@@ -102,15 +126,23 @@ function walk(folder) {
 }
 
 if (require.main === module) {
-  const folder = path.resolve(process.argv[2] || path.join(__dirname, ".."));
-  if (!fs.existsSync(folder) || !fs.statSync(folder).isDirectory()) {
-    process.stderr.write("Usage: node apps-script/tools/auditLegacySource.cjs [script-export-directory]\n");
+  const target = path.resolve(process.argv[2] || path.join(__dirname, ".."));
+  if (!fs.existsSync(target)) {
+    process.stderr.write("Usage: node apps-script/tools/auditLegacySource.cjs [export-directory|AppsScript-export.json]\n");
     process.exitCode = 2;
   } else {
-    const report = inspect(walk(folder));
-    process.stdout.write(JSON.stringify(report, null, 2) + "\n");
-    if (report.syntaxErrors.length || report.duplicateDeclarations.length) process.exitCode = 1;
+    try {
+      const files = fs.statSync(target).isDirectory()
+        ? walk(target)
+        : parseAppsScriptExport(JSON.parse(fs.readFileSync(target, "utf8")));
+      const report = inspect(files);
+      process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+      if (report.syntaxErrors.length || report.duplicateDeclarations.length) process.exitCode = 1;
+    } catch (error) {
+      process.stderr.write("Audit kunne ikke gennemføres: " + error.message + "\n");
+      process.exitCode = 2;
+    }
   }
 }
 
-module.exports = { inspect, topLevelNames, maskCommentsAndStrings };
+module.exports = { inspect, topLevelNames, maskCommentsAndStrings, parseAppsScriptExport };
