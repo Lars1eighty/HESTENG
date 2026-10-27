@@ -55,7 +55,7 @@ const cases = {
   "Øvrige spillere": [["Med", "Navn", "ELO"], [true, "Anna", 500]],
   "Live Aktiv": [
     ["Rank", "Name", "ELO", "Rank Δ", "ELO Δ"],
-    [1, "Lars", 1400], [2, "Anna", 1300], [3, "Hanne", 1250],
+    [1, "Lars", 1400, 2, 12], [2, "Anna", 1300, "", ""], [3, "Hanne", 1250, -1, -7],
   ],
   DC_Matches: [header, ["match-1", new Date("2026-10-15T18:00:00Z"), "Lars", "Hanne", 3, 1, "X"]],
 };
@@ -109,12 +109,12 @@ test("large match histories are capped and explicitly marked incomplete", () => 
 test("Live Aktiv ranks use the canonical Players ELO (V42 contract)", () => {
   const changed = { ...cases, "Live Aktiv": [
     ["Rank", "Name", "ELO", "Rank Δ", "ELO Δ"],
-    [1, "Lars", 1500], [2, "Anna", 1300],
+    [1, "Lars", 1500, 1, 8], [2, "Anna", 1300, "", ""],
   ] };
   const snapshot = run(changed).hestengLegacyReadOnlySnapshot();
   assert.deepEqual(JSON.parse(JSON.stringify(snapshot.liveElo)), [
-    { rank: 1, name: "Lars", elo: 1400 },
-    { rank: 2, name: "Anna", elo: 1300 },
+    { rank: 1, name: "Lars", elo: 1400, rankDelta: 1, eloDelta: 8 },
+    { rank: 2, name: "Anna", elo: 1300, rankDelta: "", eloDelta: "" },
   ]);
   assert.equal(snapshot.warnings.some((s) => s.includes("ELO-forskel")), true);
 });
@@ -143,4 +143,22 @@ test("missing Live Aktiv leaves ELO list empty with a warning", () => {
   const snapshot = run(changed).hestengLegacyReadOnlySnapshot();
   assert.equal(snapshot.liveElo.length, 0);
   assert.equal(snapshot.warnings.some((s) => s.includes("Mangler Live Aktiv")), true);
+});
+
+test("existing Leaderboard.html getELOData() contract has rankings and deltas", () => {
+  const data = run(cases).getELOData();
+  assert.deepEqual(JSON.parse(JSON.stringify(data)), [
+    { rank: 1, name: "Lars", elo: 1400, rankDelta: 2, eloDelta: 12 },
+    { rank: 2, name: "Anna", elo: 1300, rankDelta: "", eloDelta: "" },
+    { rank: 3, name: "Hanne", elo: 1250, rankDelta: -1, eloDelta: -7 },
+  ]);
+});
+
+test("getELOData never reads DC_Matches result rows", () => {
+  const context = run(cases);
+  const workbook = context.SpreadsheetApp.getActiveSpreadsheet();
+  const dcMatches = workbook.getSheetByName("DC_Matches");
+  dcMatches.getRange = () => { throw Error("Unexpected DC_Matches read"); };
+  const data = context.getELOData();
+  assert.equal(data.length, 3);
 });
