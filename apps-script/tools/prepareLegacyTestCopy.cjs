@@ -158,4 +158,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { digest, replaceVerifiedBlock, prepareTestCopy, insideRepository };
+module.exports = { digest, replaceVerifiedBlock, prepareTestCopy, insideRepository, MERGED_ON_OPEN, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA };
