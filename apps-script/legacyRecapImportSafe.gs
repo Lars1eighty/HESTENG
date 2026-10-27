@@ -24,7 +24,7 @@ function importRecapStats() {
   // Keep a separate key for every player in every game, so a partial
   // previous write can be completed on retry without duplicating rows.
   function rawKey(id, game, player) {
-    return [String(id), String(game), String(player)].join("\\u0000");
+    return JSON.stringify([String(id), String(game), String(player)]);
   }
   const existingKeys = new Set(
     sheet.getLastRow() > 1
