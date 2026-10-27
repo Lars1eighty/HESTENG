@@ -32,8 +32,10 @@ function importRecapStatsUnderLock_() {
   const query =
     'label:DartConnect from:matchrecap@email.dartconnect.com ' +
     'after:' + Utilities.formatDate(now, tz, "yyyy/MM/dd") + ' ' +
-    'before:' + Utilities.formatDate(tomorrow, tz, "yyyy/MM/dd") + ' ' +
-    '-label:elo-processed';
+    'before:' + Utilities.formatDate(tomorrow, tz, "yyyy/MM/dd");
+  // Never exclude a Gmail conversation solely because its older messages
+  // carry elo-processed: a later recap can join that same conversation.
+  // Revisit matching threads and deduplicate from persisted DC_Raw rows.
 
   // A match ID alone is not proof that all its leg rows were saved.
   // Keep a separate key for every player in every game, so a partial
