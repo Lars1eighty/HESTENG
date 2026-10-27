@@ -39,7 +39,7 @@ const SAFE_CLUB_IMPORT = [
   "    importRecapStats();",
   "  }",
   "}",
-].join("\\n");
+].join("\n");
 
 const MERGED_ON_OPEN = [
   "function onOpen() {",
