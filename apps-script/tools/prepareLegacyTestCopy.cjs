@@ -16,6 +16,27 @@ const VERIFIED_OLD_SHA = "4cf8bc487bf755e9d2930386caf6fc168650d72d71dcad14b3af54
 const OLD_WIN_TOKENS = '"y", "win",';
 const NEW_WIN_TOKENS = '"y", "w", "win",';
 
+// Menus are resolved in the private test copy only. Both audited blocks
+// are checksum-pinned so unrelated/updated production code is never changed.
+const LIVE_OPEN_END = "function copyLiveFormatting() {";
+const MENU_OPEN_END = "function chooseImportSource() {";
+const ON_OPEN = "function onOpen() {";
+const VERIFIED_LIVE_OPEN_SHA = "1e13a1679933f3ad7d8ea93d2296f387ab9bcf2d02fc1d64da975dcf86b3fda6";
+const VERIFIED_MENU_OPEN_SHA = "6ddbbf9b9c8b6804104325a68f5b1e1492a5ac7a0c43758252f8df069958d5d1";
+const MERGED_ON_OPEN = [
+  "function onOpen() {",
+  "  const ui = SpreadsheetApp.getUi();",
+  '  ui.createMenu("🎯 Dart")',
+  '    .addItem("Opdater turnering", "runTournamentUpdate")',
+  "    .addToUi();",
+  '  ui.createMenu("🎯 DartConnect")',
+  '    .addItem("Importer...", "chooseImportSource")',
+  "    .addToUi();",
+  "}",
+  "",
+  "",
+].join("\n");
+
 function digest(text) {
   return crypto.createHash("sha256").update(text, "utf8").digest("hex");
 }
@@ -43,14 +64,22 @@ function prepareTestCopy(original) {
   const scripts = original.files.filter((f) => f && f.type === "server_js");
   const old = scripts.filter((f) => f.name === OLD_NAME);
   const safe = scripts.filter((f) => f.name === SAFE_NAME);
-  if (old.length !== 1 || safe.length !== 1) {
-    throw new Error("Expected exactly one 123 and one dartconnectLegacyImport. source file");
+  const live = scripts.filter((f) => f.name === "Live");
+  const menu = scripts.filter((f) => f.name === "Menu");
+  if (old.length !== 1 || safe.length !== 1 || live.length !== 1 || menu.length !== 1) {
+    throw new Error("Expected exactly one each of 123, dartconnectLegacyImport., Live and Menu");
   }
   // Never guess which implementation will win in Apps Script.
   const globals = scripts.flatMap((f) =>
     [...f.source.matchAll(/^function buildDCMatches\s*\(/gm)].map(() => f.name));
   if (globals.length !== 2 || !globals.includes(OLD_NAME) || !globals.includes(SAFE_NAME)) {
     throw new Error("Unexpected number/location of global buildDCMatches functions");
+  }
+  const openEntrypoints = scripts.flatMap((f) =>
+    [...f.source.matchAll(/^function onOpen\s*\(/gm)].map(() => f.name));
+  if (openEntrypoints.length !== 2 || !openEntrypoints.includes("Live") ||
+      !openEntrypoints.includes("Menu")) {
+    throw new Error("Unexpected number/location of global onOpen functions");
   }
   if (!safe[0].source.includes("function buildDCMatches(options) {") ||
       safe[0].source.split(OLD_WIN_TOKENS).length !== 2) {
@@ -63,11 +92,20 @@ function prepareTestCopy(original) {
     old[0].source, OLD_START, OLD_END, VERIFIED_OLD_SHA, replacement,
   );
   const safePatched = safe[0].source.replace(OLD_WIN_TOKENS, NEW_WIN_TOKENS);
+  const livePatched = replaceVerifiedBlock(
+    live[0].source, ON_OPEN, LIVE_OPEN_END, VERIFIED_LIVE_OPEN_SHA,
+    "// onOpen merged into Menu in this PRIVATE test copy.\n\n",
+  );
+  const menuPatched = replaceVerifiedBlock(
+    menu[0].source, ON_OPEN, MENU_OPEN_END, VERIFIED_MENU_OPEN_SHA, MERGED_ON_OPEN,
+  );
   const result = {
     ...original,
     files: original.files.map((file) => {
       if (file === old[0]) return { ...file, source: oldPatched };
       if (file === safe[0]) return { ...file, source: safePatched };
+      if (file === live[0]) return { ...file, source: livePatched };
+      if (file === menu[0]) return { ...file, source: menuPatched };
       return { ...file };
     }),
   };
@@ -79,6 +117,11 @@ function prepareTestCopy(original) {
     [...f.source.matchAll(/^function buildDCMatches\s*\(/gm)].map(() => f.name));
   if (remaining.length !== 1 || remaining[0] !== SAFE_NAME) {
     throw new Error("Expected one remaining data-preserving buildDCMatches");
+  }
+  const remainingOpen = allScripts.flatMap((f) =>
+    [...f.source.matchAll(/^function onOpen\s*\(/gm)].map(() => f.name));
+  if (remainingOpen.length !== 1 || remainingOpen[0] !== "Menu") {
+    throw new Error("Expected one merged onOpen entrypoint in Menu");
   }
   return result;
 }
@@ -107,7 +150,7 @@ if (require.main === module) {
       fs.writeFileSync(dst, JSON.stringify(prepared, null, 2) + "\n",
         { encoding: "utf8", flag: "wx", mode: 0o600 });
       process.stdout.write(
-        "Private test copy created; one safe buildDCMatches remains; W recognized.\n");
+        "Private test copy created; one safe buildDCMatches and one merged onOpen remain; W recognized.\n");
     } catch (err) {
       process.stderr.write("Stopped without modifying input: " + err.message + "\n");
       process.exitCode = 1;
