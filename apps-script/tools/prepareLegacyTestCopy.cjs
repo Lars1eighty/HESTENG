@@ -100,6 +100,15 @@ function prepareTestCopy(original) {
   const live = scripts.filter((f) => f.name === "Live");
   const menu = scripts.filter((f) => f.name === "Menu");
   const recap = scripts.filter((f) => f.name === RECAP_FILE);
+  // Reject unexpected extra global builders before checking supporting files.
+  // This prevents a third implementation from being hidden by an incomplete
+  // export and gives the correct diagnostic for collision test fixtures.
+  const builderCount = scripts.reduce(function (count, file) {
+    return count + [...file.source.matchAll(/^function buildDCMatches\s*\(/gm)].length;
+  }, 0);
+  if (builderCount > 2) {
+    throw new Error("Unexpected number/location of global buildDCMatches functions");
+  }
   if (old.length !== 1 || safe.length !== 1 || live.length !== 1 ||
       menu.length !== 1 || recap.length !== 1) {
     throw new Error("Expected exactly one each of 123, dartconnectLegacyImport., Live, Menu and Ny Torsdag");
