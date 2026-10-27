@@ -25,6 +25,10 @@ const VERIFIED_LIVE_OPEN_SHA = "1e13a1679933f3ad7d8ea93d2296f387ab9bcf2d02fc1d64
 const VERIFIED_MENU_OPEN_SHA = "6ddbbf9b9c8b6804104325a68f5b1e1492a5ac7a0c43758252f8df069958d5d1";
 const VERIFIED_MENU_IMPORT_SHA = "7ab906eb142efa0286467acae05056ed1d2a6756c16925e66f54c7cc86cabd35";
 const MENU_IMPORT_START = "function chooseImportSource() {";
+const RECAP_FILE = "Ny Torsdag";
+const RECAP_START = "function importRecapStats() {";
+const RECAP_END = "function buildTorsdagsRanking() {";
+const VERIFIED_RECAP_SHA = "d49a58f3f5e519c908880d62a765da314d327c02c1cb1018d374f29c74fe0c34";
 // The original "Hjem" button calls the exact same club-only import routine.
 // An unsupported path must never silently import club results.
 const SAFE_CLUB_IMPORT = [
@@ -95,8 +99,10 @@ function prepareTestCopy(original) {
   const safe = scripts.filter((f) => f.name === SAFE_NAME);
   const live = scripts.filter((f) => f.name === "Live");
   const menu = scripts.filter((f) => f.name === "Menu");
-  if (old.length !== 1 || safe.length !== 1 || live.length !== 1 || menu.length !== 1) {
-    throw new Error("Expected exactly one each of 123, dartconnectLegacyImport., Live and Menu");
+  const recap = scripts.filter((f) => f.name === RECAP_FILE);
+  if (old.length !== 1 || safe.length !== 1 || live.length !== 1 ||
+      menu.length !== 1 || recap.length !== 1) {
+    throw new Error("Expected exactly one each of 123, dartconnectLegacyImport., Live, Menu and Ny Torsdag");
   }
   // Never guess which implementation will win in Apps Script.
   const globals = scripts.flatMap((f) =>
@@ -131,6 +137,17 @@ function prepareTestCopy(original) {
   const menuPatched = replaceVerifiedTail(
     menuWithMergedOpen, MENU_IMPORT_START, VERIFIED_MENU_IMPORT_SHA, SAFE_CLUB_IMPORT,
   );
+  const newRecapImport = fs.readFileSync(
+    path.join(__dirname, "..", "legacyRecapImportSafe.gs"), "utf8"
+  );
+  new vm.Script(newRecapImport, { filename: "legacyRecapImportSafe.gs" });
+  if ((newRecapImport.match(/^function importRecapStats\s*\(/gm) || []).length !== 1) {
+    throw new Error("Expected precisely one replacement importRecapStats");
+  }
+  const recapPatched = replaceVerifiedBlock(
+    recap[0].source, RECAP_START, RECAP_END, VERIFIED_RECAP_SHA,
+    newRecapImport + "\n",
+  );
   const result = {
     ...original,
     files: original.files.map((file) => {
@@ -138,6 +155,7 @@ function prepareTestCopy(original) {
       if (file === safe[0]) return { ...file, source: safePatched };
       if (file === live[0]) return { ...file, source: livePatched };
       if (file === menu[0]) return { ...file, source: menuPatched };
+      if (file === recap[0]) return { ...file, source: recapPatched };
       return { ...file };
     }),
   };
@@ -149,6 +167,11 @@ function prepareTestCopy(original) {
     [...f.source.matchAll(/^function buildDCMatches\s*\(/gm)].map(() => f.name));
   if (remaining.length !== 1 || remaining[0] !== SAFE_NAME) {
     throw new Error("Expected one remaining data-preserving buildDCMatches");
+  }
+  const recapEntrypoints = allScripts.flatMap((f) =>
+    [...f.source.matchAll(/^function importRecapStats\s*\(/gm)].map(() => f.name));
+  if (recapEntrypoints.length !== 1 || recapEntrypoints[0] !== RECAP_FILE) {
+    throw new Error("Expected one safe importRecapStats in Ny Torsdag");
   }
   const remainingOpen = allScripts.flatMap((f) =>
     [...f.source.matchAll(/^function onOpen\s*\(/gm)].map(() => f.name));
@@ -182,7 +205,7 @@ if (require.main === module) {
       fs.writeFileSync(dst, JSON.stringify(prepared, null, 2) + "\n",
         { encoding: "utf8", flag: "wx", mode: 0o600 });
       process.stdout.write(
-        "Private test copy created; one safe buildDCMatches and one merged onOpen remain; W recognized.\n");
+        "Private test copy created; one safe buildDCMatches, one merged onOpen and one guarded importRecapStats remain; W recognized.\n");
     } catch (err) {
       process.stderr.write("Stopped without modifying input: " + err.message + "\n");
       process.exitCode = 1;
