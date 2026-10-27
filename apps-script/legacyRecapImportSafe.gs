@@ -5,14 +5,22 @@
  * A thread must NEVER receive elo-processed until its eligible matches
  * have been successfully persisted to DC_Raw and flush() succeeds.
  */
+// Entry point for menu/manual imports: acquire the shared script lock.
 function importRecapStats() {
-  // Guard the complete read → write → label transaction against two
-  // concurrent triggers importing identical recaps.
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) {
     throw new Error("DartConnect-import optaget; prøv igen senere");
   }
   try {
+    return importRecapStatsUnderLock_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Used only by Thursday pipelines already holding the same script lock.
+// Never call this directly from a trigger or the import menu.
+function importRecapStatsUnderLock_() {
   const ss = SpreadsheetApp.getActive();
   const sheet = ss.getSheetByName("DC_Raw");
   if (!sheet) throw new Error("Mangler arket DC_Raw");
@@ -167,7 +175,4 @@ function importRecapStats() {
   }
 
   Logger.log("Rækker skrevet til DC_Raw: " + rows.length);
-  } finally {
-    lock.releaseLock();
-  }
 }
