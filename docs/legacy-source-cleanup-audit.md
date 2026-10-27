@@ -180,3 +180,17 @@ datastrøm og eksplicit beslutning, før menuvalget kan tilbydes igen.
 **Fortat åbent:** `Ny Torsdag.importRecapStats()` sætter i den aktive kode
 `elo-processed` før `DC_Raw`-rækkerne er skrevet. Det er den næste
 sikkerhedsrettelse til en isoleret kopi.
+
+## Kontrol af genoptagelse efter delvis import
+
+Testkopiens `legacyRecapImportSafe.gs` kontrollerer nu eksisterende
+`DC_Raw`-data pr. **MatchID + game + spiller** (kolonner A, C og D).
+Et eksisterende MatchID alene betragtes ikke som bevis for en komplet
+import. Hvis kun nogle spiller-/leg-rækker blev gemt før en fejl,
+genindlæses recapen, og kun de manglende rækker føjes til. Gmail-mærket
+sættes først efter vellykket skrivning og `SpreadsheetApp.flush()`.
+
+Syv isolerede tests kontrollerer normal import, skrivefejl, flush-fejl,
+delvis fejl i en mailtråd, delvist gemt kamp, mislykket Gmail-mærkning
+og samme recap i to tråde. Der er **ikke kørt en ægte Apps Script-test i
+Google Sheets eller en Gmail-test**. Al produktionskode er stadig urørt.
