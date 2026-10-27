@@ -29,6 +29,12 @@ const RECAP_FILE = "Ny Torsdag";
 const RECAP_START = "function importRecapStats() {";
 const RECAP_END = "function buildTorsdagsRanking() {";
 const VERIFIED_RECAP_SHA = "d49a58f3f5e519c908880d62a765da314d327c02c1cb1018d374f29c74fe0c34";
+const THURSDAY_UPDATE_START = "function opdaterKlubaften() {";
+const THURSDAY_UPDATE_END = "function saveLiveAktivHistory() {";
+const VERIFIED_THURSDAY_UPDATE_SHA = "ed2e0d92f05cdf958be0f3942b25148b1f41f09521fc3f0b62d677a3726d1307";
+const ELO_UPDATE_START = "function opdaterEloKlubaften() {";
+const ELO_UPDATE_END = "function opdaterAarsRanglister() {";
+const VERIFIED_ELO_UPDATE_SHA = "0b26bc3c0695f20d5e124b94a63f4d138a05e090ce6b8219df65b5029f264b6d";
 // The original "Hjem" button calls the exact same club-only import routine.
 // An unsupported path must never silently import club results.
 const SAFE_CLUB_IMPORT = [
@@ -77,6 +83,21 @@ function replaceVerifiedBlock(source, startMarker, endMarker, expectedHash, repl
     throw new Error("Legacy builder source differs from the audited version; review required");
   }
   return source.slice(0, start) + replacement + source.slice(end);
+}
+
+function replaceVerifiedCallInBlock(source, startMarker, endMarker, expectedHash, oldCall, newCall) {
+  const start = source.indexOf(startMarker);
+  const end = start >= 0 ? source.indexOf(endMarker, start + startMarker.length) : -1;
+  if (start < 0 || end < 0) {
+    throw new Error("Expected pipeline function and following function boundary");
+  }
+  const block = source.slice(start, end);
+  if (block.split(oldCall).length !== 2) {
+    throw new Error("Expected exactly one call to importRecapStats in pipeline");
+  }
+  return replaceVerifiedBlock(
+    source, startMarker, endMarker, expectedHash, block.replace(oldCall, newCall)
+  );
 }
 
 function replaceVerifiedTail(source, startMarker, expectedHash, replacement) {
@@ -135,6 +156,12 @@ function prepareTestCopy(original) {
   const oldPatched = replaceVerifiedBlock(
     old[0].source, OLD_START, OLD_END, VERIFIED_OLD_SHA, replacement,
   );
+  // Thursday pipelines already own the same script lock. Calling the
+  // public import wrapper there would attempt to reacquire it.
+  const oldPipelinePatched = replaceVerifiedCallInBlock(
+    oldPatched, ELO_UPDATE_START, ELO_UPDATE_END, VERIFIED_ELO_UPDATE_SHA,
+    "importRecapStats();", "importRecapStatsUnderLock_();",
+  );
   const safePatched = safe[0].source.replace(OLD_WIN_TOKENS, NEW_WIN_TOKENS);
   const livePatched = replaceVerifiedBlock(
     live[0].source, ON_OPEN, LIVE_OPEN_END, VERIFIED_LIVE_OPEN_SHA,
@@ -157,14 +184,19 @@ function prepareTestCopy(original) {
     recap[0].source, RECAP_START, RECAP_END, VERIFIED_RECAP_SHA,
     newRecapImport + "\n",
   );
+  const recapWithSafePipeline = replaceVerifiedCallInBlock(
+    recapPatched, THURSDAY_UPDATE_START, THURSDAY_UPDATE_END,
+    VERIFIED_THURSDAY_UPDATE_SHA,
+    "importRecapStats();", "importRecapStatsUnderLock_();",
+  );
   const result = {
     ...original,
     files: original.files.map((file) => {
-      if (file === old[0]) return { ...file, source: oldPatched };
+      if (file === old[0]) return { ...file, source: oldPipelinePatched };
       if (file === safe[0]) return { ...file, source: safePatched };
       if (file === live[0]) return { ...file, source: livePatched };
       if (file === menu[0]) return { ...file, source: menuPatched };
-      if (file === recap[0]) return { ...file, source: recapPatched };
+      if (file === recap[0]) return { ...file, source: recapWithSafePipeline };
       return { ...file };
     }),
   };
@@ -181,6 +213,11 @@ function prepareTestCopy(original) {
     [...f.source.matchAll(/^function importRecapStats\s*\(/gm)].map(() => f.name));
   if (recapEntrypoints.length !== 1 || recapEntrypoints[0] !== RECAP_FILE) {
     throw new Error("Expected one safe importRecapStats in Ny Torsdag");
+  }
+  const lockAwareHelpers = allScripts.flatMap((f) =>
+    [...f.source.matchAll(/^function importRecapStatsUnderLock_\s*\(/gm)].map(() => f.name));
+  if (lockAwareHelpers.length !== 1 || lockAwareHelpers[0] !== RECAP_FILE) {
+    throw new Error("Expected one importRecapStatsUnderLock_ in Ny Torsdag");
   }
   const remainingOpen = allScripts.flatMap((f) =>
     [...f.source.matchAll(/^function onOpen\s*\(/gm)].map(() => f.name));
@@ -222,4 +259,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { digest, replaceVerifiedBlock, replaceVerifiedTail, prepareTestCopy, insideRepository, MERGED_ON_OPEN, SAFE_CLUB_IMPORT, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA, VERIFIED_MENU_IMPORT_SHA };
+module.exports = { digest, replaceVerifiedBlock, replaceVerifiedTail, replaceVerifiedCallInBlock, prepareTestCopy, insideRepository, MERGED_ON_OPEN, SAFE_CLUB_IMPORT, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA, VERIFIED_MENU_IMPORT_SHA };
