@@ -39,6 +39,8 @@ function fixture(ids) {
   };
   const now = new Date(); now.setHours(20, 0, 0, 0);
   const threads = ids.map((idsInThread, index) => ({
+    getLabels: () => marked.has(index) ?
+      [{ getName: () => "elo-processed" }] : [],
     getMessages: () => idsInThread.map(id => ({
       getDate:()=>now,
       getBody:()=> "https:%2F%2Frecap.dartconnect.com%2Fmatches%2F" + id
@@ -68,7 +70,13 @@ function fixture(ids) {
     Session:{getScriptTimeZone:()=>"Europe/Copenhagen"},
     Utilities:{formatDate:()=>"2026/10/27"},
     GmailApp:{
-      search:()=>threads.filter((_,i)=>!marked.has(i)),
+      search:(query)=>{
+        assert.match(query, /label:DartConnect/);
+        assert.doesNotMatch(query, /-label:elo-processed/);
+        // The Gmail search revisits labeled conversations: they may contain
+        // a new DartConnect message even if an older recap was processed.
+        return threads;
+      },
       getUserLabelByName:()=>"elo-processed"
     },
     UrlFetchApp:{fetch(url){
@@ -215,4 +223,29 @@ test("existing Thursday lock is released if the importer fails",()=>{
   assert.deepEqual(h.lockEvents,["try","release","try","release"]);
   assert.equal(h.rows.length,3);
   assert.equal(h.marked.size,1);
+});
+
+test("new recap in already labeled Gmail conversation is imported on next scan",()=>{
+  const batches=[["abc123"]];
+  const h=fixture(batches);
+  h.run();
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,1);
+  batches[0].push("def456");
+  h.run();
+  assert.equal(h.rows.length,5);
+  assert.deepEqual(h.rows.slice(1).map(row=>row[0]),
+    ["abc123","abc123","def456","def456"]);
+  assert.deepEqual(h.events,["write","flush","label","write","flush"]);
+  h.run();
+  assert.equal(h.rows.length,5);
+  assert.deepEqual(h.events,["write","flush","label","write","flush"]);
+});
+
+test("already labeled conversation remains eligible and rows are not duplicated",()=>{
+  const h=fixture([["abc123"]]);
+  h.run();h.run();
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,1);
+  assert.deepEqual(h.events,["write","flush","label"]);
 });
