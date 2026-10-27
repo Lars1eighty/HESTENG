@@ -250,3 +250,32 @@ kun en draft PR; ingen ændringer i Jydens aktive klubsystem.
 `-label:elo-processed` udelukker tidligere behandlede tråde. Hvis en
 Gmail-tråd senere modtager en ny DartConnect-kamp, bør vi undersøge,
 om den kan blive overset. Det er ikke rettet i denne ændring.
+
+
+## Mails i allerede behandlede Gmail-tråde (27. oktober)
+
+**Fund i den staged import:** Søgningen afsluttede med
+`-label:elo-processed`. Et nyt DartConnect-recap, der ankom i en allerede
+mærket samtaletråd, kunne derfor blive udeladt. Det er ikke tilstrækkeligt
+at antage, at en Gmail-tråd er uforanderlig, efter den er behandlet.
+
+**Testkopien er ændret:** Gmail-søgningen beholder afsender, DartConnect-label
+og torsdagens datoafgrænsning, men **fjerner den negative label-filtrering**.
+`DC_Raw` er fortsat sandhedskilden: eksisterende spiller-/leg-rækker
+kontrolleres på `MatchID + game + player`, og kun manglende rækker
+tilføjes. `elo-processed` bruges fortsat som revisionsmarkør, men tilføjes
+kun, hvis tråden ikke allerede har den (via `GmailThread.getLabels()`).
+En tidligere mærket tråd kan dermed indeholde en ny kamp, også hvis
+den nye kamps første importforsøg fejler.
+
+**Verificering:** Automatiske tests kræver, at søgningen ikke udelukker
+mærkede tråde. Testene dækker ny kamp i tidligere mærket tråd, genkørsel
+uden dubletter, og fejl/retry af den efterfølgende kamp. Ingen rigtige
+Gmail-beskeder eller Sheets er læst, mærket eller skrevet som del af testen.
+
+**Begrænsning:** Koden genhenter stadig recaps for allerede sete MatchID'er,
+fordi eksisterende rækker alene ikke beviser fuldstændig kampimport.
+Dette giver ekstra DartConnect-kald ved hver scanning; Gmail-søgningen
+er desuden begrænset til 500 tråde i vinduet. Belastning og evt.
+pagination må vurderes under den isolerede Apps Script-integrationstest.
+Intet er merged eller installeret hos Jyden.
