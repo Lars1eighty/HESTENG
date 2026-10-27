@@ -23,6 +23,24 @@ const MENU_OPEN_END = "function chooseImportSource() {";
 const ON_OPEN = "function onOpen() {";
 const VERIFIED_LIVE_OPEN_SHA = "1e13a1679933f3ad7d8ea93d2296f387ab9bcf2d02fc1d64da975dcf86b3fda6";
 const VERIFIED_MENU_OPEN_SHA = "6ddbbf9b9c8b6804104325a68f5b1e1492a5ac7a0c43758252f8df069958d5d1";
+const VERIFIED_MENU_IMPORT_SHA = "7ab906eb142efa0286467acae05056ed1d2a6756c16925e66f54c7cc86cabd35";
+const MENU_IMPORT_START = "function chooseImportSource() {";
+// The original "Hjem" button calls the exact same club-only import routine.
+// An unsupported path must never silently import club results.
+const SAFE_CLUB_IMPORT = [
+  "function chooseImportSource() {",
+  "  const ui = SpreadsheetApp.getUi();",
+  "  const result = ui.alert(",
+  '    "Importér DartConnect",',
+  '    "Kun klubbens DartConnect-kampe importeres. Fortsæt?",',
+  "    ui.ButtonSet.YES_NO",
+  "  );",
+  "  if (result === ui.Button.YES) {",
+  "    importRecapStats();",
+  "  }",
+  "}",
+].join("\\n");
+
 const MERGED_ON_OPEN = [
   "function onOpen() {",
   "  const ui = SpreadsheetApp.getUi();",
@@ -55,6 +73,17 @@ function replaceVerifiedBlock(source, startMarker, endMarker, expectedHash, repl
     throw new Error("Legacy builder source differs from the audited version; review required");
   }
   return source.slice(0, start) + replacement + source.slice(end);
+}
+
+function replaceVerifiedTail(source, startMarker, expectedHash, replacement) {
+  const start = source.indexOf(startMarker);
+  if (start < 0 || source.indexOf(startMarker, start + 1) !== -1) {
+    throw new Error("Expected exactly one importer menu handler");
+  }
+  if (digest(source.slice(start)) !== expectedHash) {
+    throw new Error("Importer menu differs from audited version; review required");
+  }
+  return source.slice(0, start) + replacement;
 }
 
 function prepareTestCopy(original) {
@@ -96,8 +125,11 @@ function prepareTestCopy(original) {
     live[0].source, ON_OPEN, LIVE_OPEN_END, VERIFIED_LIVE_OPEN_SHA,
     "// onOpen merged into Menu in this PRIVATE test copy.\n\n",
   );
-  const menuPatched = replaceVerifiedBlock(
+  const menuWithMergedOpen = replaceVerifiedBlock(
     menu[0].source, ON_OPEN, MENU_OPEN_END, VERIFIED_MENU_OPEN_SHA, MERGED_ON_OPEN,
+  );
+  const menuPatched = replaceVerifiedTail(
+    menuWithMergedOpen, MENU_IMPORT_START, VERIFIED_MENU_IMPORT_SHA, SAFE_CLUB_IMPORT,
   );
   const result = {
     ...original,
@@ -158,4 +190,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { digest, replaceVerifiedBlock, prepareTestCopy, insideRepository, MERGED_ON_OPEN, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA };
+module.exports = { digest, replaceVerifiedBlock, replaceVerifiedTail, prepareTestCopy, insideRepository, MERGED_ON_OPEN, SAFE_CLUB_IMPORT, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA, VERIFIED_MENU_IMPORT_SHA };
