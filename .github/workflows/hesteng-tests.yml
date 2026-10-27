@@ -31,6 +31,8 @@ jobs:
         run: node --test ../apps-script/tests/legacyUiReadOnlyData.test.cjs
       - name: Legacy source-audit tests
         run: node --test ../apps-script/tests/auditLegacySource.test.cjs
+      - name: DartConnect Legacy import preservation tests
+        run: node --test ../apps-script/tests/dartconnectLegacyImport.test.cjs
       - name: Audit repo-owned Legacy scripts
         run: node ../apps-script/tools/auditLegacySource.cjs ../apps-script
 
