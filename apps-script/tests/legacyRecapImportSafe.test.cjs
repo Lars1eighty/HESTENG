@@ -20,7 +20,23 @@ function fixture(ids) {
   const rows = [["MatchID"]];
   const events = [];
   const marked = new Set();
-  const problems = { save:false, partialWrite:false, flush:false, label:false, broken:new Set() };
+  const problems = { save:false, partialWrite:false, flush:false, label:false, lockBusy:false, broken:new Set() };
+  const lockEvents = [];
+  let held = false;
+  const lock = {
+    tryLock(ms) {
+      assert.equal(ms, 30000);
+      lockEvents.push("try");
+      if (problems.lockBusy || held) return false;
+      held = true;
+      return true;
+    },
+    releaseLock() {
+      assert.equal(held, true);
+      held = false;
+      lockEvents.push("release");
+    }
+  };
   const now = new Date(); now.setHours(20, 0, 0, 0);
   const threads = ids.map((idsInThread, index) => ({
     getMessages: () => idsInThread.map(id => ({
@@ -30,6 +46,7 @@ function fixture(ids) {
     addLabel() {events.push("label"); if(problems.label)throw Error("label failed"); marked.add(index);}
   }));
   const ctx = vm.createContext({
+    LockService:{ getScriptLock:()=>lock },
     SpreadsheetApp:{
       getActive:()=>({getSheetByName:()=>({
         getLastRow:()=>rows.length,
@@ -62,7 +79,7 @@ function fixture(ids) {
     Logger:{log(){}}
   });
   vm.runInContext(code,ctx);
-  return {run:()=>ctx.importRecapStats(), rows, events, marked, problems};
+  return {run:()=>ctx.importRecapStats(), rows, events, marked, problems, lockEvents};
 }
 
 test("saves and flushes before labeling successful threads",()=>{
@@ -125,4 +142,44 @@ test("repeated recap mail in separate threads never duplicates stored leg rows",
   assert.equal(h.rows.length,3);
   assert.equal(h.marked.size,2);
   assert.deepEqual(h.events,["write","flush","label","label"]);
+});
+
+test("two importer executions cannot both acquire the same lock",()=>{
+  const h=fixture([["abc123"]]);
+  h.problems.lockBusy=true;
+  assert.throws(h.run,/import optaget/);
+  assert.equal(h.rows.length,1);
+  assert.equal(h.marked.size,0);
+  assert.deepEqual(h.lockEvents,["try"]);
+  h.problems.lockBusy=false;
+  h.run();
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,1);
+  assert.deepEqual(h.lockEvents,["try","try","release"]);
+});
+
+test("lock is released when saving throws and a subsequent run can recover",()=>{
+  const h=fixture([["abc123"]]);
+  h.problems.save=true;
+  assert.throws(h.run,/save failed/);
+  assert.deepEqual(h.lockEvents,["try","release"]);
+  h.problems.save=false;
+  h.run();
+  assert.deepEqual(h.lockEvents,["try","release","try","release"]);
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,1);
+});
+
+test("lock is released after flush and Gmail labeling failures",()=>{
+  const h=fixture([["abc123"]]);
+  h.problems.flush=true;
+  assert.throws(h.run,/flush failed/);
+  h.problems.flush=false;
+  h.problems.label=true;
+  assert.throws(h.run,/label failed/);
+  h.problems.label=false;
+  h.run();
+  assert.deepEqual(h.lockEvents,["try","release","try","release","try","release"]);
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,1);
 });
