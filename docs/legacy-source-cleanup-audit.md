@@ -216,3 +216,37 @@ blokke i den private kildeeksport er stadig identiske med deres auditerede
 originaler. **Ikke testet mod en faktisk Google Sheet-tilknyttet Apps
 Script-kørsel**; tilsluttet Drive-integration kan redigere Sheets, men
 eksekverer ikke Apps Script. Ingen merge, deploy eller produktionsændringer.
+
+
+## Ret: undgå dobbelt lås under torsdagspipelinen (27. oktober)
+
+**Fund i den originale 16-filers kildeeksport:** både
+`Ny Torsdag.opdaterKlubaften()` og `123.opdaterEloKlubaften()`
+kalder `LockService.getScriptLock().tryLock(1000)` **før** de kalder
+`importRecapStats()`. Den staged importer havde samtidig fået sin egen
+`getScriptLock().tryLock(30000)`. Dokumentationen garanterer ikke, at en
+ny lock fra samme eksekvering kan genindhentes sikkert; dobbelt lås var
+derfor en alvorlig potentielt blokerende fejl.
+
+**Rettet kun i testkopien:** `importRecapStats()` tager fortsat
+script-låsen ved menu-/manuel import og kalder
+`importRecapStatsUnderLock_()` internt. De to allerede låsede
+torsdagsrutiner kalder derimod `importRecapStatsUnderLock_()` direkte
+mens de holder deres oprindelige lås og frigiver den i deres eksisterende
+`finally`. `opdaterLiveDashboard()` uden en ydre lås beholder kaldet
+til `importRecapStats()`.
+
+Kopigeneratoren accepterer kun denne ændring, når de **to oprindelige
+pipeline-blokkes SHA-256 er identiske** med den auditerede eksport. De
+fem tidligere checksum-kontrollerede kildeblokke er også verificeret
+mod samme private eksport. Enhver kildeafvigelse kræver ny audit.
+
+Automatiske regressionstests kontrollerer direkte import, pipeline med
+allerede holdt lås og frigivelse ved fejl. Apps Script-runtime og
+faktiske installérbare triggere er **ikke testet**. Dette er fortsat
+kun en draft PR; ingen ændringer i Jydens aktive klubsystem.
+
+**Yderligere risiko til særskilt sprint:** Gmail søgning med
+`-label:elo-processed` udelukker tidligere behandlede tråde. Hvis en
+Gmail-tråd senere modtager en ny DartConnect-kamp, bør vi undersøge,
+om den kan blive overset. Det er ikke rettet i denne ændring.
