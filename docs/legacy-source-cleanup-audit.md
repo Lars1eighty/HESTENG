@@ -156,3 +156,27 @@ forhindrer uverificerede kildeændringer og tester anden Legacy-kode.
 **Ikke live-testet:** dette er ikke afprøvet i selve Google Sheets-UI, og
 `chooseImportSource()`s eksisterende parameterproblem er endnu ikke løst.
 Ingen produktionsprojektfiler, triggere eller deployments er ændret.
+
+
+## Importmenu: klub/hjem adskilt i privat testkopi (27. oktober)
+
+Den aktuelle `Menu.chooseImportSource()` viser “Ja = Klub” og “Nej = Hjem”.
+Begge valg kalder imidlertid samme `Ny Torsdag.importRecapStats()`, som **ikke**
+modtager et kildeargument og altid søger efter
+`label:DartConnect from:matchrecap@email.dartconnect.com` i klubaftenens
+datovindue. “Hjem”-valget blev dermed behandlet som klubimport.
+
+I den **private** kopigenerator skiftes den checksum-kontrollerede menu
+til ét entydigt spørgsmål: “Kun klubbens DartConnect-kampe importeres.
+Fortsæt?”. Et **Ja** kalder `importRecapStats()` uden et ignoreret argument,
+mens **Nej** ikke foretager sig noget. Hjemmeimport er **ikke implementeret**
+i dette trin.
+
+Automatiske isolerede tests kontrollerer både Ja/Nej og, at en ændret,
+ikke-verificeret menukilde afvises. Dette er **ikke en ændring i den aktive
+Google Sheet-menu**. På længere sigt kræver hjemmekampe en selvstændig
+datastrøm og eksplicit beslutning, før menuvalget kan tilbydes igen.
+
+**Fortat åbent:** `Ny Torsdag.importRecapStats()` sætter i den aktive kode
+`elo-processed` før `DC_Raw`-rækkerne er skrevet. Det er den næste
+sikkerhedsrettelse til en isoleret kopi.
