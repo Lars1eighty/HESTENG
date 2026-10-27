@@ -25,7 +25,7 @@ function fixture(ids) {
   let held = false;
   const lock = {
     tryLock(ms) {
-      assert.equal(ms, 30000);
+      assert.ok(ms === 30000 || ms === 1000, "Only direct/manual (30s) and Thursday (1s) timeouts are expected");
       lockEvents.push("try");
       if (problems.lockBusy || held) return false;
       held = true;
