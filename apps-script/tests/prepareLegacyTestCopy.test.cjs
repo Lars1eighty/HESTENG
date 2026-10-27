@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const vm = require("node:vm");
-const { digest, replaceVerifiedBlock, replaceVerifiedTail, prepareTestCopy, MERGED_ON_OPEN, SAFE_CLUB_IMPORT, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA, VERIFIED_MENU_IMPORT_SHA } =
+const { digest, replaceVerifiedBlock, replaceVerifiedTail, replaceVerifiedCallInBlock, prepareTestCopy, MERGED_ON_OPEN, SAFE_CLUB_IMPORT, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA, VERIFIED_MENU_IMPORT_SHA } =
   require("../tools/prepareLegacyTestCopy.cjs");
 
 test("removes only a checksum-verified function and preserves adjacent functions", () => {
@@ -159,3 +159,35 @@ test("club-only menu rejects unfamiliar source and preserves neighbors", () => {
 
 // Execute the related isolated recap-import regression suite in the same CI step.
 require("./legacyRecapImportSafe.test.cjs");
+
+test("Thursday pipeline keeps its existing lock and calls only under-lock import",()=>{
+  const before = "function preexisting() {}\n";
+  const start = "function opdaterKlubaften() {";
+  const end = "function followingFunction() {";
+  const block = start + '\n' +
+    '  const lock = LockService.getScriptLock();\n' +
+    '  if (!lock.tryLock(1000)) return;\n' +
+    '  try { importRecapStats(); } finally { lock.releaseLock(); }\n' +
+    '}\n\n';
+  const original = before + block + end + '\n  return 5;\n}';
+  const updated = replaceVerifiedCallInBlock(
+    original, start, end, digest(block),
+    "importRecapStats();", "importRecapStatsUnderLock_();"
+  );
+  assert.ok(updated.includes(before));
+  assert.ok(updated.includes(end));
+  assert.ok(updated.includes("importRecapStatsUnderLock_();"));
+  assert.ok(!updated.includes("try { importRecapStats(); }"));
+  assert.equal((updated.match(/tryLock\(/g) || []).length, 1);
+});
+
+test("changed Thursday code cannot silently bypass checksum guard",()=>{
+  const code = 'function opdaterKlubaften() { importRecapStats(); }\n' +
+    'function followingFunction() {}';
+  assert.throws(
+    ()=>replaceVerifiedCallInBlock(
+      code, "function opdaterKlubaften() {", "function followingFunction() {",
+      digest("different"), "importRecapStats();", "importRecapStatsUnderLock_();"
+    ), /differs/
+  );
+});
