@@ -15,7 +15,8 @@ Status: **Dataskema verificeret via læseadgang til aktivt regneark 26-10-2026; 
 - **Ingen** `doGet`, Gmail-appkald, triggere, `setValues`, ændring af ELO eller importer.
 - Den læser højst 500 af de **sidste rækker** fra DC_Matches, og advarer når de ikke dækker hele historikken.
 - Kun **Players** bestemmer spillernavn og ELO; deltagere i Tilmelding uden Players-post bliver udeladt fra svar (men ikke slettet i arket).
-- `Live Aktiv` bidrager med **rank**, men ELO hentes stadig fra Players og forskelle advares om.
+- `Live Aktiv` bidrager med **rank**, **Rank Δ** og **ELO Δ**, men ELO hentes stadig fra Players og forskelle advares om.
+- Eksisterende `Leaderboard.html` kalder `getELOData()`. Den nye adapter har nu denne read-only funktion med de fem felter `rank`, `name`, `elo`, `rankDelta` og `eloDelta`. Det er **kun staged kode**, ikke en funktion installeret i produktion. Tomme deltafelter forbliver tomme – aldrig opfundne null/0-værdier.
 - Navne og nøgleværdier læses med verificerede **kolonneoverskrifter**, ikke bare kolonnepositioner. Ændres skemaet, springes den usikre kilde over med advarsel.
 - Matchfeltet `ELO_Processed` kan indeholde teksten `X` (ikke blot boolean `true`). Der beregnes ikke ELO i adapteren.
 
@@ -64,7 +65,7 @@ Live puljer/TV skal også knyttes til kontrollerede kilder.
 1. Kontrollér stadig scriptprojektet og `hestengLegacyReadOnlyDiagnosis` **inden installation**, og afklar hvilke eksisterende `doGet()`/HtmlService-filer den aktive webapp anvender. Må ikke lave en ekstra `doGet()`.
 2. Få V9.1's model fra `snapshot.players.map((p, i) => ({id:i, name:p.name, elo:p.elo, checked:p.registered}))` ved første indlæsning. **Dette er en UI-kontrakt, ikke en aktuel forbindelse**, og tilmelding må ikke skrives til Google Sheets, før skriveflowet er særskilt godkendt.
 3. Brug kun read-only kampdata fra `snapshot.matches` til kampoversigt; resultater lagres stadig kun via eksisterende DartConnect-flow.
-4. V42 kan bruge `snapshot.liveElo` til ELO-skærmen. Verificér stadig de **faktiske** puljestillinger, 180'ere, lukninger og AVG-kilder. Der må ikke laves kunstige puljer eller opdigtede gennemsnit.
+4. V42 kan bruge `snapshot.liveElo` til ELO-skærmen. Den gamle `Leaderboard.html` kan bruge staged `getELOData()`, **når** korrekt `doGet` og adgang er testet. Verificér stadig de **faktiske** puljestillinger, 180'ere, lukninger og AVG-kilder. Der må ikke laves kunstige puljer eller opdigtede gennemsnit.
 5. Når Apps Script-projekt og adgangskontrol er bekræftet: Forbind de to HTML-prototyper via eksisterende, autentificeret servervej (ikke offentlig JSON) og test anonym/gæsteadgang særskilt.
 
 ## Sikkerhedsbarrierer
