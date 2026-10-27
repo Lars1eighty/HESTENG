@@ -20,10 +20,18 @@ function importRecapStats() {
     'before:' + Utilities.formatDate(tomorrow, tz, "yyyy/MM/dd") + ' ' +
     '-label:elo-processed';
 
-  const existingIds = new Set(
+  // A match ID alone is not proof that all its leg rows were saved.
+  // Keep a separate key for every player in every game, so a partial
+  // previous write can be completed on retry without duplicating rows.
+  function rawKey(id, game, player) {
+    return [String(id), String(game), String(player)].join("\\u0000");
+  }
+  const existingKeys = new Set(
     sheet.getLastRow() > 1
-      ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1)
-          .getValues().flat().filter(String).map(String)
+      ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 4)
+          .getValues()
+          .filter(function (row) { return row[0] && row[2] && row[3]; })
+          .map(function (row) { return rawKey(row[0], row[2], row[3]); })
       : []
   );
   const threads = GmailApp.search(query, 0, 500);
@@ -57,10 +65,6 @@ function importRecapStats() {
         );
         if (!recapMatch) throw new Error("MatchID ikke fundet");
         matchId = recapMatch[1];
-
-        // Already persisted? Do not append a duplicate. This also allows an
-        // unlabeled thread to be labeled after a prior label-only failure.
-        if (existingIds.has(matchId)) return;
 
         const html = UrlFetchApp.fetch(
           "https://recap.dartconnect.com/players/" + matchId
@@ -110,10 +114,16 @@ function importRecapStats() {
           throw new Error("DartConnect-kampen indeholder ingen spillerdata");
         }
 
-        // Stage complete matches only; a parsing error must not write
-        // partial rows for a match.
-        rows.push(...matchRows);
-        existingIds.add(matchId);
+        // The match itself has been fully parsed before any rows are
+        // staged. Only previously missing game/player rows are appended.
+        // A retry after partial persistence therefore fills gaps.
+        matchRows.forEach(function (row) {
+          const key = rawKey(row[0], row[2], row[3]);
+          if (!existingKeys.has(key)) {
+            rows.push(row);
+            existingKeys.add(key);
+          }
+        });
         Logger.log(
           "Klargjort: " + matchId + " - " +
           Utilities.formatDate(matchDate, tz, "dd/MM/yyyy HH:mm")
