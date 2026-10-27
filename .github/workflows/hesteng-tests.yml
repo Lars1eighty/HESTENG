@@ -27,6 +27,16 @@ jobs:
         run: npm install
       - name: Regression tests
         run: npm test
+      - name: Legacy read-only adapter tests
+        run: node --test ../apps-script/tests/legacyUiReadOnlyData.test.cjs
+      - name: Legacy source-audit tests
+        run: node --test ../apps-script/tests/auditLegacySource.test.cjs
+      - name: DartConnect Legacy import preservation tests
+        run: node --test ../apps-script/tests/dartconnectLegacyImport.test.cjs
+      - name: Legacy isolated test-copy safety tests
+        run: node --test ../apps-script/tests/prepareLegacyTestCopy.test.cjs
+      - name: Audit repo-owned Legacy scripts
+        run: node ../apps-script/tools/auditLegacySource.cjs ../apps-script
 
   browser-smoke:
     runs-on: ubuntu-latest
