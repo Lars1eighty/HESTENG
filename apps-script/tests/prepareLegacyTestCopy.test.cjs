@@ -156,3 +156,6 @@ test("club-only menu rejects unfamiliar source and preserves neighbors", () => {
   assert.match(fixed, /function chooseImportSource/);
   assert.doesNotMatch(fixed, /'Hjem'/);
 });
+
+// Execute the related isolated recap-import regression suite in the same CI step.
+require("./legacyRecapImportSafe.test.cjs");
