@@ -172,7 +172,12 @@ function importRecapStatsUnderLock_() {
       GmailApp.getUserLabelByName("elo-processed") ||
       GmailApp.createLabel("elo-processed");
     threadsReadyToLabel.forEach(function (thread) {
-      thread.addLabel(processedLabel);
+      // Keep the label as an audit marker, not a search exclusion. A newer
+      // message can arrive in the same conversation after this marker.
+      const alreadyLabeled = thread.getLabels().some(function (label) {
+        return label.getName() === "elo-processed";
+      });
+      if (!alreadyLabeled) thread.addLabel(processedLabel);
     });
   }
 
