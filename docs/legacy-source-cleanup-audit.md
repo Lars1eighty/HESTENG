@@ -94,3 +94,37 @@ Fire scenarier blev udført:
 **Vigtig konklusion:** At rette `isTruthyWin_()` alene er **ikke nok** til sikker drift. Begge globale `buildDCMatches()` skal afklares; det er ikke sikkert at stole på Apps Scripts filindlæsningsrækkefølge. Testerne er **lokale integrationstests med mockark**, ikke test af produktions-Gmail, faktiske Apps Script-triggere eller live deployments. Den komplette private JSON-eksport er ikke lagt på GitHub.
 
 **Næste ændring:** På en isoleret testkopi skal der kun være én global `buildDCMatches()` (den data-bevarende), og mailimporten skal testes for fejl før `elo-processed` sættes. Ingen ændringer på aktivt system endnu.
+
+
+## Isoleret testkopi: konflikt i buildDCMatches fjernet (27. oktober)
+
+Værktøjet `apps-script/tools/prepareLegacyTestCopy.cjs` fremstiller nu en
+**privat JSON-testkopi** fra den verificerede 16-filers Apps Script-eksport.
+Det gør præcis to ændringer i kopien: fjerner den destruktive
+`buildDCMatches()` i `123` og tilføjer forståelse for `Win="W"` i den
+data-bevarende `dartconnectLegacyImport.`-implementering. Kildens oprindelige
+JSON-fil ændres ikke; andre filer kopieres uændret. Den farlige funktion fjernes
+kun, når dens SHA-256 matcher den undersøgte kildeversion – ellers stopper
+værktøjet uden output. Det nægter også at skrive i et Git-repository eller
+overskrive eksisterende output.
+
+**Privat afprøvning udført:** Begge kildeindlæsningsrækkefølger blev kørt på
+kunstige 20-kolonners `DC_Raw`- og 16-kolonners `DC_Matches`-data:
+- Historisk `ELO_Processed="X"`, gammel ELO og kamptid forblev uændret.
+- Ny kamp med `Win="W"` gav korrekt 3-1 og blev ELO-behandlet én gang.
+- Gentagen `buildDCMatches()` ændrede ikke data (idempotens).
+- Alle 13 JS-filer kunne parses, og en separat AST-kontrol fandt **kun én**
+  global `buildDCMatches()` i testkopien; den øvrige `onOpen()`-dublet
+  afventer en særskilt oprydning.
+
+Lokal kommando, hvis en *privat* kildeeksport er tilgængelig:
+
+```bash
+node apps-script/tools/prepareLegacyTestCopy.cjs original-private.json ny-privat-testkopi.json
+```
+
+Gem **begge JSON-filer uden for GitHub-repoet**. Den nye JSON er en
+**forberedt kopi**, ikke en installeret Apps Script-kopi, deployment eller
+bevis for gennemført test på rigtigt klubdata. Følgende mangler fortsat:
+testscript med korrekt Sheets-kopi, kontrol af triggere, Gmail-fejlscenarier
+og praktisk kamp-/UI-test. Ingen produktionskode eller data er ændret.
