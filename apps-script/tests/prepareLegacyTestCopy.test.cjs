@@ -56,7 +56,7 @@ test("merge retains both original spreadsheet menus through a single onOpen", ()
     '      "runTournamentUpdate"',
     "    )", "",
     "    .addToUi();",
-    "}", "", "",
+    "}", "",
     "function copyLiveFormatting() {}",
   ].join("\n");
   const menu = [
