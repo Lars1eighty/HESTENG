@@ -128,3 +128,31 @@ Gem **begge JSON-filer uden for GitHub-repoet**. Den nye JSON er en
 bevis for gennemført test på rigtigt klubdata. Følgende mangler fortsat:
 testscript med korrekt Sheets-kopi, kontrol af triggere, Gmail-fejlscenarier
 og praktisk kamp-/UI-test. Ingen produktionskode eller data er ændret.
+
+## onOpen-oprydning i privat testkopi (27. oktober)
+
+Kilden havde to globale `onOpen()`: `Live` og `Menu`. Det ville være
+usikkert at stole på, hvilken der køres. Den private kopigenerator
+`apps-script/tools/prepareLegacyTestCopy.cjs` laver nu **én** `onOpen()`
+i `Menu`, som registrerer **begge** oprindelige menuer uden at ændre deres
+handlinger:
+
+- `🎯 Dart` → `Opdater turnering` → `runTournamentUpdate`
+- `🎯 DartConnect` → `Importer...` → `chooseImportSource`
+
+Den tidligere `onOpen()` i `Live` fjernes kun fra den private kopi.
+Begge oprindelige kildeblokke har en fast SHA-256-kontrol; ved en afvigende
+kildeversion stopper værktøjet frem for at gætte. Eksisterende `Live`- og
+`Menu`-funktioner uden for de to blokke bevares.
+
+**Efterkontrol:** Den private fulde 16-filers eksport blev opbygget med netop
+fire forventede ændrede kildefiler (`123`, `dartconnectLegacyImport.`,
+`Live`, `Menu`); alle 13 server-JS-filer kunne parses, og der er kun én
+global `buildDCMatches()` og én global `onOpen()` tilbage. I en isoleret
+JavaScript-UI-mock oprettede det nye `onOpen()` **begge** menuer med de
+oprindelige handlers. GitHub CI-testen kontrollerer tilsvarende begge menuer,
+forhindrer uverificerede kildeændringer og tester anden Legacy-kode.
+
+**Ikke live-testet:** dette er ikke afprøvet i selve Google Sheets-UI, og
+`chooseImportSource()`s eksisterende parameterproblem er endnu ikke løst.
+Ingen produktionsprojektfiler, triggere eller deployments er ændret.
