@@ -79,7 +79,18 @@ function fixture(ids) {
     Logger:{log(){}}
   });
   vm.runInContext(code,ctx);
-  return {run:()=>ctx.importRecapStats(), rows, events, marked, problems, lockEvents};
+  function runPipelineWithOuterLock() {
+    assert.equal(lock.tryLock(1000), true);
+    try {
+      return ctx.importRecapStatsUnderLock_();
+    } finally {
+      lock.releaseLock();
+    }
+  }
+  return {
+    run:()=>ctx.importRecapStats(),
+    runPipelineWithOuterLock, rows, events, marked, problems, lockEvents
+  };
 }
 
 test("saves and flushes before labeling successful threads",()=>{
@@ -180,6 +191,28 @@ test("lock is released after flush and Gmail labeling failures",()=>{
   h.problems.label=false;
   h.run();
   assert.deepEqual(h.lockEvents,["try","release","try","release","try","release"]);
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,1);
+});
+
+test("Thursday pipeline uses its existing script lock without reacquiring",()=>{
+  const h=fixture([["abc123"]]);
+  h.runPipelineWithOuterLock();
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,1);
+  assert.deepEqual(h.lockEvents,["try","release"]);
+  assert.deepEqual(h.events,["write","flush","label"]);
+});
+
+test("existing Thursday lock is released if the importer fails",()=>{
+  const h=fixture([["abc123"]]);
+  h.problems.save=true;
+  assert.throws(h.runPipelineWithOuterLock,/save failed/);
+  assert.deepEqual(h.lockEvents,["try","release"]);
+  assert.equal(h.marked.size,0);
+  h.problems.save=false;
+  h.runPipelineWithOuterLock();
+  assert.deepEqual(h.lockEvents,["try","release","try","release"]);
   assert.equal(h.rows.length,3);
   assert.equal(h.marked.size,1);
 });
