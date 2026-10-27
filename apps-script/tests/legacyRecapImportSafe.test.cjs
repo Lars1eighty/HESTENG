@@ -249,3 +249,19 @@ test("already labeled conversation remains eligible and rows are not duplicated"
   assert.equal(h.marked.size,1);
   assert.deepEqual(h.events,["write","flush","label"]);
 });
+
+test("new recap in a labeled thread remains retryable after fetch failure",()=>{
+  const batches=[["abc123"]];
+  const h=fixture(batches);
+  h.run();
+  batches[0].push("def456");
+  h.problems.broken.add("def456");
+  h.run();
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,1); // Existing label must not hide failures.
+  h.problems.broken.delete("def456");
+  h.run();
+  assert.equal(h.rows.length,5);
+  assert.deepEqual(h.rows.slice(1).map(row=>row[0]),
+    ["abc123","abc123","def456","def456"]);
+});
