@@ -122,7 +122,7 @@ function harness() {
     const row = matchSheet.getRows().slice(1).find((r) => r[0] === id);
     return row && Object.fromEntries(MATCH_HEADERS.map((key, i) => [key, row[i]]));
   }
-  return { build, match, matchSheet, oldMatch };
+  return { build, match, matchSheet, rawSheet, oldMatch };
 }
 
 test("DartConnect W marks one leg win", () => {
@@ -171,4 +171,5 @@ test("the importer does not write to the raw input sheet", () => {
   const h = harness();
   h.build();
   assert.ok(h.matchSheet.writes.length);
+  assert.equal(h.rawSheet.writes.length, 0);
 });
