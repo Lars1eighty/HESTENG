@@ -79,3 +79,18 @@ ikke må aktiveres.
 6. Kun efter reelle tests og særskilt kontrol af triggere og backup: beslut om den aktive Apps Script-løsning skal opdateres.
 
 **Status:** Kildeadgang og rodårsager er nu verificeret. Ændringerne er kun forberedt på en separat **draft-PR**, og produktionssystemet er urørt.
+
+## Integreret lokal afprøvning – 27. oktober 2026
+
+**Ny test:** En privat, lokalt lagret JSON-eksport af det aktive Apps Script-projekt er kørt i et **Node.js VM-testmiljø** med kunstige Google Sheets. Der er ikke foretaget kald til Google Sheets, Gmail eller DartConnect. Modellen anvendte rigtige kildefiler fra eksporten: `Config`, `Ny Torsdag`, `123` og `dartconnectLegacyImport.`. Den staged `W`-rettelse blev anvendt i hukommelsen på den sidste fil.
+
+Fire scenarier blev udført:
+
+1. **`123` indlæses sidst:** `buildDCMatches()` nulstiller historisk `ELO_Processed="X"`. Testen bekræftede den uønskede virkning.
+2. **Den data-bevarende importer indlæses sidst:** Den tidligere `X`, ELO-felter og kamptid bevares, og ny 3-1-kamp bliver korrekt opbygget. Gentaget import ændrer ikke resultatet.
+3. **Efterfølgende ELO med den data-bevarende import:** `updateEloFromDCMatches()` lader allerede behandlede kampe være og behandler kun ny kamp. Test bestået.
+4. **Efterfølgende ELO med den destruktive import:** Da gammel `X` blev slettet, bliver den gamle kamp behandlet igen, og dens lagrede ELO-eftertal ændres. Testen bekræftede risikoen.
+
+**Vigtig konklusion:** At rette `isTruthyWin_()` alene er **ikke nok** til sikker drift. Begge globale `buildDCMatches()` skal afklares; det er ikke sikkert at stole på Apps Scripts filindlæsningsrækkefølge. Testerne er **lokale integrationstests med mockark**, ikke test af produktions-Gmail, faktiske Apps Script-triggere eller live deployments. Den komplette private JSON-eksport er ikke lagt på GitHub.
+
+**Næste ændring:** På en isoleret testkopi skal der kun være én global `buildDCMatches()` (den data-bevarende), og mailimporten skal testes for fejl før `elo-processed` sættes. Ingen ændringer på aktivt system endnu.
