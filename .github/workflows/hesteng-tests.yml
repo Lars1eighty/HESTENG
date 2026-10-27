@@ -29,6 +29,10 @@ jobs:
         run: npm test
       - name: Legacy read-only adapter tests
         run: node --test ../apps-script/tests/legacyUiReadOnlyData.test.cjs
+      - name: Legacy source-audit tests
+        run: node --test ../apps-script/tests/auditLegacySource.test.cjs
+      - name: Audit repo-owned Legacy scripts
+        run: node ../apps-script/tools/auditLegacySource.cjs ../apps-script
 
   browser-smoke:
     runs-on: ubuntu-latest
