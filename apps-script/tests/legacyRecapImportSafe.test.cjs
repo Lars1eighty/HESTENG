@@ -9,33 +9,39 @@ const code = fs.readFileSync(path.join(__dirname, "../legacyRecapImportSafe.gs")
 function sample(id) {
   const page = { props: { matchInfo: { match_winner: 0,
     opponents: [{name:"Alpha"}, {name:"Beta"}] },
-    playersPerGame: [[[{
-      set_number:1, set_game_number:1, name:"Alpha", opponent_index:1, player_win:"W"
-    }]]] } };
+    playersPerGame: [[[
+      { set_number:1, set_game_number:1, name:"Alpha", opponent_index:1, player_win:"W" }
+    ], [
+      { set_number:1, set_game_number:1, name:"Beta", opponent_index:0, player_win:"" }
+    ]]] } };
   return '<div data-page="' + JSON.stringify(page).replaceAll('"', '&quot;') + '">';
 }
 function fixture(ids) {
   const rows = [["MatchID"]];
   const events = [];
   const marked = new Set();
-  const problems = { save:false, flush:false, broken:new Set() };
+  const problems = { save:false, partialWrite:false, flush:false, label:false, broken:new Set() };
   const now = new Date(); now.setHours(20, 0, 0, 0);
   const threads = ids.map((idsInThread, index) => ({
     getMessages: () => idsInThread.map(id => ({
       getDate:()=>now,
       getBody:()=> "https:%2F%2Frecap.dartconnect.com%2Fmatches%2F" + id
     })),
-    addLabel() {events.push("label"); marked.add(index);}
+    addLabel() {events.push("label"); if(problems.label)throw Error("label failed"); marked.add(index);}
   }));
   const ctx = vm.createContext({
     SpreadsheetApp:{
       getActive:()=>({getSheetByName:()=>({
         getLastRow:()=>rows.length,
         getRange:(r,c,n,m)=>({
-          getValues:()=>rows.slice(r-1,r-1+n).map(row=>[row[0]]),
+          getValues:()=>rows.slice(r-1,r-1+n).map(row=>Array.from({length:m},(_,j)=>row[c-1+j]??"")),
           setValues:data=>{
             events.push("write");
             if(problems.save)throw Error("save failed");
+            if(problems.partialWrite) {
+              rows.push(data[0]);
+              throw Error("partial write failed");
+            }
             rows.push(...data);
           }
         })
@@ -62,7 +68,7 @@ function fixture(ids) {
 test("saves and flushes before labeling successful threads",()=>{
   const h=fixture([["abc123"]]);h.run();
   assert.deepEqual(h.events,["write","flush","label"]);
-  assert.equal(h.rows.length,2);
+  assert.equal(h.rows.length,3);
   assert.equal(h.rows[1].length,20);
 });
 test("failed save never labels a message",()=>{
@@ -74,7 +80,7 @@ test("failed flush is retryable without duplicate import",()=>{
   const h=fixture([["abc123"]]);h.problems.flush=true;
   assert.throws(h.run,/flush failed/);
   h.problems.flush=false;h.run();
-  assert.equal(h.rows.length,2);
+  assert.equal(h.rows.length,3);
   assert.equal(h.marked.size,1);
 });
 test("partial thread failures do not mark unimported results",()=>{
@@ -82,6 +88,41 @@ test("partial thread failures do not mark unimported results",()=>{
   h.problems.broken.add("def456");h.run();
   assert.equal(h.marked.size,0);
   h.problems.broken.delete("def456");h.run();
+  assert.equal(h.rows.length,5);
+  assert.equal(h.marked.size,1);
+});
+
+test("partial persistence is repaired per leg instead of skipping whole match",()=>{
+  const h=fixture([["abc123"]]);
+  h.problems.partialWrite=true;
+  assert.throws(h.run,/partial write failed/);
+  assert.equal(h.rows.length,2); // Header and only Alpha saved.
+  assert.equal(h.marked.size,0);
+  h.problems.partialWrite=false;
+  h.run();
+  assert.equal(h.rows.length,3);
+  assert.deepEqual(h.rows.slice(1).map(row=>row[3]),["Alpha","Beta"]);
+  assert.equal(h.marked.size,1);
+  assert.deepEqual(h.events,["write","write","flush","label"]);
+});
+
+test("failed Gmail labeling can be retried without duplicate leg rows",()=>{
+  const h=fixture([["abc123"]]);
+  h.problems.label=true;
+  assert.throws(h.run,/label failed/);
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,0);
+  h.problems.label=false;
+  h.run();
   assert.equal(h.rows.length,3);
   assert.equal(h.marked.size,1);
+  assert.deepEqual(h.events,["write","flush","label","label"]);
+});
+
+test("repeated recap mail in separate threads never duplicates stored leg rows",()=>{
+  const h=fixture([["abc123"],["abc123"]]);
+  h.run();
+  assert.equal(h.rows.length,3);
+  assert.equal(h.marked.size,2);
+  assert.deepEqual(h.events,["write","flush","label","label"]);
 });
