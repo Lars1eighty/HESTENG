@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const vm = require("node:vm");
-const { digest, replaceVerifiedBlock, prepareTestCopy, MERGED_ON_OPEN, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA } =
+const { digest, replaceVerifiedBlock, replaceVerifiedTail, prepareTestCopy, MERGED_ON_OPEN, SAFE_CLUB_IMPORT, VERIFIED_LIVE_OPEN_SHA, VERIFIED_MENU_OPEN_SHA, VERIFIED_MENU_IMPORT_SHA } =
   require("../tools/prepareLegacyTestCopy.cjs");
 
 test("removes only a checksum-verified function and preserves adjacent functions", () => {
@@ -108,4 +108,51 @@ test("unrecognized onOpen changes stop before any menu replacement", () => {
     "function onOpen() {", "function chooseImportSource() {",
     VERIFIED_MENU_OPEN_SHA, MERGED_ON_OPEN,
   ), /differs/);
+});
+
+
+test("club-only importer does nothing when user declines", () => {
+  const imported = [];
+  const alerts = [];
+  let selection = "NO";
+  const ui = {
+    ButtonSet: { YES_NO: "YES_NO" },
+    Button: { YES: "YES", NO: "NO" },
+    alert(title, message, buttons) {
+      alerts.push({ title, message, buttons });
+      return ui.Button[selection];
+    },
+  };
+  const context = vm.createContext({
+    SpreadsheetApp: { getUi: () => ui },
+    importRecapStats(...args) { imported.push(args); },
+  });
+  vm.runInContext(SAFE_CLUB_IMPORT, context);
+  context.chooseImportSource();
+  assert.equal(imported.length, 0);
+  assert.equal(alerts[0].buttons, "YES_NO");
+  assert.match(alerts[0].message, /klubbens DartConnect/);
+  selection = "YES";
+  context.chooseImportSource();
+  assert.equal(imported.length, 1);
+  assert.deepEqual(imported[0], []); // No ignored "Hjem" argument.
+});
+
+test("club-only menu rejects unfamiliar source and preserves neighbors", () => {
+  const original = [
+    "function onOpen() { return 1; }",
+    "function chooseImportSource() {",
+    "  importRecapStats('Hjem');",
+    "}",
+  ].join("\n");
+  const start = "function chooseImportSource() {";
+  assert.throws(
+    () => replaceVerifiedTail(original, start, VERIFIED_MENU_IMPORT_SHA, SAFE_CLUB_IMPORT),
+    /differs/,
+  );
+  const expectedHash = digest(original.slice(original.indexOf(start)));
+  const fixed = replaceVerifiedTail(original, start, expectedHash, SAFE_CLUB_IMPORT);
+  assert.match(fixed, /function onOpen/);
+  assert.match(fixed, /function chooseImportSource/);
+  assert.doesNotMatch(fixed, /'Hjem'/);
 });
