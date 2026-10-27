@@ -194,3 +194,25 @@ Syv isolerede tests kontrollerer normal import, skrivefejl, flush-fejl,
 delvis fejl i en mailtråd, delvist gemt kamp, mislykket Gmail-mærkning
 og samme recap i to tråde. Der er **ikke kørt en ægte Apps Script-test i
 Google Sheets eller en Gmail-test**. Al produktionskode er stadig urørt.
+
+## Samtidig import: lås og fejlgendannelse (27. oktober)
+
+**Nyt sikkerhedsværn i testkopien:** Den staged `importRecapStats()` tager en
+`LockService.getScriptLock().tryLock(30000)` før den læser `DC_Raw` eller
+søger i Gmail. Dermed kan to samtidige importer i det samme Apps Script-projekt
+ikke begge basere sig på forældede eksisterende rækker. Ved låsekonflikt
+afbryder importen uden at skrive eller mærke noget; ved normal afslutning
+eller fejl frigives låsen i `finally`.
+
+En tidligere importer-kontrol blev styrket: eksistens kontrolleres pr.
+`MatchID + Game + Player` i `DC_Raw` i stedet for kun pr. `MatchID`.
+Efter delvist persistente data bliver kun manglende spiller-/leg-rækker
+tilføjet; allerede gemte rækker duplikeres ikke.
+
+**Verificeret:** 10 isolerede recap-tests (inklusive låsekonflikt og
+låsfrigivelse efter gemme-, flush- og Gmail-label-fejl) bestod i
+GitHub Actions; øvrige regressionstests bestod. De SHA-256-verificerede
+blokke i den private kildeeksport er stadig identiske med deres auditerede
+originaler. **Ikke testet mod en faktisk Google Sheet-tilknyttet Apps
+Script-kørsel**; tilsluttet Drive-integration kan redigere Sheets, men
+eksekverer ikke Apps Script. Ingen merge, deploy eller produktionsændringer.
