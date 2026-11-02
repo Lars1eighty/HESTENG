@@ -81,7 +81,7 @@ export function saveTrainingResult(result: TrainingResult): TrainingResult[] {
   const next = normalizeTrainingResults([result, ...getTrainingResults().filter((item) => item.id !== result.id)]);
 
   writeLocalTrainingResults(next);
-  void saveTrainingResultToSharedStore(result);
+  void saveTrainingResultToSharedStore(result).catch(() => undefined);
   return next;
 }
 
@@ -117,21 +117,22 @@ export async function saveTrainingResultToSharedStore(result: TrainingResult): P
       body: JSON.stringify({ type: "result", result }),
     });
     if (!response.ok) {
-      const fallbackResults = normalizeTrainingResults([result, ...getTrainingResultsForPlayer(result.playerId).filter((item) => item.id !== result.id)]);
-      writePlayerTrainingResultsToCache(result.playerId, fallbackResults);
-      return fallbackResults;
+      throw new Error(`Serveren afviste resultatet (HTTP ${response.status}).`);
     }
 
     const state = await response.json() as { results?: TrainingResult[] };
     const playerResults = normalizeTrainingResults(Array.isArray(state.results) ? state.results : []);
+    if (!playerResults.some((saved) => saved.id === result.id && saved.playerId === result.playerId)) {
+      throw new Error("Serveren bekræftede ikke det gemte resultat.");
+    }
     writePlayerTrainingResultsToCache(result.playerId, playerResults);
 
     return playerResults;
-  } catch {
-    // Local cache keeps training usable if the dev server store is unavailable.
+  } catch (error) {
+    // Preserve the result locally, but never report a failed server save as successful.
     const fallbackResults = normalizeTrainingResults([result, ...getTrainingResultsForPlayer(result.playerId).filter((item) => item.id !== result.id)]);
     writePlayerTrainingResultsToCache(result.playerId, fallbackResults);
-    return fallbackResults;
+    throw error instanceof Error ? error : new Error("Kunne ikke gemme resultatet på serveren.");
   }
 }
 
