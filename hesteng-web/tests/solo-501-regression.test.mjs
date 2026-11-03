@@ -41,12 +41,13 @@ test("501: three legs stay one session and reset the next leg to 501", () => {
 
 test("501: checkout on first dart uses one dart, not three", () => {
   let visits = [];
-  for (const score of [100, 100, 100, 100]) visits = visit(visits, score);
-  visits = visit(visits, 101, 1, 1);
+  for (const score of [100, 100, 100, 100, 61]) visits = visit(visits, score);
+  assert.equal(engine.remaining501(visits), 40);
+  visits = visit(visits, 40, 1, 1);
   const summary = engine.summarize501(visits, 1);
-  assert.equal(summary.metrics.darts, 13);
-  assert.equal(summary.metrics.threeDartAverage, 115.6);
-  assert.equal(summary.details.legs[0].darts, 13);
+  assert.equal(summary.metrics.darts, 16);
+  assert.equal(summary.metrics.threeDartAverage, 93.9);
+  assert.equal(summary.details.legs[0].darts, 16);
 });
 
 test("501: bust scores zero while counting the selected number of darts", () => {
@@ -66,6 +67,13 @@ test("501: impossible remaining, bust and invalid double attempt are rejected", 
   assert.throws(() => visit(visits, 101), /doubleforsøg/i);
   assert.throws(() => visit(visits, 101, 1, 2), /overstige/);
   assert.equal(engine.remaining501(visits), 101);
+});
+
+test("501: physically impossible 1-dart checkout and 179-point visits are rejected", () => {
+  let visits = [];
+  for (const score of [100, 100, 100, 100]) visits = visit(visits, score);
+  assert.throws(() => visit(visits, 101, 1, 1), /ikke mulig/);
+  assert.throws(() => visit([], 179), /ikke mulig/);
 });
 
 test("501: two missed doubles and one successful double yield 33.3 percent", () => {
