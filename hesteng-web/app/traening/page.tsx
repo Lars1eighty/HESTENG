@@ -9,6 +9,7 @@ import {
   AROUND_THE_WORLD_EXERCISE_ID,
   BOBS_27_EXERCISE_ID,
   CATCH_40_EXERCISE_ID,
+  PRACTICE_501_EXERCISE_ID,
   GAME_420_EXERCISE_ID,
   JDC_CHALLENGE_EXERCISE_ID,
   PRIESTLEY_TRIPLES_EXERCISE_ID,
@@ -150,6 +151,15 @@ const JDC_STEPS: JdcStep[] = [
 ];
 const JDC_TOTAL_DARTS = JDC_STEPS.reduce((sum, step) => sum + step.darts, 0);
 const CATCH_40_TARGETS = Array.from({ length: 40 }, (_, index) => index + 61);
+const CATCH_40_LIGHT_TARGETS = Array.from({ length: 21 }, (_, index) => index + 60);
+type Catch40Mode = "classic" | "light";
+const CATCH_40_VARIANTS = {
+  classic: "classic-61-100-v1",
+  light: "light-60-80-v1",
+} as const;
+function getCatch40Targets(mode: Catch40Mode) {
+  return mode === "light" ? CATCH_40_LIGHT_TARGETS : CATCH_40_TARGETS;
+}
 const BOBS_27_TARGETS = [
   ...Array.from({ length: 20 }, (_, index) => ({
     target: `D${index + 1}`,
@@ -363,6 +373,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   const [selectedDashboardExerciseId, setSelectedDashboardExerciseId] = useState<string | null>(null);
   const [jdcThrows, setJdcThrows] = useState<JdcThrow[]>([]);
   const [catch40Results, setCatch40Results] = useState<Catch40Result[]>([]);
+  const [catch40Mode, setCatch40Mode] = useState<Catch40Mode>("classic");
   const [bobs27Results, setBobs27Results] = useState<Bobs27Target[]>([]);
   const [game420Results, setGame420Results] = useState<Game420Target[]>([]);
   const [scoringTarget, setScoringTarget] = useState<ScoringTarget | null>(null);
@@ -390,7 +401,9 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     return () => { cancelled = true; };
   }, [trainingClubId]);
 
-  const activeVariant = activeExerciseId === SCORING_EXERCISE_ID
+  const activeVariant = activeExerciseId === CATCH_40_EXERCISE_ID
+    ? CATCH_40_VARIANTS[catch40Mode]
+    : activeExerciseId === SCORING_EXERCISE_ID
     ? scoringTarget?.variant
     : activeExerciseId === AROUND_THE_WORLD_EXERCISE_ID
       ? aroundTheWorldVariant ?? undefined
@@ -422,7 +435,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   const triplesPersonalBest = personalBest(selectedPlayerResults, "triples", "higherIsBetter");
   const dartsUsedPersonalBest = personalBest(selectedPlayerResults, "dartsUsed", "lowerIsBetter");
   const jdcState = calculateJdcState(jdcThrows);
-  const catch40State = calculateCatch40State(catch40Results);
+  const catch40State = calculateCatch40State(catch40Results, catch40Mode);
   const bobs27State = calculateBobs27State(bobs27Results);
   const game420State = calculateGame420State(game420Results);
   const scoringState = calculateScoringState(scoringThrows, scoringTarget);
@@ -482,6 +495,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
 
   function resetExerciseSessionState(exerciseId: ExerciseId) {
     resetGameplayState();
+    if (exerciseId === CATCH_40_EXERCISE_ID) setCatch40Mode("classic");
     if (exerciseId !== SCORING_EXERCISE_ID) {
       setScoringTarget(null);
     }
@@ -613,7 +627,9 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
       clubId: trainingClubId,
       playerId: trainingPlayerId,
       exerciseId,
-      variant: exerciseId === SCORING_EXERCISE_ID
+      variant: exerciseId === CATCH_40_EXERCISE_ID
+        ? CATCH_40_VARIANTS[catch40Mode]
+        : exerciseId === SCORING_EXERCISE_ID
         ? scoringTarget?.variant
         : exerciseId === AROUND_THE_WORLD_EXERCISE_ID
           ? aroundTheWorldVariant ?? undefined
@@ -672,7 +688,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
 
   function handleCatch40Input(dartsUsed: number | "no") {
     if (lastSavedResult || catch40State.isComplete) return;
-    const checkoutValue = CATCH_40_TARGETS[catch40Results.length];
+    const checkoutValue = getCatch40Targets(catch40Mode)[catch40Results.length];
     if (!checkoutValue) return;
 
     const hit = dartsUsed !== "no";
@@ -689,7 +705,7 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
     ];
     setCatch40Results(nextResults);
 
-    const nextState = calculateCatch40State(nextResults);
+    const nextState = calculateCatch40State(nextResults, catch40Mode);
     if (nextState.isComplete) {
       saveFinishedResult(buildTrainingResult(
         CATCH_40_EXERCISE_ID,
@@ -1141,6 +1157,8 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
         ) : activeExerciseId === CATCH_40_EXERCISE_ID ? (
           <Catch40Gameplay
             state={catch40State}
+            mode={catch40Mode}
+            onChangeMode={setCatch40Mode}
             scorePersonalBest={scorePersonalBest}
             onInput={handleCatch40Input}
             onUndo={handleUndo}
@@ -1261,6 +1279,11 @@ function TrainingDashboard({
   onStartExercise: (exerciseId: ExerciseId) => void;
 }) {
   const exercises = trainingExercises.filter((exercise) => exercise.isActive && isPlayableExerciseId(exercise.id));
+  const last501 = results.filter((result) => result.playerId === currentPlayerId && result.exerciseId === PRACTICE_501_EXERCISE_ID)
+    .sort((a, b) => b.completedAt.localeCompare(a.completedAt))[0];
+  const last501Average = typeof last501?.metrics?.threeDartAverage === "number"
+    ? last501.metrics.threeDartAverage
+    : null;
   const exerciseSummaries = exercises.map((exercise) => buildExerciseSummary(exercise, results, currentPlayerId));
   const recommendation = buildTrainingRecommendation(exerciseSummaries);
   const totalThisMonth = exerciseSummaries.reduce((sum, summary) => sum + summary.monthly.completedCount, 0);
@@ -1272,6 +1295,24 @@ function TrainingDashboard({
 
   return (
     <div className="grid gap-4 sm:gap-5">
+      <section className="rounded-3xl border border-orange-500/40 bg-gradient-to-br from-gray-900 via-[#192431] to-[#2b1c12] p-5 shadow-xl sm:p-7">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-400">HESTENG · Jagten på 55</p>
+        <div className="mt-2 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-black text-white">501 Training</h2>
+            <p className="mt-2 text-sm text-gray-300">Spil 1, 3, 5 eller 10 legs. Følg dit snit og dine lukninger.</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[10px] font-black text-gray-400">SENESTE SNIT</p>
+            <p className="text-3xl font-black tabular-nums text-white">{last501Average === null ? "—" : last501Average.toFixed(1)}</p>
+            <p className="text-xs text-orange-300">Mål 55,0</p>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <a href="/traening/501" className="flex min-h-14 items-center justify-center rounded-xl bg-orange-500 px-4 py-3 text-center text-base font-black text-gray-950">Spil 501</a>
+          <button type="button" onClick={() => onStartExercise(CATCH_40_EXERCISE_ID)} className="min-h-14 rounded-xl border border-gray-600 bg-gray-800 px-3 py-3 text-sm font-black text-white">Catch 40</button>
+        </div>
+      </section>
       <RecommendedTrainingCard
         recommendation={recommendation}
         onStartExercise={onStartExercise}
@@ -1463,13 +1504,14 @@ function buildExerciseSummary(exercise: TrainingExercise, results: TrainingResul
 }
 
 function getSummaryVariant(exerciseId: string, results: TrainingResult[], currentPlayerId: string) {
-  if (exerciseId !== SCORING_EXERCISE_ID && exerciseId !== AROUND_THE_WORLD_EXERCISE_ID && exerciseId !== TARGET_TRAINING_EXERCISE_ID) return undefined;
+  if (exerciseId !== SCORING_EXERCISE_ID && exerciseId !== CATCH_40_EXERCISE_ID && exerciseId !== AROUND_THE_WORLD_EXERCISE_ID && exerciseId !== TARGET_TRAINING_EXERCISE_ID) return undefined;
   const latestVariantResult = results
     .filter((result) => result.playerId === currentPlayerId && result.exerciseId === exerciseId && result.variant)
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
 
   if (latestVariantResult?.variant) return latestVariantResult.variant;
   if (exerciseId === SCORING_EXERCISE_ID) return SCORING_TARGETS[0].variant;
+  if (exerciseId === CATCH_40_EXERCISE_ID) return undefined; // Legacy classic results had no variant.
   if (exerciseId === AROUND_THE_WORLD_EXERCISE_ID) return AROUND_THE_WORLD_VARIANTS[0].id;
   if (exerciseId === TARGET_TRAINING_EXERCISE_ID) return "__target-training-unconfigured__";
   return undefined;
@@ -1834,7 +1876,8 @@ function calculateCatch40Points(checkoutValue: number, dartsUsed: number | "no")
   return 1;
 }
 
-function calculateCatch40State(results: Catch40Result[]) {
+function calculateCatch40State(results: Catch40Result[], mode: Catch40Mode = "classic") {
+  const targets = getCatch40Targets(mode);
   const checkouts = results.filter((result) => result.hit).length;
   const highestCheckout = results.reduce(
     (highest, result) => result.hit ? Math.max(highest, result.checkoutValue) : highest,
@@ -1847,10 +1890,11 @@ function calculateCatch40State(results: Catch40Result[]) {
     checkoutAttempts: results.length,
     checkoutPercent: percent(checkouts, results.length),
     highestCheckout,
-    currentTarget: CATCH_40_TARGETS[results.length] ?? null,
+    currentTarget: targets[results.length] ?? null,
     completedTargets: results.length,
-    remainingTargets: CATCH_40_TARGETS.length - results.length,
-    isComplete: results.length >= CATCH_40_TARGETS.length,
+    targetCount: targets.length,
+    remainingTargets: targets.length - results.length,
+    isComplete: results.length >= targets.length,
     details: results,
   };
 }
@@ -2305,12 +2349,16 @@ function JdcGameplay({
 
 function Catch40Gameplay({
   state,
+  mode,
+  onChangeMode,
   scorePersonalBest,
   onInput,
   onUndo,
   onAbort,
 }: {
   state: ReturnType<typeof calculateCatch40State>;
+  mode: Catch40Mode;
+  onChangeMode: (mode: Catch40Mode) => void;
   scorePersonalBest: number | null;
   onInput: (dartsUsed: number | "no") => void;
   onUndo: () => void;
@@ -2320,7 +2368,7 @@ function Catch40Gameplay({
     <GameplayShell
       eyebrow="Catch 40"
       target={state.currentTarget ? String(state.currentTarget) : "Færdig"}
-      meta={`${state.completedTargets}/${CATCH_40_TARGETS.length} targets · ${state.remainingTargets} tilbage`}
+      meta={`${state.completedTargets}/${state.targetCount} lukninger · ${state.remainingTargets} tilbage`}
       stats={[
         { label: "Score", value: state.score },
         { label: "Finishes", value: state.checkouts },
@@ -2331,6 +2379,14 @@ function Catch40Gameplay({
       onAbort={onAbort}
       canUndo={state.completedTargets > 0}
     >
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <button type="button" disabled={state.completedTargets > 0} onClick={() => onChangeMode("light")}
+          aria-pressed={mode === "light"}
+          className={`min-h-12 rounded-xl border px-3 py-2 text-sm font-black disabled:opacity-70 ${mode === "light" ? "border-orange-500 bg-orange-500 text-gray-950" : "border-gray-700 bg-gray-800 text-gray-200"}`}>Light · 60–80</button>
+        <button type="button" disabled={state.completedTargets > 0} onClick={() => onChangeMode("classic")}
+          aria-pressed={mode === "classic"}
+          className={`min-h-12 rounded-xl border px-3 py-2 text-sm font-black disabled:opacity-70 ${mode === "classic" ? "border-orange-500 bg-orange-500 text-gray-950" : "border-gray-700 bg-gray-800 text-gray-200"}`}>Klassisk · 61–100</button>
+      </div>
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <TouchButton label="2 DARTS" tone="green" onClick={() => onInput(2)} />
         <TouchButton label="3 DARTS" tone="green" onClick={() => onInput(3)} />
@@ -2887,7 +2943,9 @@ function ResultScreen({
   const isPriestley = result.exerciseId === PRIESTLEY_TRIPLES_EXERCISE_ID;
   const isAroundTheWorld = result.exerciseId === AROUND_THE_WORLD_EXERCISE_ID;
   const isTargetTraining = result.exerciseId === TARGET_TRAINING_EXERCISE_ID;
-  const resultTitle = isScoring && result.variant
+  const resultTitle = isCatch40 && result.variant
+    ? `Catch 40 · ${result.variant === CATCH_40_VARIANTS.light ? "Light 60–80" : "Klassisk 61–100"}`
+    : isScoring && result.variant
     ? `${exercise?.name ?? "Scoring"} - ${result.variant}`
     : isAroundTheWorld
       ? `${exercise?.name ?? "Around the World"} - ${formatAroundTheWorldVariant(result.variant)}`
