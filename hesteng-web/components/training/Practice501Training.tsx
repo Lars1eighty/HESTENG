@@ -68,7 +68,7 @@ export default function Practice501Training({ onComplete }: Props) {
   function beginPrompt(kind: PendingVisit["kind"], score = 0) {
     setPending({ kind, score });
     setPendingDarts(3);
-    setPendingDoubles(kind === "checkout" ? 1 : Math.min(missedDoubles, 3));
+    setPendingDoubles(kind === "checkout" ? Math.min(3, missedDoubles + 1) : kind === "miss" ? Math.max(1, missedDoubles) : missedDoubles);
     setError("");
   }
 
@@ -221,7 +221,7 @@ export default function Practice501Training({ onComplete }: Props) {
             <p className="mb-2 text-center text-xs font-bold uppercase text-gray-300">Doubleforsøg i indgangen</p>
             <div className="grid grid-cols-4 gap-2">
               {[0, 1, 2, 3].map((count) => (
-                <button key={count} type="button" disabled={count > pendingDarts || (pending.kind === "checkout" && count === 0)} onClick={() => setPendingDoubles(count)} className={numericButtonClass(pendingDoubles === count) + " min-h-12 text-xl disabled:opacity-30"}>{count}</button>
+                <button key={count} type="button" disabled={count > pendingDarts || (pending.kind !== "bust" && count === 0)} onClick={() => setPendingDoubles(count)} className={numericButtonClass(pendingDoubles === count) + " min-h-12 text-xl disabled:opacity-30"}>{count}</button>
               ))}
             </div>
           </div>
@@ -284,9 +284,10 @@ export default function Practice501Training({ onComplete }: Props) {
 
           {error ? <p role="alert" className="shrink-0 text-center text-xs font-semibold text-red-300">{error}</p> : null}
 
-          <div className="grid h-10 shrink-0 grid-cols-2 gap-2">
-            <button type="button" onClick={undo} disabled={!visits.length} className="rounded-xl border border-gray-700 bg-gray-900 text-sm font-bold disabled:opacity-30">↶ Fortryd</button>
-            <button type="button" onClick={() => beginPrompt("miss")} disabled={remaining > 170} className="rounded-xl border border-amber-700 bg-amber-900/30 text-sm font-bold text-amber-200 disabled:opacity-30">Bust / Miss</button>
+          <div className="grid h-10 shrink-0 grid-cols-3 gap-1">
+            <button type="button" onClick={undo} disabled={!visits.length} className="rounded-xl border border-gray-700 bg-gray-900 text-xs font-bold disabled:opacity-30">↶ Fortryd</button>
+            <button type="button" onClick={() => beginPrompt("miss")} disabled={remaining > 170} className="rounded-xl border border-amber-700 bg-amber-900/30 text-xs font-bold text-amber-200 disabled:opacity-30">Double miss</button>
+            <button type="button" onClick={() => beginPrompt("bust")} disabled={remaining > 180} className="rounded-xl border border-red-700 bg-red-950/30 text-xs font-bold text-red-200 disabled:opacity-30">Bust</button>
           </div>
         </section>
       )}
