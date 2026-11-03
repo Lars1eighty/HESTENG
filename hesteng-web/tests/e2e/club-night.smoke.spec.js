@@ -242,3 +242,141 @@ test("guest QR result reaches the Live TV dashboard", async ({ page, browser }) 
   await expect(tv.getByText("1", { exact: true }).first()).toBeVisible();
   await tv.close();
 });
+
+
+test("501 Training fits a mobile screen and continues into the next leg", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/auth/session", async (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      user: {
+        id: "e2e-501-user",
+        name: "E2E 501",
+        playerProfileId: "e2e-501-player",
+        memberships: [{ clubId: "club-jyden-dartklub", clubName: "Jyden Dartklub", role: "PLAYER" }]
+      },
+      expires: "2099-01-01T00:00:00.000Z"
+    })
+  }));
+
+  await page.goto("http://127.0.0.1:3000/traening/501");
+  await expect(page.getByRole("heading", { name: /501 · Jagten på 55/ })).toBeVisible();
+  await page.getByRole("button", { name: "3", exact: true }).click();
+  await page.getByRole("button", { name: "Start 3 legs" }).click();
+  await expect(page.getByText("LEG 1/3")).toBeVisible();
+
+  const bustButton = page.getByRole("button", { name: "Bust", exact: true });
+  const rect = await bustButton.boundingBox();
+  expect(rect).not.toBeNull();
+  expect(rect.y + rect.height).toBeLessThanOrEqual(844);
+  expect(rect.x).toBeGreaterThanOrEqual(0);
+
+  await page.getByRole("button", { name: "100", exact: true }).click();
+  await expect(page.getByText("401", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Fortryd/ }).click();
+  await expect(page.getByText("501", { exact: true })).toBeVisible();
+
+  for (let i = 0; i < 4; i += 1) {
+    await page.getByRole("button", { name: "100", exact: true }).click();
+  }
+  await expect(page.getByText("101", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "6", exact: true }).click();
+  await page.getByRole("button", { name: "1", exact: true }).last().click();
+  await page.getByRole("button", { name: "Registrér score" }).click();
+  await expect(page.getByText("40", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  await page.getByRole("button", { name: "0", exact: true }).last().click();
+  await page.getByRole("button", { name: "Registrér score" }).click();
+
+  await expect(page.getByRole("heading", { name: "Lukket på double?" })).toBeVisible();
+  await page.getByRole("button", { name: "1", exact: true }).first().click();
+  await page.getByRole("button", { name: "Gem indgang" }).click();
+  await expect(page.getByText("LEG 2/3")).toBeVisible();
+  await expect(page.getByText("501", { exact: true })).toBeVisible();
+});
+
+
+test("solo 501 saves the full session and verifies the server result", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/auth/session", async (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({
+      user: {
+        id: "e2e-501-save-user", name: "E2E 501",
+        playerProfileId: "e2e-501-save-player",
+        memberships: [{ clubId: "club-jyden-dartklub", clubName: "Jyden Dartklub", role: "PLAYER" }]
+      },
+      expires: "2099-01-01T00:00:00.000Z"
+    })
+  }));
+
+  let saved = [];
+  await page.route("**/api/training-results**", async (route) => {
+    if (route.request().method() === "POST") {
+      const payload = route.request().postDataJSON();
+      saved = [payload.result];
+    }
+    await route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ version: 1, results: saved })
+    });
+  });
+
+  await page.goto("http://127.0.0.1:3000/traening/501");
+  await page.getByRole("button", { name: "1", exact: true }).click();
+  await page.getByRole("button", { name: "Start 1 leg" }).click();
+  for (let i = 0; i < 4; i += 1) {
+    await page.getByRole("button", { name: "100", exact: true }).click();
+  }
+  await page.getByRole("button", { name: "6", exact: true }).click();
+  await page.getByRole("button", { name: "1", exact: true }).last().click();
+  await page.getByRole("button", { name: "Registrér score" }).click();
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  await page.getByRole("button", { name: "0", exact: true }).last().click();
+  await page.getByRole("button", { name: "Registrér score" }).click();
+  await page.getByRole("button", { name: "1", exact: true }).first().click();
+  await page.getByRole("button", { name: "Gem indgang" }).click();
+
+  await expect(page.getByText("Resultatet er gemt på din spillerprofil.")).toBeVisible();
+  expect(saved).toHaveLength(1);
+  expect(saved[0].metrics.darts).toBe(16);
+  expect(saved[0].metrics.threeDartAverage).toBe(93.9);
+  expect(saved[0].variant).toBe("solo-1-legs-v2");
+});
+
+
+test("Catch 40 Light uses 60-80 and saves a separate variant", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/auth/session", async (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({
+      user: {
+        id: "e2e-catch40-user", name: "Catch 40",
+        playerProfileId: "e2e-catch40-player",
+        memberships: [{ clubId: "club-jyden-dartklub", clubName: "Jyden Dartklub", role: "PLAYER" }]
+      },
+      expires: "2099-01-01T00:00:00.000Z"
+    })
+  }));
+  await page.route("**/api/club-players**", async (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ players: [] }) })
+  );
+  let saved = [];
+  await page.route("**/api/training-results**", async (route) => {
+    if (route.request().method() === "POST") saved = [route.request().postDataJSON().result];
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ version: 1, results: saved }) });
+  });
+  await page.goto("http://127.0.0.1:3000/traening");
+  await page.getByRole("button", { name: "Catch 40", exact: true }).first().click();
+  await page.getByRole("button", { name: /Light · 60/ }).click();
+  await expect(page.getByText("0/21 lukninger")).toBeVisible();
+  for (let i = 0; i < 21; i += 1) {
+    await page.getByRole("button", { name: "NO", exact: true }).click();
+  }
+  await expect(page.getByText("Catch 40 · Light 60–80")).toBeVisible();
+  expect(saved).toHaveLength(1);
+  expect(saved[0].variant).toBe("light-60-80-v1");
+  expect(saved[0].details.checkouts).toHaveLength(21);
+  expect(saved[0].metrics.checkoutAttempts).toBe(21);
+});

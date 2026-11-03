@@ -7,7 +7,7 @@ import Header from "@/components/Header";
 import Checkout170Training from "@/components/training/Checkout170Training";
 import { useOptionalCurrentUser } from "@/context/CurrentUserContext";
 import { CHECKOUT_170_EXERCISE_ID } from "@/data/trainingExercises";
-import { saveTrainingResult } from "@/lib/trainingResultStore";
+import { saveTrainingResultToSharedStore } from "@/lib/trainingResultStore";
 import type { TrainingResult } from "@/lib/trainingTypes";
 
 export default function Checkout170Page() {
@@ -16,6 +16,7 @@ export default function Checkout170Page() {
   const [sessionNumber, setSessionNumber] = useState(1);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "local">("idle");
 
   if (!currentUserContext) {
     return (
@@ -43,15 +44,21 @@ export default function Checkout170Page() {
       details,
     };
 
-    setSaving(true);
-    setSaveError(null);
+    setSavedResult(result);
+    await persistResult(result);
+  }
 
+  async function persistResult(result: TrainingResult) {
+    setSaving(true);
+    setSaveStatus("saving");
+    setSaveError(null);
     try {
-      saveTrainingResult(result);
-      setSavedResult(result);
+      await saveTrainingResultToSharedStore(result);
+      setSaveStatus("saved");
     } catch (error) {
       console.error("Failed to save 170 training result", error);
-      setSaveError("Resultatet kunne ikke gemmes. Genindlæs siden og prøv igen.");
+      setSaveStatus("local");
+      setSaveError("Kun gemt på denne enhed. Serveren har ikke bekræftet resultatet.");
     } finally {
       setSaving(false);
     }
@@ -60,6 +67,7 @@ export default function Checkout170Page() {
   function startNewSession() {
     setSavedResult(null);
     setSaveError(null);
+    setSaveStatus("idle");
     setSessionNumber((current) => current + 1);
   }
 
@@ -72,6 +80,12 @@ export default function Checkout170Page() {
             <div className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-300">Gennemført</div>
             <div className="mt-3 text-5xl font-black text-white">{savedResult.metrics.checkouts ?? 0}/10</div>
             <div className="mt-1 text-sm text-gray-300">Lukkede 170 · {String(savedResult.details?.maxDartsPerAttempt ?? 9)} pile</div>
+            {saveStatus === "saving" ? <p className="mt-3 text-sm text-gray-300">Gemmer på serveren…</p> : null}
+            {saveStatus === "saved" ? <p className="mt-3 text-sm text-emerald-300">Gemt på din spillerprofil.</p> : null}
+            {saveStatus === "local" ? <div className="mt-3 rounded-xl border border-amber-500/50 bg-amber-950/40 p-3">
+              <p className="text-sm font-semibold text-amber-200">{saveError}</p>
+              <button type="button" disabled={saving} onClick={() => void persistResult(savedResult)} className="mt-2 rounded-lg border border-amber-400 px-3 py-2 text-sm font-bold text-white">Prøv at gemme igen</button>
+            </div> : null}
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <ResultStat label="Lukke %" value={formatPercent(savedResult.metrics.checkoutPercent)} />
               <ResultStat label="Bedste" value={formatDarts(savedResult.metrics.bestDarts)} />
@@ -82,7 +96,7 @@ export default function Checkout170Page() {
               <Link href="/player/historik" className="rounded-2xl bg-white px-5 py-3 font-bold text-gray-950 transition hover:bg-gray-200">
                 Se historik
               </Link>
-              <button type="button" onClick={startNewSession} className="rounded-2xl border border-white/20 px-5 py-3 font-bold text-white transition hover:bg-white/10">
+              <button type="button" disabled={saving} onClick={startNewSession} className="rounded-2xl border border-white/20 px-5 py-3 font-bold text-white transition hover:bg-white/10">
                 Træn 170 igen
               </button>
             </div>

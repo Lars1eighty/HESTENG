@@ -5,6 +5,34 @@ import type { TrainingResult } from "@/lib/trainingTypes";
 const STORAGE_KEY = "hesteng.trainingResults";
 const TRAINING_RESULTS_CHANGE_EVENT = "hesteng.trainingResultsChanged";
 const SHARED_TRAINING_RESULTS_API = "/api/training-results";
+const PENDING_RESULTS_KEY = "hesteng.pendingTrainingResults.v1";
+
+function pendingResultIds(): Set<string> {
+  if (!canUseStorage()) return new Set();
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(PENDING_RESULTS_KEY) ?? "[]");
+    return new Set(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function setResultPending(id: string, pending: boolean) {
+  if (!canUseStorage()) return;
+  const ids = pendingResultIds();
+  if (pending) ids.add(id);
+  else ids.delete(id);
+  window.localStorage.setItem(PENDING_RESULTS_KEY, JSON.stringify([...ids]));
+}
+
+function withPendingPlayerResults(playerId: string, serverResults: TrainingResult[]) {
+  const serverIds = new Set(serverResults.map((result) => result.id));
+  const pending = pendingResultIds();
+  const unsynced = getTrainingResultsForPlayer(playerId).filter((result) =>
+    pending.has(result.id) && !serverIds.has(result.id)
+  );
+  return normalizeTrainingResults([...serverResults, ...unsynced]);
+}
 
 function canUseStorage() {
   return typeof window !== "undefined" && !!window.localStorage;
@@ -81,7 +109,7 @@ export function saveTrainingResult(result: TrainingResult): TrainingResult[] {
   const next = normalizeTrainingResults([result, ...getTrainingResults().filter((item) => item.id !== result.id)]);
 
   writeLocalTrainingResults(next);
-  void saveTrainingResultToSharedStore(result);
+  void saveTrainingResultToSharedStore(result).catch(() => undefined);
   return next;
 }
 
@@ -90,6 +118,7 @@ export function deleteTrainingResult(resultId: string): TrainingResult[] {
   const next = getTrainingResults().filter((result) => result.id !== resultId);
 
   writeLocalTrainingResults(next);
+  setResultPending(resultId, false);
   if (typeof window !== "undefined") {
     const playerId = result?.playerId;
     const url = playerId
@@ -107,6 +136,9 @@ export function deleteTrainingResult(resultId: string): TrainingResult[] {
 export async function saveTrainingResultToSharedStore(result: TrainingResult): Promise<TrainingResult[]> {
   if (typeof window === "undefined") return [];
 
+  setResultPending(result.id, true);
+  writeLocalTrainingResults([result, ...getTrainingResults().filter((item) => item.id !== result.id)]);
+
   try {
     const response = await fetch(`${SHARED_TRAINING_RESULTS_API}?playerId=${encodeURIComponent(result.playerId)}`, {
       method: "POST",
@@ -117,21 +149,24 @@ export async function saveTrainingResultToSharedStore(result: TrainingResult): P
       body: JSON.stringify({ type: "result", result }),
     });
     if (!response.ok) {
-      const fallbackResults = normalizeTrainingResults([result, ...getTrainingResultsForPlayer(result.playerId).filter((item) => item.id !== result.id)]);
-      writePlayerTrainingResultsToCache(result.playerId, fallbackResults);
-      return fallbackResults;
+      throw new Error(`Serveren afviste resultatet (HTTP ${response.status}).`);
     }
 
     const state = await response.json() as { results?: TrainingResult[] };
     const playerResults = normalizeTrainingResults(Array.isArray(state.results) ? state.results : []);
-    writePlayerTrainingResultsToCache(result.playerId, playerResults);
+    if (!playerResults.some((saved) => saved.id === result.id && saved.playerId === result.playerId)) {
+      throw new Error("Serveren bekræftede ikke det gemte resultat.");
+    }
+    setResultPending(result.id, false);
+    const mergedResults = withPendingPlayerResults(result.playerId, playerResults);
+    writePlayerTrainingResultsToCache(result.playerId, mergedResults);
 
-    return playerResults;
-  } catch {
-    // Local cache keeps training usable if the dev server store is unavailable.
+    return mergedResults;
+  } catch (error) {
+    // Preserve the result locally, but never report a failed server save as successful.
     const fallbackResults = normalizeTrainingResults([result, ...getTrainingResultsForPlayer(result.playerId).filter((item) => item.id !== result.id)]);
     writePlayerTrainingResultsToCache(result.playerId, fallbackResults);
-    return fallbackResults;
+    throw error instanceof Error ? error : new Error("Kunne ikke gemme resultatet på serveren.");
   }
 }
 
@@ -158,12 +193,17 @@ export async function syncTrainingResultsFromSharedStore(playerId?: string): Pro
     const sharedResults = normalizeTrainingResults(rawResults);
 
     if (playerId) {
-      writePlayerTrainingResultsToCache(playerId, sharedResults);
+      const combined = withPendingPlayerResults(playerId, sharedResults);
+      writePlayerTrainingResultsToCache(playerId, combined);
+      return combined;
     } else {
-      writeLocalTrainingResults(sharedResults);
+      const pendingIds = pendingResultIds();
+      const remoteIds = new Set(sharedResults.map((result) => result.id));
+      const pending = getTrainingResults().filter((result) => pendingIds.has(result.id) && !remoteIds.has(result.id));
+      const combined = normalizeTrainingResults([...sharedResults, ...pending]);
+      writeLocalTrainingResults(combined);
+      return combined;
     }
-
-    return playerId ? sharedResults.filter((result) => result.playerId === playerId) : sharedResults;
   } catch {
     return playerId ? localPlayerResults : localResults;
   }
