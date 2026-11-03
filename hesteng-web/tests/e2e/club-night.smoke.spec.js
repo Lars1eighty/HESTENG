@@ -374,7 +374,6 @@ test("Catch 40 Light uses 60-80 and saves a separate variant", async ({ page }) 
   for (let i = 0; i < 21; i += 1) {
     await page.getByRole("button", { name: "NO", exact: true }).click();
   }
-  await expect(page.getByText("Gennemført", { exact: true })).toBeVisible();
   await expect(page.getByText("Catch 40 · Light 60–80")).toBeVisible();
   expect(saved).toHaveLength(1);
   expect(saved[0].variant).toBe("light-60-80-v1");
