@@ -286,7 +286,7 @@ test("501 Training fits a mobile screen and continues into the next leg", async 
   await page.getByRole("button", { name: "Registrér score" }).click();
   await expect(page.getByText("40", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "4", exact: true }).click();
-  await page.getByRole("button", { name: "0", exact: true }).click();
+  await page.getByRole("button", { name: "0", exact: true }).last().click();
   await page.getByRole("button", { name: "Registrér score" }).click();
 
   await expect(page.getByRole("heading", { name: "Lukket på double?" })).toBeVisible();
@@ -333,7 +333,7 @@ test("solo 501 saves the full session and verifies the server result", async ({ 
   await page.getByRole("button", { name: "1", exact: true }).last().click();
   await page.getByRole("button", { name: "Registrér score" }).click();
   await page.getByRole("button", { name: "4", exact: true }).click();
-  await page.getByRole("button", { name: "0", exact: true }).click();
+  await page.getByRole("button", { name: "0", exact: true }).last().click();
   await page.getByRole("button", { name: "Registrér score" }).click();
   await page.getByRole("button", { name: "1", exact: true }).first().click();
   await page.getByRole("button", { name: "Gem indgang" }).click();
