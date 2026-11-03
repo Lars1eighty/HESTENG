@@ -358,6 +358,8 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   const activeExercise = activeExerciseId ? getTrainingExercise(activeExerciseId) : null;
   const [results, setResults] = useState<TrainingResult[]>([]);
   const [lastSavedResult, setLastSavedResult] = useState<TrainingResult | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "local">("idle");
+  const savingResultIdRef = useRef<string | null>(null);
   const [selectedDashboardExerciseId, setSelectedDashboardExerciseId] = useState<string | null>(null);
   const [jdcThrows, setJdcThrows] = useState<JdcThrow[]>([]);
   const [catch40Results, setCatch40Results] = useState<Catch40Result[]>([]);
@@ -463,7 +465,9 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   }
 
   function resetGameplayState() {
+    savingResultIdRef.current = null;
     setLastSavedResult(null);
+    setSaveStatus("idle");
     setShowDetails(false);
     setJdcThrows([]);
     setCatch40Results([]);
@@ -623,10 +627,22 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
   }
 
   function saveFinishedResult(result: TrainingResult) {
+    savingResultIdRef.current = result.id;
     setLastSavedResult(result);
+    setSaveStatus("saving");
     setShowDetails(false);
     replaceTrainingHash(getTrainingHash("result", result.exerciseId));
-    void saveTrainingResultToSharedStore(result).then(setResults);
+    void saveTrainingResultToSharedStore(result)
+      .then((savedResults) => {
+        if (savingResultIdRef.current !== result.id) return;
+        setResults(savedResults);
+        setSaveStatus("saved");
+      })
+      .catch(() => {
+        if (savingResultIdRef.current !== result.id) return;
+        setResults(getTrainingResultsForPlayer(result.playerId));
+        setSaveStatus("local");
+      });
   }
 
   function handleJdcInput(value: JdcThrow) {
@@ -1097,6 +1113,8 @@ function TrainingPageContent({ currentUserContext }: { currentUserContext: NonNu
           <ResultScreen
             result={lastSavedResult}
             exercise={activeExercise}
+            saveStatus={saveStatus}
+            onRetrySave={() => { if (lastSavedResult) saveFinishedResult(lastSavedResult); }}
             checkoutPercentPersonalBest={checkoutPercentPersonalBest}
             highestCheckoutPersonalBest={highestCheckoutPersonalBest}
             hitPercentPersonalBest={hitPercentPersonalBest}
@@ -2825,6 +2843,8 @@ function TargetTrainingGameplay({
 function ResultScreen({
   result,
   exercise,
+  saveStatus,
+  onRetrySave,
   checkoutPercentPersonalBest,
   highestCheckoutPersonalBest,
   hitPercentPersonalBest,
@@ -2842,6 +2862,8 @@ function ResultScreen({
 }: {
   result: TrainingResult;
   exercise: TrainingExercise | null;
+  saveStatus: "idle" | "saving" | "saved" | "local";
+  onRetrySave: () => void;
   checkoutPercentPersonalBest: number | null;
   highestCheckoutPersonalBest: number | null;
   hitPercentPersonalBest: number | null;
@@ -2878,6 +2900,12 @@ function ResultScreen({
       <section className="rounded-2xl border border-emerald-700/60 bg-emerald-950/40 p-4 sm:p-5">
         <p className="text-sm font-black uppercase tracking-wide text-emerald-300">Gennemført</p>
         <h2 className="mt-1 text-3xl font-black">{resultTitle}</h2>
+        {saveStatus === "saving" ? <p className="mt-3 text-sm text-gray-300">Gemmer på serveren…</p> : null}
+        {saveStatus === "saved" ? <p className="mt-3 text-sm text-emerald-300">Gemt på din spillerprofil.</p> : null}
+        {saveStatus === "local" ? <div className="mt-3 rounded-xl border border-amber-500/50 bg-amber-950/40 p-3">
+          <p className="text-sm font-semibold text-amber-200">Kun gemt på denne enhed. Serveren har ikke bekræftet resultatet.</p>
+          <button type="button" onClick={onRetrySave} className="mt-2 rounded-lg border border-amber-400 px-3 py-2 text-sm font-bold text-white">Prøv at gemme igen</button>
+        </div> : null}
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
           <StatTile
             label={isAroundTheWorld ? "Pile brugt" : isTargetTraining ? "Træf %" : "Score"}
