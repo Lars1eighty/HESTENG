@@ -295,3 +295,52 @@ test("501 Training fits a mobile screen and continues into the next leg", async 
   await expect(page.getByText("LEG 2/3")).toBeVisible();
   await expect(page.getByText("501", { exact: true })).toBeVisible();
 });
+
+
+test("solo 501 saves the full session and verifies the server result", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/auth/session", async (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({
+      user: {
+        id: "e2e-501-save-user", name: "E2E 501",
+        playerProfileId: "e2e-501-save-player",
+        memberships: [{ clubId: "club-jyden-dartklub", clubName: "Jyden Dartklub", role: "PLAYER" }]
+      },
+      expires: "2099-01-01T00:00:00.000Z"
+    })
+  }));
+
+  let saved = [];
+  await page.route("**/api/training-results**", async (route) => {
+    if (route.request().method() === "POST") {
+      const payload = route.request().postDataJSON();
+      saved = [payload.result];
+    }
+    await route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ version: 1, results: saved })
+    });
+  });
+
+  await page.goto("http://127.0.0.1:3000/traening/501");
+  await page.getByRole("button", { name: "1", exact: true }).click();
+  await page.getByRole("button", { name: "Start 1 leg" }).click();
+  for (let i = 0; i < 4; i += 1) {
+    await page.getByRole("button", { name: "100", exact: true }).click();
+  }
+  await page.getByRole("button", { name: "6", exact: true }).click();
+  await page.getByRole("button", { name: "1", exact: true }).click();
+  await page.getByRole("button", { name: "Registrér score" }).click();
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  await page.getByRole("button", { name: "0", exact: true }).click();
+  await page.getByRole("button", { name: "Registrér score" }).click();
+  await page.getByRole("button", { name: "1", exact: true }).first().click();
+  await page.getByRole("button", { name: "Gem indgang" }).click();
+
+  await expect(page.getByText("Resultatet er gemt på din spillerprofil.")).toBeVisible();
+  expect(saved).toHaveLength(1);
+  expect(saved[0].metrics.darts).toBe(16);
+  expect(saved[0].metrics.threeDartAverage).toBe(93.9);
+  expect(saved[0].variant).toBe("solo-1-legs-v2");
+});
