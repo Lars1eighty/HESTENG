@@ -19,6 +19,31 @@ export type Solo501VisitInput = {
 export type Solo501LegCount = 1 | 3 | 5 | 10;
 
 const IMPOSSIBLE_CHECKOUTS = new Set([169, 168, 166, 165, 163, 162, 159]);
+const DART_VALUES = new Set([
+  0, 25, 50,
+  ...Array.from({ length: 20 }, (_, i) => i + 1),
+  ...Array.from({ length: 20 }, (_, i) => (i + 1) * 2),
+  ...Array.from({ length: 20 }, (_, i) => (i + 1) * 3),
+]);
+const DOUBLES = [50, ...Array.from({ length: 20 }, (_, i) => (i + 1) * 2)];
+const TWO_DART_TOTALS = new Set<number>();
+const THREE_DART_TOTALS = new Set<number>();
+for (const first of DART_VALUES) {
+  for (const second of DART_VALUES) {
+    TWO_DART_TOTALS.add(first + second);
+    for (const third of DART_VALUES) THREE_DART_TOTALS.add(first + second + third);
+  }
+}
+
+export function canFinish501InDarts(remaining: number, darts: 1 | 2 | 3) {
+  return DOUBLES.some((last) => (
+    darts === 1
+      ? remaining === last
+      : darts === 2
+        ? DART_VALUES.has(remaining - last)
+        : TWO_DART_TOTALS.has(remaining - last)
+  ));
+}
 
 export function canCheckout501(remaining: number) {
   return remaining >= 2 && remaining <= 170 && !IMPOSSIBLE_CHECKOUTS.has(remaining);
@@ -55,9 +80,15 @@ export function record501Visit(
   if (!bust && (after < 0 || after === 1)) {
     throw new Error("Bust: Restscoren kan ikke blive negativ eller 1.");
   }
+  if (!bust && !THREE_DART_TOTALS.has(score)) {
+    throw new Error("Den indtastede score er ikke mulig med tre pile.");
+  }
   const checkout = !bust && after === 0;
   if (checkout && (!canCheckout501(before) || input.doubleAttempts < 1)) {
     throw new Error("En lukning kræver en mulig double og mindst ét doubleforsøg.");
+  }
+  if (checkout && !canFinish501InDarts(before, input.darts)) {
+    throw new Error("Lukningen er ikke mulig med det valgte antal pile.");
   }
 
   return [...visits, {
