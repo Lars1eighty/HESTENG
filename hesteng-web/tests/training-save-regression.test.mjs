@@ -72,3 +72,38 @@ test("network failure retains the result locally and rejects", async () => {
   await assert.rejects(storeModule.saveTrainingResultToSharedStore(record), /offline/);
   assert.equal(storeModule.getTrainingResultsForPlayer(record.playerId)[0].id, record.id);
 });
+
+
+test("pending offline result survives a later successful GET synchronization", async () => {
+  setup();
+  const pending = result("offline-retained");
+  const remote = result("already-online");
+  globalThis.fetch = async (_url, options) => {
+    if (options?.method === "POST") return { ok: false, status: 503 };
+    return { ok: true, json: async () => ({ results: [remote] }) };
+  };
+  await assert.rejects(storeModule.saveTrainingResultToSharedStore(pending), /HTTP 503/);
+  const refreshed = await storeModule.syncTrainingResultsFromSharedStore(pending.playerId);
+  assert.deepEqual(new Set(refreshed.map((record) => record.id)), new Set([pending.id, remote.id]));
+  assert.deepEqual(new Set(storeModule.getTrainingResultsForPlayer(pending.playerId).map((record) => record.id)), new Set([pending.id, remote.id]));
+});
+
+test("pending result is cleared after retry succeeds and is not restored by later GET", async () => {
+  const entries = setup();
+  const pending = result("offline-then-saved");
+  let serverHasResult = false;
+  globalThis.fetch = async (_url, options) => {
+    if (options?.method === "POST") {
+      if (!serverHasResult) return { ok: false, status: 503 };
+      return { ok: true, json: async () => ({ results: [pending] }) };
+    }
+    return { ok: true, json: async () => ({ results: serverHasResult ? [pending] : [] }) };
+  };
+  await assert.rejects(storeModule.saveTrainingResultToSharedStore(pending), /HTTP 503/);
+  serverHasResult = true;
+  await storeModule.saveTrainingResultToSharedStore(pending);
+  assert.deepEqual(JSON.parse(entries.get("hesteng.pendingTrainingResults.v1")), []);
+  serverHasResult = false;
+  const synced = await storeModule.syncTrainingResultsFromSharedStore(pending.playerId);
+  assert.deepEqual(synced, []);
+});
