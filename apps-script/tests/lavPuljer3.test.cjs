@@ -124,3 +124,43 @@ test('without match history, the allocation still works',()=>{
   assert.equal(weights.size,0);
   verify(plan(players,{},'2026-11-05',weights),26);
 });
+
+
+test('exactly two wheelchair users do not share a pool',()=>{
+  for(let day=1;day<=12;day++){
+    const r=plan(players,{},'2026-11-'+String(day).padStart(2,'0'));
+    verify(r,26);
+    const a=r.pools.findIndex(p=>p.names.includes('Jesper Andersen'));
+    const b=r.pools.findIndex(p=>p.names.includes('Thomas Westh'));
+    assert.notEqual(a,b);
+  }
+});
+
+test('wheelchair user may play A or B when ELO permits',()=>{
+  const elevated=players.map(p=>p.name==='Jesper Andersen'?{...p,elo:1550}:p);
+  const r=plan(elevated,{},'2026-11-05');
+  verify(r,26);
+  assert.equal(r.pools.find(p=>p.names.includes('Jesper Andersen')).letter,'A');
+  assert.notEqual(r.pools.findIndex(p=>p.names.includes('Jesper Andersen')),
+    r.pools.findIndex(p=>p.names.includes('Thomas Westh')));
+});
+
+test('same-pool conflicts in A/B are fixed by a minimum-change swap',()=>{
+  for(const elos of [[1600,1500],[1237,1236]]){
+    const changed=players.map(p=>p.name==='Jesper Andersen'?{...p,elo:elos[0]}:
+      p.name==='Thomas Westh'?{...p,elo:elos[1]}:p);
+    const r=plan(changed,{},'2026-11-05');
+    verify(r,26);
+    assert.notEqual(r.pools.findIndex(p=>p.names.includes('Jesper Andersen')),
+      r.pools.findIndex(p=>p.names.includes('Thomas Westh')));
+  }
+});
+
+test('15 players: two wheelchair users can be separated from sole C pool',()=>{
+  const data=Array.from({length:13},(_,i)=>({name:'Nonchair '+i,elo:1800-i*20}))
+    .concat([{name:'Jesper Andersen',elo:850},{name:'Thomas Westh',elo:840}]);
+  const r=plan(data,{},'2026-11-05');
+  verify(r,15);
+  assert.notEqual(r.pools.findIndex(p=>p.names.includes('Jesper Andersen')),
+    r.pools.findIndex(p=>p.names.includes('Thomas Westh')));
+});
