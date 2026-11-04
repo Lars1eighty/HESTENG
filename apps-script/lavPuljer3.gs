@@ -1,6 +1,6 @@
 /**
  * HESTENG Legacy – puljeinddeling.
- * A/B følger ELO. Resten fordeles balanceret og varierer mellem spilledage.
+ * A/B følger ELO. C og ned blandes tilfældigt med rotation efter de seneste to deltagelser.
  * Ingen ekstrakampe eller ændringer af baneplanlægning.
  *
  * Denne fil er en GitHub-kandidat. Den er IKKE automatisk installeret
@@ -73,8 +73,102 @@ function hestengPuljeTid_(names, timeMap) {
   }, 0);
 }
 
+
+/** Navnevarianter fra DartConnect og Tilmelding får samme nøgle. */
+function hestengPuljeNavnNoegle_(name) {
+  const key = String(name || '').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const aliases = {
+    'billiam nielsen': 'william nielsen',
+    'simon halkjaer': 'simon halkjær',
+    'ole brøni': 'ole broni',
+    'yrsa ..': 'yrsa petersen',
+    'rikke westergaard': 'rikke vestergaard',
+    'tom prtersen': 'tom petersen'
+  };
+  return aliases[key] || key;
+}
+
+function hestengPuljeParNoegle_(a,b) {
+  return [hestengPuljeNavnNoegle_(a), hestengPuljeNavnNoegle_(b)]
+    .sort().join('|');
+}
+
+/** DartConnect har normalt MM/DD/YYYY; vi bruger ISO til sortering. */
+function hestengPuljeDato_(value, timezone) {
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, timezone, 'yyyy-MM-dd');
+  }
+  const txt = String(value || '').trim();
+  let match = txt.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) return match[1] + '-' + match[2].padStart(2,'0') +
+    '-' + match[3].padStart(2,'0');
+  match = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (match) return match[3] + '-' + match[1].padStart(2,'0') +
+    '-' + match[2].padStart(2,'0');
+  return '';
+}
+
+/**
+ * Historiske modstandere, kun de seneste to *fremmøder pr. spiller*.
+ * Ikke bare de seneste to torsdage i klubben.
+ * Hver modstander tæller højst én gang pr. fremmøde.
+ */
+function hestengPuljeModstandereFraArk_(ss, names, dayKey) {
+  const matchesSheet = ss.getSheetByName('DC_Matches');
+  const weightByPair = new Map();
+  if (!matchesSheet || matchesSheet.getLastRow() < 2) return weightByPair;
+  const wanted = new Set(names.map(hestengPuljeNavnNoegle_));
+  const timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
+  const rows = matchesSheet.getRange(2,2,matchesSheet.getLastRow()-1,3)
+    .getValues(); // B: Dato, C: Vinder, D: Taber
+  const history = [];
+  const sessions = new Map(names.map(name => [hestengPuljeNavnNoegle_(name), new Set()]));
+  for (const row of rows) {
+    const date = hestengPuljeDato_(row[0], timezone);
+    if (!date || date >= dayKey) continue; // aldrig dagens eller fremtidige kampe
+    const a = hestengPuljeNavnNoegle_(row[1]);
+    const b = hestengPuljeNavnNoegle_(row[2]);
+    if (!a || !b || a === b) continue;
+    if (sessions.has(a)) sessions.get(a).add(date);
+    if (sessions.has(b)) sessions.get(b).add(date);
+    history.push({date,a,b});
+  }
+  const recent = new Map();
+  for (const [name,dates] of sessions.entries()) {
+    recent.set(name, [...dates].sort().reverse().slice(0,2));
+  }
+  const usedDatePairs = new Set();
+  for (const game of history) {
+    if (!wanted.has(game.a) || !wanted.has(game.b)) continue;
+    const key = hestengPuljeParNoegle_(game.a,game.b);
+    const unique = game.date + '|' + key;
+    if (usedDatePairs.has(unique)) continue;
+    usedDatePairs.add(unique);
+    const indexA = recent.get(game.a).indexOf(game.date);
+    const indexB = recent.get(game.b).indexOf(game.date);
+    const importance = i => i === 0 ? 3 : i === 1 ? 1 : 0;
+    const weight = Math.max(importance(indexA), importance(indexB));
+    if (weight) weightByPair.set(key,(weightByPair.get(key) || 0) + weight);
+  }
+  return weightByPair;
+}
+
+function hestengPuljeRotationScore_(pools, weights) {
+  let score = 0;
+  for (const pool of pools.slice(2)) {
+    for (let i=0;i<pool.names.length;i++) {
+      for (let j=i+1;j<pool.names.length;j++) {
+        score += weights.get(hestengPuljeParNoegle_(
+          pool.names[i],pool.names[j])) || 0;
+      }
+    }
+  }
+  return score;
+}
+
 /** Ren beregning – skriver intet til arkene. */
-function hestengPlanPuljer_(participants, timeMap, dayKey) {
+function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
   const total = participants.length;
   const sizes = HESTENG_PULJESTOERRELSER_[total];
   if (!sizes) throw new Error('Understøtter 14–35 spillere. Fundet: ' + total);
@@ -82,64 +176,52 @@ function hestengPlanPuljer_(participants, timeMap, dayKey) {
     b.elo - a.elo || a.name.localeCompare(b.name, 'da')
   );
   if (ranked.some(p => !p.name || !Number.isFinite(p.elo)) ||
-      new Set(ranked.map(p => p.name)).size !== total) {
+      new Set(ranked.map(p => hestengPuljeNavnNoegle_(p.name))).size !== total) {
     throw new Error('Tilmelding indeholder tomme, ugyldige eller dublerede spillere');
   }
+  const random = hestengPuljeRng_(hestengPuljeSeed_(
+    dayKey + '|' + ranked.map(p=>p.name).join('|')
+  ));
+  const topCount = sizes[0] + sizes[1];
+  const top = ranked.slice(0,topCount);
+  const lower = ranked.slice(topCount);
+  const weights = recentWeights || new Map();
 
-  const random = hestengPuljeRng_(hestengPuljeSeed_(dayKey));
-  const makePools = (shuffled) => {
-    const pools = [];
-    let pos = 0;
-    sizes.forEach((size, i) => {
-      const section = i < 2 ? ranked.slice(pos, pos + size) :
-        shuffled.slice(pos - sizes[0] - sizes[1],
-                       pos - sizes[0] - sizes[1] + size);
-      const names = section.map(p => p.name);
-      const rounds = hestengPuljeRunder_(names);
-      pools.push({
-        letter: 'ABCDEF'[i], names, rounds,
-        avgElo: section.reduce((n,p) => n + p.elo, 0) / size,
-        minutes: hestengPuljeTid_(names, timeMap)
-      });
-      pos += size;
+  function makePools(lowerOrder) {
+    let topOffset = 0, lowerOffset = 0;
+    return sizes.map((size,i) => {
+      const section = i < 2 ?
+        top.slice(topOffset,topOffset+=size) :
+        lowerOrder.slice(lowerOffset,lowerOffset+=size);
+      // Blande rækkefølgen inde i puljen ændrer ikke modstanderne.
+      const names = hestengPuljeBland_(section.map(p=>p.name), random);
+      return {
+        letter: 'ABCDEF'[i], names, rounds: hestengPuljeRunder_(names),
+        avgElo: section.reduce((n,p)=>n+p.elo,0)/size,
+        minutes: hestengPuljeTid_(names,timeMap)
+      };
     });
-    return pools;
-  };
-  const lower = ranked.slice((sizes[0] || 0) + (sizes[1] || 0));
-  let best = null;
-  let bestScore = Infinity;
-  for (let attempt = 0; attempt < 1000; attempt++) {
-    const pools = makePools(hestengPuljeBland_(lower, random));
-    const variable = pools.slice(2);
-    const gap = values => values.length > 1 ?
-      Math.max(...values) - Math.min(...values) : 0;
-    let score = gap(variable.map(p => p.avgElo)) * 3 +
-      gap(variable.map(p => p.minutes)) * 1.5 +
-      (variable.length ? Math.max(...variable.map(p => p.minutes)) * 0.15 : 0);
-
-    const broni = pools.find(p => p.names.includes('Ole Broni'));
-    if (broni && broni.names.includes('Tom Petersen') &&
-        broni.names.includes('Yrsa Petersen')) continue;
-    if (broni && (broni.names.includes('Tom Petersen') ||
-                  broni.names.includes('Yrsa Petersen'))) score += 150;
-
-    const wheelchair = ['Jesper Andersen','Thomas Westh','Rikke Vestergaard'];
-    for (const pool of variable) {
-      const count = wheelchair.filter(name => pool.names.includes(name)).length;
-      score += Math.max(0, count - 1) * 100;
-      if (count && pool.names.length > 5) score += 20;
-    }
-    if (score < bestScore) {
-      bestScore = score;
-      best = pools;
-    }
   }
-  if (!best) throw new Error('Ingen puljefordeling opfylder de særlige hensyn');
-  const assigned = best.flatMap(p => p.names);
-  if (assigned.length !== total || new Set(assigned).size !== total) {
+
+  // Ingen ELO-balancering i C og ned. Tilfældig fordeling med blød rotation.
+  // Har vi ikke historik, er første lodtrækning resultatet.
+  let best = null, bestScore = Infinity;
+  for (let attempt=0;attempt<1200;attempt++) {
+    const pools = makePools(hestengPuljeBland_(lower,random));
+    const score = hestengPuljeRotationScore_(pools,weights);
+    if (score < bestScore) {
+      best = pools;
+      bestScore = score;
+    }
+    if (bestScore === 0) break;
+  }
+  if (!best) throw new Error('Kunne ikke lave puljer');
+  const assigned = best.flatMap(p=>p.names);
+  if (assigned.length !== total ||
+      new Set(assigned.map(hestengPuljeNavnNoegle_)).size !== total) {
     throw new Error('Fejl i puljefordeling: spiller mangler eller er dubleret');
   }
-  return {sizes, pools:best};
+  return {sizes,pools:best,rotationScore:bestScore};
 }
 
 function hestengPuljeTiderFraArk_(ss) {
@@ -198,8 +280,11 @@ function lavPuljer3() {
   });
   const timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
   const dayKey = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
-  const plan = hestengPlanPuljer_([...deltagere.values()],
-    hestengPuljeTiderFraArk_(ss), dayKey);
+  const people = [...deltagere.values()];
+  const recent = hestengPuljeModstandereFraArk_(ss,
+    people.map(p=>p.name),dayKey);
+  const plan = hestengPlanPuljer_(people,hestengPuljeTiderFraArk_(ss),
+    dayKey,recent);
 
   // En gentagen kørsel må ikke overskrive igangværende kampe uden accept.
   const old = ss.getSheets().filter(sheet =>
@@ -240,5 +325,41 @@ function lavPuljer3() {
   });
   Logger.log(plan.pools.map(pool =>
     pool.letter + ': ' + pool.names.length + ' spillere, ca. ' +
-    Math.round(pool.minutes) + ' min.').join(' | '));
+    Math.round(pool.minutes) + ' min.').join(' | ') +
+    ' | Rotation: ' + plan.rotationScore);
+}
+
+
+/**
+ * Sikker prøvekørsel: læser tilmelding og DartConnect, men skriver intet.
+ * Vælg hestengTestPuljerRotation i Apps Script.
+ */
+function hestengTestPuljerRotation() {
+  const ss = SpreadsheetApp.getActive();
+  const sheets = [ss.getSheetByName('Tilmelding'),
+    ss.getSheetByName('Øvrige spillere')];
+  const deltagere = new Map();
+  sheets.forEach(sheet => {
+    if (!sheet || sheet.getLastRow() < 2) return;
+    sheet.getRange(2,1,sheet.getLastRow()-1,3).getValues().forEach(row => {
+      const name = String(row[1] || '').trim(), elo = Number(row[2]);
+      if (row[0] === true && name && row[2] !== '' && Number.isFinite(elo)) {
+        deltagere.set(hestengPuljeNavnNoegle_(name),{name,elo});
+      }
+    });
+  });
+  const people = [...deltagere.values()];
+  const tz = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
+  const dayKey = Utilities.formatDate(new Date(),tz,'yyyy-MM-dd');
+  const weights = hestengPuljeModstandereFraArk_(ss,people.map(p=>p.name),dayKey);
+  const plan = hestengPlanPuljer_(people,hestengPuljeTiderFraArk_(ss),
+    dayKey,weights);
+  plan.pools.forEach(pool => Logger.log(
+    'Pulje ' + pool.letter + ' (' + pool.names.length + '): ' +
+    pool.names.join(', ') + ' | ca. ' + Math.round(pool.minutes) + ' min.'
+  ));
+  const gameCount = plan.pools.reduce((sum,p)=>
+    sum+p.names.length*(p.names.length-1)/2,0);
+  Logger.log('Spillere: ' + people.length + ' | kampe: ' + gameCount +
+    ' | ekstrakampe: 0 | gentagelses-score: ' + plan.rotationScore);
 }
