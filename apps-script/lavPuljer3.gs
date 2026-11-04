@@ -327,16 +327,7 @@ function lavPuljer3() {
   const plan = hestengPlanPuljer_(people,hestengPuljeTiderFraArk_(ss),
     dayKey,recent);
 
-  // En gentagen kørsel må ikke overskrive igangværende kampe uden accept.
-  const old = ss.getSheets().filter(sheet =>
-    /^Pulje [A-F]$/.test(sheet.getName()) && sheet.getLastRow() > 1);
-  if (old.length) {
-    const ui = SpreadsheetApp.getUi();
-    const accept = ui.alert('Overskriv puljer?',
-      'Der ligger allerede puljer i arkene. Vil du erstatte dem?',
-      ui.ButtonSet.YES_NO);
-    if (accept !== ui.Button.YES) return;
-  }
+  // Ny fordeling beregnes før overskrivning; ingen Ja/Nej-dialog.
 
   const valid = new Set(plan.pools.map(p => 'Pulje ' + p.letter));
   ss.getSheets().filter(s => /^Pulje [A-F]$/.test(s.getName()) &&
