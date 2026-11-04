@@ -1,6 +1,7 @@
 /**
  * HESTENG Legacy – puljeinddeling.
  * A/B følger ELO. C og ned blandes tilfældigt med rotation efter de seneste to deltagelser.
+ * Præcis to kørestolsbrugere adskilles i forskellige puljer.
  * Ingen ekstrakampe eller ændringer af baneplanlægning.
  *
  * Denne fil er en GitHub-kandidat. Den er IKKE automatisk installeret
@@ -167,6 +168,40 @@ function hestengPuljeRotationScore_(pools, weights) {
   return score;
 }
 
+/**
+ * Skiller præcis to tilmeldte kørestolsbrugere ved at bytte med den
+ * ELO-mæssigt nærmeste spiller fra en anden pulje.
+ * Andre bundpuljer foretrækkes, så A/B bevares når muligt.
+ */
+function hestengPuljeAdskilKoerestole_(sections) {
+  const groups = sections.map(group => group.slice());
+  const wheelchair = new Set(['jesper andersen','thomas westh','rikke vestergaard']);
+  const chairs = [];
+  groups.forEach((group,pool) => group.forEach((p,pos) => {
+    if(wheelchair.has(hestengPuljeNavnNoegle_(p.name))) chairs.push({pool,pos,p});
+  }));
+  if(chairs.length !== 2 || chairs[0].pool !== chairs[1].pool) return groups;
+  const origin = chairs[0].pool;
+  const otherLower = groups.map((_,i)=>i).filter(i=>i>=2 && i!==origin);
+  const destinations = origin>=2 && otherLower.length ? otherLower :
+    groups.map((_,i)=>i).filter(i=>i!==origin);
+  let best = null;
+  for(const chair of chairs){
+    for(const dest of destinations){
+      groups[dest].forEach((other,to)=>{
+        if(wheelchair.has(hestengPuljeNavnNoegle_(other.name)))return;
+        const cost = 100*Math.abs(chair.p.elo-other.elo)+Math.abs(origin-dest);
+        if(!best || cost<best.cost)best={cost,from:chair.pos,dest,to};
+      });
+    }
+  }
+  if(!best)throw new Error('Kan ikke adskille kørestolsbrugerne');
+  const prev=groups[origin][best.from];
+  groups[origin][best.from]=groups[best.dest][best.to];
+  groups[best.dest][best.to]=prev;
+  return groups;
+}
+
 /** Ren beregning – skriver intet til arkene. */
 function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
   const total = participants.length;
@@ -189,15 +224,15 @@ function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
 
   function makePools(lowerOrder) {
     let topOffset = 0, lowerOffset = 0;
-    return sizes.map((size,i) => {
-      const section = i < 2 ?
-        top.slice(topOffset,topOffset+=size) :
-        lowerOrder.slice(lowerOffset,lowerOffset+=size);
-      // Blande rækkefølgen inde i puljen ændrer ikke modstanderne.
+    const sections = sizes.map((size,i) => i < 2 ?
+      top.slice(topOffset,topOffset+=size) :
+      lowerOrder.slice(lowerOffset,lowerOffset+=size));
+    const assigned = hestengPuljeAdskilKoerestole_(sections);
+    return assigned.map((section,i) => {
       const names = hestengPuljeBland_(section.map(p=>p.name), random);
       return {
         letter: 'ABCDEF'[i], names, rounds: hestengPuljeRunder_(names),
-        avgElo: section.reduce((n,p)=>n+p.elo,0)/size,
+        avgElo: section.reduce((n,p)=>n+p.elo,0)/section.length,
         minutes: hestengPuljeTid_(names,timeMap)
       };
     });
@@ -216,6 +251,12 @@ function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
     if (bestScore === 0) break;
   }
   if (!best) throw new Error('Kunne ikke lave puljer');
+  const knownChairs = new Set(['jesper andersen','thomas westh','rikke vestergaard']);
+  const chairs = best.flatMap((p,i)=>p.names
+    .filter(name=>knownChairs.has(hestengPuljeNavnNoegle_(name))).map(()=>i));
+  if(chairs.length===2 && chairs[0]===chairs[1]){
+    throw new Error('Kørestolsbrugerne er i samme pulje');
+  }
   const assigned = best.flatMap(p=>p.names);
   if (assigned.length !== total ||
       new Set(assigned.map(hestengPuljeNavnNoegle_)).size !== total) {
