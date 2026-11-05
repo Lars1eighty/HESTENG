@@ -1,6 +1,6 @@
 /**
  * HESTENG Legacy – puljeinddeling.
- * A/B følger ELO. C og ned blandes tilfældigt med rotation efter de seneste to deltagelser.
+ * A/B følger ELO. C og ned prioriterer færrest gentagne modstandere fra de seneste to deltagelser.
  * Præcis to kørestolsbrugere adskilles i forskellige puljer.
  * Ingen ekstrakampe eller ændringer af baneplanlægning.
  *
@@ -202,6 +202,22 @@ function hestengPuljeAdskilKoerestole_(sections) {
   return groups;
 }
 
+function hestengPuljeGentagelserV8_(pools, weights) {
+  let antalPar=0, stoersteVaegt=0, samletVaegt=0;
+  for(const pool of pools.slice(2)) for(let i=0;i<pool.names.length;i++)
+    for(let j=i+1;j<pool.names.length;j++){
+      const w=weights.get(hestengPuljeParNoegle_(pool.names[i],pool.names[j]))||0;
+      if(w>0){antalPar++;stoersteVaegt=Math.max(stoersteVaegt,w);samletVaegt+=w;}
+    }
+  return {antalPar,stoersteVaegt,samletVaegt};
+}
+function hestengPuljeBedreV8_(a,b) {
+  return !b || a.antalPar<b.antalPar ||
+    (a.antalPar===b.antalPar &&
+     (a.stoersteVaegt<b.stoersteVaegt ||
+      (a.stoersteVaegt===b.stoersteVaegt && a.samletVaegt<b.samletVaegt)));
+}
+
 /** Ren beregning – skriver intet til arkene. */
 function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
   const total = participants.length;
@@ -240,15 +256,14 @@ function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
 
   // Ingen ELO-balancering i C og ned. Tilfældig fordeling med blød rotation.
   // Har vi ikke historik, er første lodtrækning resultatet.
-  let best = null, bestScore = Infinity;
+  let best = null, bestMetric = null;
   for (let attempt=0;attempt<1200;attempt++) {
     const pools = makePools(hestengPuljeBland_(lower,random));
-    const score = hestengPuljeRotationScore_(pools,weights);
-    if (score < bestScore) {
-      best = pools;
-      bestScore = score;
+    const metric = hestengPuljeGentagelserV8_(pools,weights);
+    if (hestengPuljeBedreV8_(metric,bestMetric)) {
+      best = pools; bestMetric = metric;
     }
-    if (bestScore === 0) break;
+    if (bestMetric.antalPar === 0) break;
   }
   if (!best) throw new Error('Kunne ikke lave puljer');
   const knownChairs = new Set(['jesper andersen','thomas westh','rikke vestergaard']);
@@ -262,7 +277,7 @@ function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
       new Set(assigned.map(hestengPuljeNavnNoegle_)).size !== total) {
     throw new Error('Fejl i puljefordeling: spiller mangler eller er dubleret');
   }
-  return {sizes,pools:best,rotationScore:bestScore};
+  return {sizes,pools:best,rotationScore:bestMetric.samletVaegt,gentagelser:bestMetric.antalPar};
 }
 
 function hestengPuljeTiderFraArk_(ss) {
