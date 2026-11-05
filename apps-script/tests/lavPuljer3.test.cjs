@@ -164,3 +164,35 @@ test('15 players: two wheelchair users can be separated from sole C pool',()=>{
   assert.notEqual(r.pools.findIndex(p=>p.names.includes('Jesper Andersen')),
     r.pools.findIndex(p=>p.names.includes('Thomas Westh')));
 });
+
+test('V8: any rematch is worse than none, even with a lower total weight',()=>{
+  const better=ctx.hestengPuljeBedreV8_;
+  assert.ok(better({antalPar:1,maxFire:10,samletFire:10,stoersteVaegt:10,samletVaegt:100},
+    {antalPar:2,maxFire:0,samletFire:0,stoersteVaegt:0,samletVaegt:2}));
+  assert.ok(better({antalPar:2,maxFire:2,samletFire:5,stoersteVaegt:5,samletVaegt:6},
+    {antalPar:2,maxFire:4,samletFire:4,stoersteVaegt:1,samletVaegt:2}));
+});
+
+test('V8: Tom and Yrsa are separated if it avoids an otherwise unnecessary rematch',()=>{
+  const weights=new Map([[pairKey('Tom Petersen','Yrsa Petersen'),4]]);
+  weights.historikFire=new Map([[pairKey('Tom Petersen','Yrsa Petersen'),4]]);
+  const p=plan(players,{},'2026-11-05',weights);
+  verify(p,26);
+  assert.equal(p.gentagelser,0);
+  assert.notEqual(p.pools.findIndex(x=>x.names.includes('Tom Petersen')),
+    p.pools.findIndex(x=>x.names.includes('Yrsa Petersen')));
+});
+
+test('V8: local swaps minimize repeat count without overriding wheelchair separation',()=>{
+  const baseline=plan(players,{},'2026-11-05',new Map());
+  const weights=new Map();
+  for(const p of baseline.pools.slice(2))for(let i=0;i<p.names.length;i++)
+    for(let j=i+1;j<p.names.length;j++)
+      weights.set(pairKey(p.names[i],p.names[j]),4);
+  const next=plan(players,{},'2026-11-05',weights);
+  verify(next,26);
+  assert.ok(next.gentagelser <
+    ctx.hestengPuljeGentagelserV8_(baseline.pools,weights).antalPar);
+  assert.notEqual(next.pools.findIndex(p=>p.names.includes('Jesper Andersen')),
+    next.pools.findIndex(p=>p.names.includes('Thomas Westh')));
+});
