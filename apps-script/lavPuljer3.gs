@@ -135,10 +135,25 @@ function hestengPuljeModstandereFraArk_(ss, names, dayKey) {
     if (sessions.has(b)) sessions.get(b).add(date);
     history.push({date,a,b});
   }
-  const recent = new Map();
+  const recent = new Map(), lastFour = new Map();
   for (const [name,dates] of sessions.entries()) {
-    recent.set(name, [...dates].sort().reverse().slice(0,2));
+    const ordered=[...dates].sort().reverse();
+    recent.set(name,ordered.slice(0,2));
+    lastFour.set(name,ordered.slice(0,4));
   }
+  // Brug længere historik udelukkende ved lige mange aktuelle gentagelser.
+  const four=new Map(), seenFour=new Set();
+  for(const game of history){
+    if(!sessions.has(game.a)||!sessions.has(game.b))continue;
+    if(!lastFour.get(game.a).includes(game.date) &&
+       !lastFour.get(game.b).includes(game.date))continue;
+    const key=hestengPuljeParNoegle_(game.a,game.b);
+    const unique=game.date+'|'+key;
+    if(seenFour.has(unique))continue;
+    seenFour.add(unique);
+    four.set(key,(four.get(key)||0)+1);
+  }
+  weightByPair.historikFire=four;
   const usedDatePairs = new Set();
   for (const game of history) {
     if (!wanted.has(game.a) || !wanted.has(game.b)) continue;
@@ -203,19 +218,31 @@ function hestengPuljeAdskilKoerestole_(sections) {
 }
 
 function hestengPuljeGentagelserV8_(pools, weights) {
-  let antalPar=0, stoersteVaegt=0, samletVaegt=0;
+  let antalPar=0, maxFire=0, samletFire=0, stoersteVaegt=0, samletVaegt=0;
   for(const pool of pools.slice(2)) for(let i=0;i<pool.names.length;i++)
     for(let j=i+1;j<pool.names.length;j++){
-      const w=weights.get(hestengPuljeParNoegle_(pool.names[i],pool.names[j]))||0;
-      if(w>0){antalPar++;stoersteVaegt=Math.max(stoersteVaegt,w);samletVaegt+=w;}
+      const key=hestengPuljeParNoegle_(pool.names[i],pool.names[j]);
+      const w=weights.get(key)||0;
+      if(w>0){
+        antalPar++;stoersteVaegt=Math.max(stoersteVaegt,w);samletVaegt+=w;
+        const four=weights.historikFire?.get(key)||0;
+        maxFire=Math.max(maxFire,four);samletFire+=four;
+      }
     }
-  return {antalPar,stoersteVaegt,samletVaegt};
+  return {antalPar,maxFire,samletFire,stoersteVaegt,samletVaegt};
 }
 function hestengPuljeBedreV8_(a,b) {
   return !b || a.antalPar<b.antalPar ||
-    (a.antalPar===b.antalPar &&
-     (a.stoersteVaegt<b.stoersteVaegt ||
-      (a.stoersteVaegt===b.stoersteVaegt && a.samletVaegt<b.samletVaegt)));
+    (a.antalPar===b.antalPar && (
+      a.maxFire<b.maxFire ||
+      (a.maxFire===b.maxFire && (
+        a.samletFire<b.samletFire ||
+        (a.samletFire===b.samletFire && (
+          a.stoersteVaegt<b.stoersteVaegt ||
+          (a.stoersteVaegt===b.stoersteVaegt && a.samletVaegt<b.samletVaegt)
+        ))
+      ))
+    ));
 }
 
 function hestengPuljeBytteV8_(pools,weights,timeMap,players) {
