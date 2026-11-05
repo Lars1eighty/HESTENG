@@ -218,6 +218,42 @@ function hestengPuljeBedreV8_(a,b) {
       (a.stoersteVaegt===b.stoersteVaegt && a.samletVaegt<b.samletVaegt)));
 }
 
+function hestengPuljeBytteV8_(pools,weights,timeMap,players) {
+  if(pools.length<4 || !weights.size)return pools;
+  const wheelchair=new Set(['jesper andersen','thomas westh','rikke vestergaard']);
+  const isChair=n=>wheelchair.has(hestengPuljeNavnNoegle_(n));
+  const chairCount=pools.flatMap(p=>p.names).filter(isChair).length;
+  const eloByName=new Map(players.map(p=>[p.name,p.elo]));
+  const result=pools.map(p=>({...p,names:p.names.slice()}));
+  for(let pass=0;pass<100;pass++){
+    let best=hestengPuljeGentagelserV8_(result,weights),swap=null;
+    for(let l=2;l<result.length;l++)for(let r=l+1;r<result.length;r++){
+      const leftChairs=result[l].names.filter(isChair).length;
+      const rightChairs=result[r].names.filter(isChair).length;
+      for(let i=0;i<result[l].names.length;i++)for(let j=0;j<result[r].names.length;j++){
+        const a=result[l].names[i],b=result[r].names[j];
+        if(chairCount===2 && (leftChairs-Number(isChair(a))+Number(isChair(b))>1 ||
+          rightChairs-Number(isChair(b))+Number(isChair(a))>1))continue;
+        result[l].names[i]=b;result[r].names[j]=a;
+        const score=hestengPuljeGentagelserV8_(result,weights);
+        if(hestengPuljeBedreV8_(score,best)){best=score;swap={l,r,i,j};}
+        result[l].names[i]=a;result[r].names[j]=b;
+      }
+    }
+    if(!swap)break;
+    const {l,r,i,j}=swap, a=result[l].names[i];
+    result[l].names[i]=result[r].names[j];result[r].names[j]=a;
+    for(const k of [l,r]){
+      const p=result[k];
+      p.rounds=hestengPuljeRunder_(p.names);
+      p.minutes=hestengPuljeTid_(p.names,timeMap);
+      p.avgElo=p.names.reduce((sum,n)=>sum+eloByName.get(n),0)/p.names.length;
+    }
+    if(best.antalPar===0)break;
+  }
+  return result;
+}
+
 /** Ren beregning – skriver intet til arkene. */
 function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
   const total = participants.length;
@@ -266,6 +302,8 @@ function hestengPlanPuljer_(participants, timeMap, dayKey, recentWeights) {
     if (bestMetric.antalPar === 0) break;
   }
   if (!best) throw new Error('Kunne ikke lave puljer');
+  best=hestengPuljeBytteV8_(best,weights,timeMap,ranked);
+  bestMetric=hestengPuljeGentagelserV8_(best,weights);
   const knownChairs = new Set(['jesper andersen','thomas westh','rikke vestergaard']);
   const chairs = best.flatMap((p,i)=>p.names
     .filter(name=>knownChairs.has(hestengPuljeNavnNoegle_(name))).map(()=>i));
@@ -373,7 +411,7 @@ function lavPuljer3() {
   Logger.log(plan.pools.map(pool =>
     pool.letter + ': ' + pool.names.length + ' spillere, ca. ' +
     Math.round(pool.minutes) + ' min.').join(' | ') +
-    ' | Rotation: ' + plan.rotationScore);
+    ' | Gentagelser: ' + plan.gentagelser + ' | Rotation: ' + plan.rotationScore);
 }
 
 
@@ -408,5 +446,6 @@ function hestengTestPuljerRotation() {
   const gameCount = plan.pools.reduce((sum,p)=>
     sum+p.names.length*(p.names.length-1)/2,0);
   Logger.log('Spillere: ' + people.length + ' | kampe: ' + gameCount +
-    ' | ekstrakampe: 0 | gentagelses-score: ' + plan.rotationScore);
+    ' | ekstrakampe: 0 | gentagne modstanderpar: ' + plan.gentagelser +
+    ' | gentagelses-score: ' + plan.rotationScore);
 }
