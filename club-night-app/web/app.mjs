@@ -11,6 +11,9 @@ const rosterStorageKey = "hesteng-klubaften-spillere";
 let pools = [];
 let shareId = "";
 let drawnRoster = "";
+let printSelection = null;
+let printFile = null;
+let printUrl = "";
 let saving = false;
 let adding = false;
 let clubPlayers = [];
@@ -157,12 +160,37 @@ function preparePrint(onlyPool, plan = currentPlan()) {
   }));
 }
 
-function printProgram(onlyPool) {
+async function printProgram(onlyPool) {
   try {
-    preparePrint(onlyPool);
-    window.print();
+    const plan = currentPlan();
+    const cards = onlyPool ? plan.pools.filter(pool => pool.id === onlyPool) : plan.pools;
+    const selection = { ...plan, pools: cards };
+    printSelection = selection;
+    printFile = null;
+    if (printUrl) URL.revokeObjectURL(printUrl);
+    printUrl = "";
+    get("downloadPdf").hidden = true;
+    get("sharePdf").hidden = true;
+    get("printTitle").textContent = onlyPool ? "Udskriv pulje " + onlyPool : "Udskriv kampprogram";
+    get("printStatus").textContent = "Gør PDF’en klar…";
+    get("printDialog").showModal();
+    const {makePrintPdf} = await import("./print-pdf.mjs");
+    if (printSelection !== selection) return;
+    const name = onlyPool ? "hesteng-pulje-" + onlyPool.toLowerCase() + ".pdf" : "hesteng-klubaften.pdf";
+    printFile = new File([makePrintPdf(selection)], name, {type: "application/pdf"});
+    printUrl = URL.createObjectURL(printFile);
+    const download = get("downloadPdf");
+    download.href = printUrl;
+    download.download = name;
+    download.hidden = false;
+    get("sharePdf").hidden = typeof navigator.share !== "function" || !navigator.canShare?.({files: [printFile]});
+    get("printStatus").textContent = cards.length + (cards.length === 1 ? " A4-side" : " A4-sider");
   } catch (error) {
-    notice(error.message);
+    if (get("printDialog").open) {
+      get("printStatus").textContent = "PDF’en kunne ikke oprettes. Prøv Udskriv i browser.";
+    } else {
+      notice(error.message);
+    }
   }
 }
 
@@ -388,6 +416,20 @@ get("demo").addEventListener("click", () => {
   draw(true);
 });
 get("printAll").addEventListener("click", () => printProgram());
+get("browserPrint").addEventListener("click", () => {
+  if (!printSelection) return;
+  preparePrint(undefined, printSelection);
+  window.print();
+});
+get("sharePdf").addEventListener("click", async () => {
+  if (!printFile) return;
+  try {
+    await navigator.share({files: [printFile], title: "Kampprogram"});
+  } catch (error) {
+    if (error.name !== "AbortError") get("printStatus").textContent = "Prøv Hent PDF for at åbne filen.";
+  }
+});
+get("printDialog").addEventListener("close", () => { printSelection = null; });
 get("publish").addEventListener("click", publish);
 get("openTestProgram").addEventListener("click", () => {
   if (!testPlan) return;

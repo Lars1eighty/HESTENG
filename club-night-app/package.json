@@ -7,5 +7,11 @@
     "dev": "node scripts/preview.mjs",
     "pretest": "npm run build",
     "test": "node --test"
+  },
+  "dependencies": {
+    "jspdf": "4.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }
