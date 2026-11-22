@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Lav puljer, del kampprogrammet og udskriv klubaftenens kampe.">
+  <title>HESTENG Klubaften</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="brand"><span class="mark" aria-hidden="true">H</span> HESTENG</div>
+      <h1 id="heading">Klubaften</h1>
+      <p class="hero-meta" id="heroMeta">Puljer og kampprogram</p>
+    </div>
+  </header>
+  <main class="page">
+    <p id="notice" class="notice" role="status"></p>
+    <div id="editor" class="layout" hidden>
+      <section class="panel setup" aria-labelledby="setupTitle">
+        <h2 id="setupTitle">Spillere</h2>
+        <form id="drawForm">
+          <label for="club">Klubnavn</label>
+          <input id="club" maxlength="70" placeholder="Fx Jyden Dartklub" autocomplete="organization" required>
+          <section class="attendance" aria-labelledby="attendanceTitle">
+            <div class="attendance-heading">
+              <h3 id="attendanceTitle">Spillerliste</h3>
+              <button type="button" id="clearAttendance" hidden>Ryd valg</button>
+            </div>
+            <p class="muted" id="attendanceCount" aria-live="polite"></p>
+            <div id="attendanceList"></div>
+          </section>
+          <details id="nameEntry" class="name-entry">
+            <summary>Tilføj spillere</summary>
+            <label for="roster">Navne, ét pr. linje</label>
+            <textarea id="roster" rows="4" maxlength="7000" placeholder="Indtast eller indsæt navne"></textarea>
+            <button type="button" id="addNames">Gem navne</button>
+          </details>
+          <div class="actions">
+            <button type="submit" class="primary">Lav puljer</button>
+            <button type="button" id="demo">Prøv med eksempel</button>
+          </div>
+        </form>
+      </section>
+      <section class="results" aria-labelledby="poolsTitle">
+        <div class="section-heading">
+          <div><h2 id="poolsTitle">Puljer</h2><p class="muted" id="planCount"></p></div>
+          <div class="actions" id="planActions" hidden>
+            <button type="button" id="printAll">Udskriv alle</button>
+            <button type="button" class="primary" id="publish">Gem program</button>
+          </div>
+        </div>
+        <div class="empty panel" id="empty">Vælg de fremmødte spillere, og tryk Lav puljer.</div>
+        <div class="share panel" id="share" hidden>
+          <label for="shareUrl">Klubbens spillerlink</label>
+          <input id="shareUrl" readonly>
+          <div class="actions">
+            <button type="button" id="copy">Kopiér link</button>
+            <a class="button" id="openProgram" target="_blank" rel="noopener">Åbn spillervisning</a>
+          </div>
+        </div>
+        <div class="share panel" id="testSaved" hidden>
+          <p id="testSavedNote"></p>
+          <div class="actions">
+            <button type="button" id="openTestProgram">Åbn spillervisning</button>
+          </div>
+        </div>
+        <div id="pools" class="stack"></div>
+      </section>
+    </div>
+    <section id="player" class="player" hidden aria-label="Kampprogram">
+      <button type="button" id="backToEditor" hidden>Tilbage til puljer</button>
+      <nav class="switch" aria-label="Visning">
+        <button type="button" id="mineTab" aria-pressed="true">Min aften</button>
+        <button type="button" id="allTab" aria-pressed="false">Alle puljer</button>
+      </nav>
+      <section id="mine" class="panel personal">
+        <label for="playerName">Dit navn</label>
+        <select id="playerName"></select>
+        <div id="personalRounds"></div>
+      </section>
+      <section id="playerPools" class="stack" aria-label="Alle puljer" hidden></section>
+    </section>
+    <p id="signIn" hidden><a class="button" href="/signin-with-chatgpt?return_to=%2F" target="_top">Log ind for at dele et spillerlink</a></p>
+  </main>
+  <dialog id="printDialog" class="print-dialog" aria-labelledby="printTitle">
+    <h2 id="printTitle">Udskriv kampprogram</h2>
+    <p id="printStatus" role="status"></p>
+    <div class="actions">
+      <a id="downloadPdf" class="button primary" hidden>Hent PDF</a>
+      <button type="button" id="sharePdf" hidden>Del PDF</button>
+      <button type="button" id="browserPrint">Udskriv i browser</button>
+    </div>
+    <form method="dialog"><button type="submit">Luk</button></form>
+  </dialog>
+  <div id="printout" aria-hidden="true"></div>
+</body>
+</html>

@@ -1,0 +1,34 @@
+import { createServer } from "node:http";
+import { readdir, readFile } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
+import { parseArgs } from "node:util";
+import "./build.mjs";
+
+const {default: worker} = await import("../dist/server/index.js");
+const database = new DatabaseSync(":memory:");
+for (const file of (await readdir("drizzle")).filter(name => name.endsWith(".sql")).sort()) {
+  database.exec(await readFile("drizzle/" + file, "utf8"));
+}
+const DB = {prepare: sql => ({bind: (...values) => ({first: () => database.prepare(sql).get(...values)})})};
+
+const { values } = parseArgs({
+  options: { port: { type: "string" }, host: { type: "string" }, strictPort: { type: "boolean" } },
+});
+const port = Number(values.port || process.env.PORT) || 3000;
+const host = values.host || "127.0.0.1";
+createServer(async (incoming, outgoing) => {
+  try {
+    const headers = new Headers(incoming.headers);
+    headers.set("oai-authenticated-user-id", "local-preview");
+    const chunks = [];
+    for await (const chunk of incoming) chunks.push(chunk);
+    const body = chunks.length ? Buffer.concat(chunks) : undefined;
+    const url = "http://" + incoming.headers.host + incoming.url;
+    const response = await worker.fetch(new Request(url, {method: incoming.method, headers, body}), {DB});
+    outgoing.writeHead(response.status, Object.fromEntries(response.headers));
+    outgoing.end(Buffer.from(await response.arrayBuffer()));
+  } catch (error) {
+    console.error(error);
+    outgoing.writeHead(500).end("Fejl i lokal test.");
+  }
+}).listen(port, host, () => console.log("Local: http://" + host + ":" + port));
