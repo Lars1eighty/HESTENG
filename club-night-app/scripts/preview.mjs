@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
+import { parseArgs } from "node:util";
 import "./build.mjs";
 
 const {default: worker} = await import("../dist/server/index.js");
@@ -8,7 +9,11 @@ const database = new DatabaseSync(":memory:");
 database.exec(await readFile("drizzle/0000_club_nights.sql", "utf8"));
 const DB = {prepare: sql => ({bind: (...values) => ({first: () => database.prepare(sql).get(...values)})})};
 
-const port = Number(process.env.PORT) || 3000;
+const { values } = parseArgs({
+  options: { port: { type: "string" }, host: { type: "string" }, strictPort: { type: "boolean" } },
+});
+const port = Number(values.port || process.env.PORT) || 3000;
+const host = values.host || "127.0.0.1";
 createServer(async (incoming, outgoing) => {
   try {
     const headers = new Headers(incoming.headers);
@@ -24,4 +29,4 @@ createServer(async (incoming, outgoing) => {
     console.error(error);
     outgoing.writeHead(500).end("Fejl i lokal test.");
   }
-}).listen(port, "0.0.0.0", () => console.log("Local: http://localhost:" + port));
+}).listen(port, host, () => console.log("Local: http://" + host + ":" + port));
