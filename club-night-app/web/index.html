@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Lav puljer, del kampprogrammet og udskriv klubaftenens kampe.">
+  <title>HESTENG Klubaften</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="brand"><span class="mark" aria-hidden="true">H</span> HESTENG</div>
+      <h1 id="heading">Klubaften</h1>
+      <p class="hero-meta" id="heroMeta">Puljer og kampprogram</p>
+    </div>
+  </header>
+  <main class="page">
+    <p id="notice" class="notice" role="status"></p>
+    <div id="editor" class="layout" hidden>
+      <section class="panel setup" aria-labelledby="setupTitle">
+        <h2 id="setupTitle">Spillere</h2>
+        <form id="drawForm">
+          <label for="club">Klubnavn</label>
+          <input id="club" maxlength="70" placeholder="Fx Jyden Dartklub" autocomplete="organization" required>
+          <label for="roster">Spillerliste</label>
+          <textarea id="roster" rows="9" maxlength="7000" placeholder="Ét navn pr. linje" required></textarea>
+          <div class="actions">
+            <button type="submit" class="primary">Lav puljer</button>
+            <button type="button" id="demo">Prøv med eksempel</button>
+          </div>
+        </form>
+      </section>
+      <section class="results" aria-labelledby="poolsTitle">
+        <div class="section-heading">
+          <div><h2 id="poolsTitle">Puljer</h2><p class="muted" id="planCount"></p></div>
+          <div class="actions" id="planActions" hidden>
+            <button type="button" id="printAll">Udskriv alle</button>
+            <button type="button" class="primary" id="publish">Gem program</button>
+          </div>
+        </div>
+        <div class="empty panel" id="empty">Indsæt spillerlisten for at lave puljer og kampe.</div>
+        <div class="share panel" id="share" hidden>
+          <label for="shareUrl">Klubbens spillerlink</label>
+          <input id="shareUrl" readonly>
+          <div class="actions">
+            <button type="button" id="copy">Kopiér link</button>
+            <a class="button" id="openProgram" target="_blank" rel="noopener">Åbn spillervisning</a>
+          </div>
+        </div>
+        <div id="pools" class="stack"></div>
+      </section>
+    </div>
+    <section id="player" class="player" hidden aria-label="Kampprogram">
+      <nav class="switch" aria-label="Visning">
+        <button type="button" id="mineTab" aria-pressed="true">Min aften</button>
+        <button type="button" id="allTab" aria-pressed="false">Alle puljer</button>
+      </nav>
+      <section id="mine" class="panel personal">
+        <label for="playerName">Dit navn</label>
+        <select id="playerName"></select>
+        <div id="personalRounds"></div>
+      </section>
+      <section id="playerPools" class="stack" aria-label="Alle puljer" hidden></section>
+    </section>
+    <p id="signIn" hidden><a class="button primary" href="/signin-with-chatgpt?returnTo=/" target="_top">Log ind som klubleder</a></p>
+  </main>
+  <div id="printout" aria-hidden="true"></div>
+</body>
+</html>
