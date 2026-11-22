@@ -5,10 +5,15 @@ const notice = text => { get("notice").textContent = text; };
 const example = ["Anders B.", "Betina P.", "Camilla H.", "Danni M.", "Emil N.", "Freja S.",
   "Gitte K.", "Henrik D.", "Ida V.", "Jakob M.", "Katrine S.", "Lars H."];
 const programId = location.pathname.split("/")[2];
+const testStorageKey = "hesteng-klubaften-test";
 let pools = [];
 let shareId = "";
 let drawnRoster = "";
 let saving = false;
+let localTest = false;
+let testPlan = null;
+let testIsStored = false;
+let shownPlan = null;
 
 function element(tag, text, className) {
   const item = document.createElement(tag);
@@ -47,8 +52,7 @@ function currentPlan() {
   return validatePlan({club: get("club").value, pools});
 }
 
-function preparePrint(onlyPool) {
-  const plan = currentPlan();
+function preparePrint(onlyPool, plan = currentPlan()) {
   const cards = onlyPool ? plan.pools.filter(pool => pool.id === onlyPool) : plan.pools;
   get("printout").replaceChildren(...cards.map(pool => {
     const page = element("article", "", "print-pool");
@@ -118,6 +122,35 @@ function renderSetup() {
     get("shareUrl").value = shareUrl;
     get("openProgram").href = shareUrl;
   }
+  renderTestSaved();
+}
+
+function renderTestSaved() {
+  get("testSaved").hidden = !testPlan;
+  if (testPlan) {
+    get("testSavedNote").textContent = testIsStored ?
+      "Testprogrammet er gemt på denne enhed." : "Testprogrammet kan prøves, mens siden er åben.";
+  }
+}
+
+function restoreEditor(plan) {
+  pools = plan.pools.map(pool => ({ ...pool }));
+  get("club").value = plan.club;
+  drawnRoster = pools.flatMap(pool => pool.players).join("\n");
+  get("roster").value = drawnRoster;
+}
+
+function saveTestProgram(plan) {
+  testPlan = plan;
+  try {
+    localStorage.setItem(testStorageKey, JSON.stringify(plan));
+    testIsStored = true;
+  } catch {
+    testIsStored = false;
+  }
+  renderTestSaved();
+  notice("");
+  get("openTestProgram").focus();
 }
 
 function draw(demo = false) {
@@ -141,6 +174,10 @@ async function publish() {
       throw new Error("Spillerlisten er ændret. Lav puljer igen før du gemmer.");
     }
     const plan = currentPlan();
+    if (localTest) {
+      saveTestProgram(plan);
+      return;
+    }
     saving = true;
     get("publish").disabled = true;
     notice("Gemmer programmet…");
@@ -169,20 +206,27 @@ async function setupPage() {
   try {
     const response = await fetch("/api/club");
     if (response.status === 401) {
+      localTest = true;
       get("signIn").hidden = false;
-      notice("");
-      return;
+      try {
+        const stored = localStorage.getItem(testStorageKey);
+        if (stored) {
+          testPlan = validatePlan(JSON.parse(stored));
+          testIsStored = true;
+          restoreEditor(testPlan);
+        }
+      } catch {
+        // An unavailable or invalid local draft should not block testing.
+      }
+    } else {
+      if (!response.ok) throw new Error();
+      const saved = await response.json();
+      if (saved) {
+        shareId = saved.shareId;
+        restoreEditor(saved.plan);
+      }
     }
-    if (!response.ok) throw new Error();
-    const saved = await response.json();
-    if (saved) {
-      shareId = saved.shareId;
-      pools = saved.plan.pools;
-      get("club").value = saved.plan.club;
-      drawnRoster = pools.flatMap(pool => pool.players).join("\n");
-      get("roster").value = drawnRoster;
-    }
-    notice("");
+    notice(localTest ? "Privat test. Du kan lave puljer og prøve udskrift og spillervisning her." : "");
   } catch {
     notice("Det gemte program kunne ikke hentes. Du kan stadig prøve at lave puljer.");
   }
@@ -190,21 +234,29 @@ async function setupPage() {
   renderSetup();
 }
 
+function showPlayerProgram(plan, preview = false) {
+  shownPlan = plan;
+  get("heading").textContent = plan.club;
+  get("heroMeta").textContent = preview ? "Test af spillervisning" : "Klubaften";
+  const names = plan.pools.flatMap(pool => pool.players).sort((a, b) => a.localeCompare(b, "da"));
+  get("playerName").replaceChildren(new Option("Vælg dit navn", ""),
+    ...names.map(player => new Option(player, player)));
+  get("personalRounds").replaceChildren();
+  get("playerPools").replaceChildren(...plan.pools.map(pool => poolCard(pool, false, false)));
+  setView(true);
+  get("backToEditor").hidden = !preview;
+  get("editor").hidden = true;
+  get("signIn").hidden = true;
+  get("player").hidden = false;
+  notice("");
+}
+
 async function playerPage() {
   notice("Henter kampprogrammet…");
   try {
     const response = await fetch("/api/program/" + encodeURIComponent(programId));
     if (!response.ok) throw new Error();
-    const plan = await response.json();
-    pools = plan.pools;
-    get("heading").textContent = plan.club;
-    get("heroMeta").textContent = "Klubaften";
-    const names = pools.flatMap(pool => pool.players).sort((a, b) => a.localeCompare(b, "da"));
-    get("playerName").replaceChildren(new Option("Vælg dit navn", ""),
-      ...names.map(player => new Option(player, player)));
-    get("playerPools").replaceChildren(...pools.map(pool => poolCard(pool, false, false)));
-    get("player").hidden = false;
-    notice("");
+    showPlayerProgram(await response.json());
   } catch {
     notice("Kampprogrammet kunne ikke hentes. Tjek klubbens spillerlink.");
   }
@@ -225,6 +277,19 @@ get("demo").addEventListener("click", () => {
 });
 get("printAll").addEventListener("click", () => printProgram());
 get("publish").addEventListener("click", publish);
+get("openTestProgram").addEventListener("click", () => {
+  if (!testPlan) return;
+  showPlayerProgram(testPlan, true);
+  get("backToEditor").focus();
+});
+get("backToEditor").addEventListener("click", () => {
+  get("player").hidden = true;
+  get("editor").hidden = false;
+  get("signIn").hidden = false;
+  get("heading").textContent = "Klubaften";
+  get("heroMeta").textContent = "Puljer og kampprogram";
+  get("openTestProgram").focus();
+});
 get("copy").addEventListener("click", async () => {
   const field = get("shareUrl");
   try {
@@ -240,14 +305,14 @@ get("mineTab").addEventListener("click", () => setView(true));
 get("allTab").addEventListener("click", () => setView(false));
 get("playerName").addEventListener("change", () => {
   const player = get("playerName").value;
-  const pool = pools.find(item => item.players.includes(player));
+  const pool = shownPlan?.pools.find(item => item.players.includes(player));
   get("personalRounds").replaceChildren(...(pool ?
     [element("h2", "Pulje " + pool.id), roundsList(pool, player)] : []));
 });
 window.addEventListener("beforeprint", () => {
-  if (get("printout").childElementCount || !pools.length) return;
-  if (programId) get("club").value = get("heading").textContent;
-  preparePrint();
+  if (get("printout").childElementCount) return;
+  if (!get("player").hidden && shownPlan) preparePrint(undefined, shownPlan);
+  else if (pools.length && get("club").value.trim()) preparePrint();
 });
 window.addEventListener("afterprint", () => get("printout").replaceChildren());
 

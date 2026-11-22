@@ -50,10 +50,17 @@
             <a class="button" id="openProgram" target="_blank" rel="noopener">Åbn spillervisning</a>
           </div>
         </div>
+        <div class="share panel" id="testSaved" hidden>
+          <p id="testSavedNote"></p>
+          <div class="actions">
+            <button type="button" id="openTestProgram">Åbn spillervisning</button>
+          </div>
+        </div>
         <div id="pools" class="stack"></div>
       </section>
     </div>
     <section id="player" class="player" hidden aria-label="Kampprogram">
+      <button type="button" id="backToEditor" hidden>Tilbage til puljer</button>
       <nav class="switch" aria-label="Visning">
         <button type="button" id="mineTab" aria-pressed="true">Min aften</button>
         <button type="button" id="allTab" aria-pressed="false">Alle puljer</button>
@@ -65,7 +72,7 @@
       </section>
       <section id="playerPools" class="stack" aria-label="Alle puljer" hidden></section>
     </section>
-    <p id="signIn" hidden><a class="button primary" href="/signin-with-chatgpt?return_to=%2F" target="_top">Log ind som klubleder</a></p>
+    <p id="signIn" hidden><a class="button" href="/signin-with-chatgpt?return_to=%2F" target="_top">Log ind for at dele et spillerlink</a></p>
   </main>
   <div id="printout" aria-hidden="true"></div>
 </body>
