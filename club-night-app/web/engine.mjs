@@ -4,12 +4,38 @@ const sixOnTwo = [
   [[2, 6], [1, 3]], [[4, 5], [3, 6]], [[1, 2], [5, 6]], [[2, 4]],
 ];
 
-export function cleanRoster(text) {
+export const examplePlayers = ["Anders B.", "Betina P.", "Camilla H.", "Danni M.", "Emil N.", "Freja S.",
+  "Gitte K.", "Henrik D.", "Ida V.", "Jakob M.", "Katrine S.", "Lars H."];
+
+export const playerKey = name => name.normalize("NFC").toLocaleLowerCase("da");
+
+export function readNames(text) {
   const names = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  if (names.length < 4 || names.length > 84) throw new Error("Indsæt 4 til 84 spillere.");
   if (names.some(name => name.length > 80)) throw new Error("Brug højst 80 tegn pr. spillernavn.");
-  const keys = names.map(name => name.normalize("NFC").toLocaleLowerCase("da"));
-  if (new Set(keys).size !== names.length) throw new Error("To spillere har samme navn. Tilføj fx et efternavn.");
+  return names;
+}
+
+export function mergeNames(...lists) {
+  const players = new Map();
+  for (const name of lists.flat()) {
+    const key = playerKey(name);
+    if (!players.has(key)) players.set(key, name);
+  }
+  return [...players.values()].sort((a, b) => a.localeCompare(b, "da"));
+}
+
+export function namesFromPlan(plan) {
+  const names = plan?.pools.flatMap(pool => pool.players) ?? [];
+  const keys = new Set(names.map(playerKey));
+  return names.length === examplePlayers.length && examplePlayers.every(name => keys.has(playerKey(name))) ? [] : names;
+}
+
+export function cleanRoster(text) {
+  const names = readNames(text);
+  if (names.length < 4 || names.length > 84) throw new Error("Vælg 4 til 84 spillere.");
+  if (new Set(names.map(playerKey)).size !== names.length) {
+    throw new Error("To spillere har samme navn. Tilføj fx et efternavn.");
+  }
   return names;
 }
 

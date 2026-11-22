@@ -25,8 +25,20 @@
         <form id="drawForm">
           <label for="club">Klubnavn</label>
           <input id="club" maxlength="70" placeholder="Fx Jyden Dartklub" autocomplete="organization" required>
-          <label for="roster">Spillerliste</label>
-          <textarea id="roster" rows="9" maxlength="7000" placeholder="Ét navn pr. linje" required></textarea>
+          <section class="attendance" aria-labelledby="attendanceTitle">
+            <div class="attendance-heading">
+              <h3 id="attendanceTitle">Spillerliste</h3>
+              <button type="button" id="clearAttendance" hidden>Ryd valg</button>
+            </div>
+            <p class="muted" id="attendanceCount" aria-live="polite"></p>
+            <div id="attendanceList"></div>
+          </section>
+          <details id="nameEntry" class="name-entry">
+            <summary>Tilføj spillere</summary>
+            <label for="roster">Navne, ét pr. linje</label>
+            <textarea id="roster" rows="4" maxlength="7000" placeholder="Indtast eller indsæt navne"></textarea>
+            <button type="button" id="addNames">Gem navne</button>
+          </details>
           <div class="actions">
             <button type="submit" class="primary">Lav puljer</button>
             <button type="button" id="demo">Prøv med eksempel</button>
@@ -41,7 +53,7 @@
             <button type="button" class="primary" id="publish">Gem program</button>
           </div>
         </div>
-        <div class="empty panel" id="empty">Indsæt spillerlisten for at lave puljer og kampe.</div>
+        <div class="empty panel" id="empty">Vælg de fremmødte spillere, og tryk Lav puljer.</div>
         <div class="share panel" id="share" hidden>
           <label for="shareUrl">Klubbens spillerlink</label>
           <input id="shareUrl" readonly>

@@ -1,15 +1,20 @@
-import { cleanRoster, drawPools, schedulePool, validatePlan } from "./engine.mjs";
+import {
+  cleanRoster, drawPools, examplePlayers, mergeNames, namesFromPlan, playerKey, readNames,
+  schedulePool, validatePlan,
+} from "./engine.mjs";
 
 const get = id => document.getElementById(id);
 const notice = text => { get("notice").textContent = text; };
-const example = ["Anders B.", "Betina P.", "Camilla H.", "Danni M.", "Emil N.", "Freja S.",
-  "Gitte K.", "Henrik D.", "Ida V.", "Jakob M.", "Katrine S.", "Lars H."];
 const programId = location.pathname.split("/")[2];
 const testStorageKey = "hesteng-klubaften-test";
+const rosterStorageKey = "hesteng-klubaften-spillere";
 let pools = [];
 let shareId = "";
 let drawnRoster = "";
 let saving = false;
+let adding = false;
+let clubPlayers = [];
+const attendance = new Set();
 let localTest = false;
 let testPlan = null;
 let testIsStored = false;
@@ -50,6 +55,96 @@ function roundsList(pool, player) {
 
 function currentPlan() {
   return validatePlan({club: get("club").value, pools});
+}
+
+function selectedPlayers() {
+  return clubPlayers.filter(name => attendance.has(playerKey(name)));
+}
+
+function selectionKey() {
+  return selectedPlayers().map(playerKey).sort().join("\n");
+}
+
+function updateAttendanceCount() {
+  const count = selectedPlayers().length;
+  get("attendanceCount").textContent = clubPlayers.length ?
+    count + " valgt af " + clubPlayers.length : "Tilføj navne, så du kan vælge fremmødte.";
+  get("clearAttendance").hidden = !clubPlayers.length;
+  get("clearAttendance").disabled = count === 0;
+}
+
+function renderAttendance() {
+  const entries = clubPlayers.map(name => {
+    const key = playerKey(name);
+    const label = element("label");
+    const checkbox = element("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = attendance.has(key);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) attendance.add(key);
+      else attendance.delete(key);
+      updateAttendanceCount();
+    });
+    label.append(checkbox, element("span", name));
+    return label;
+  });
+  get("attendanceList").replaceChildren(...entries);
+  updateAttendanceCount();
+}
+
+function storedNames() {
+  try {
+    const names = JSON.parse(localStorage.getItem(rosterStorageKey) || "[]");
+    return Array.isArray(names) ? names.filter(name => typeof name === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeLocalNames(names) {
+  clubPlayers = mergeNames(storedNames(), clubPlayers, names);
+  try {
+    localStorage.setItem(rosterStorageKey, JSON.stringify(clubPlayers));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function addNames() {
+  if (adding) return false;
+  const field = get("roster");
+  const input = field.value;
+  try {
+    const names = mergeNames(readNames(input));
+    if (!names.length) throw new Error("Indtast eller indsæt mindst ét navn.");
+    adding = true;
+    get("addNames").disabled = true;
+    let stored = true;
+    if (localTest) {
+      stored = storeLocalNames(names);
+    } else {
+      const response = await fetch("/api/roster", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(names),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      clubPlayers = result.players;
+    }
+    for (const name of names) attendance.add(playerKey(name));
+    if (field.value === input) field.value = "";
+    renderAttendance();
+    notice(stored ? "Navnene er gemt på spillerlisten." : "Navnene kan bruges, mens siden er åben.");
+    return true;
+  } catch (error) {
+    notice(error.message || "Kunne ikke gemme navnene.");
+    return false;
+  } finally {
+    adding = false;
+    get("addNames").disabled = false;
+  }
 }
 
 function preparePrint(onlyPool, plan = currentPlan()) {
@@ -136,11 +231,14 @@ function renderTestSaved() {
 function restoreEditor(plan) {
   pools = plan.pools.map(pool => ({ ...pool }));
   get("club").value = plan.club;
-  drawnRoster = pools.flatMap(pool => pool.players).join("\n");
-  get("roster").value = drawnRoster;
+  const roster = namesFromPlan(plan);
+  clubPlayers = mergeNames(clubPlayers, roster);
+  for (const name of roster) attendance.add(playerKey(name));
+  drawnRoster = selectionKey();
 }
 
 function saveTestProgram(plan) {
+  storeLocalNames(namesFromPlan(plan));
   testPlan = plan;
   try {
     localStorage.setItem(testStorageKey, JSON.stringify(plan));
@@ -156,9 +254,9 @@ function saveTestProgram(plan) {
 function draw(demo = false) {
   try {
     if (!get("club").value.trim()) throw new Error("Indtast klubbens navn.");
-    const roster = get("roster").value;
-    pools = drawPools(cleanRoster(roster));
-    drawnRoster = roster;
+    const players = demo ? examplePlayers : cleanRoster(selectedPlayers().join("\n"));
+    pools = drawPools(players);
+    drawnRoster = selectionKey();
     if (demo) pools[0].boards = 3;
     renderSetup();
     notice("");
@@ -170,8 +268,8 @@ function draw(demo = false) {
 async function publish() {
   if (saving) return;
   try {
-    if (get("roster").value !== drawnRoster) {
-      throw new Error("Spillerlisten er ændret. Lav puljer igen før du gemmer.");
+    if (selectionKey() !== drawnRoster || get("roster").value.trim()) {
+      throw new Error("Fremmødet er ændret. Lav puljer igen før du gemmer.");
     }
     const plan = currentPlan();
     if (localTest) {
@@ -208,6 +306,7 @@ async function setupPage() {
     if (response.status === 401) {
       localTest = true;
       get("signIn").hidden = false;
+      clubPlayers = storedNames();
       try {
         const stored = localStorage.getItem(testStorageKey);
         if (stored) {
@@ -225,12 +324,17 @@ async function setupPage() {
         shareId = saved.shareId;
         restoreEditor(saved.plan);
       }
+      const roster = await fetch("/api/roster");
+      if (!roster.ok) throw new Error("Spillerlisten kunne ikke hentes.");
+      clubPlayers = mergeNames((await roster.json()).players, clubPlayers);
     }
     notice(localTest ? "Privat test. Du kan lave puljer og prøve udskrift og spillervisning her." : "");
   } catch {
     notice("Det gemte program kunne ikke hentes. Du kan stadig prøve at lave puljer.");
   }
   get("editor").hidden = false;
+  get("nameEntry").open = clubPlayers.length === 0;
+  renderAttendance();
   renderSetup();
 }
 
@@ -269,10 +373,18 @@ function setView(personal) {
   get("allTab").setAttribute("aria-pressed", String(!personal));
 }
 
-get("drawForm").addEventListener("submit", event => { event.preventDefault(); draw(); });
+get("drawForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (get("roster").value.trim() && !(await addNames())) return;
+  draw();
+});
+get("addNames").addEventListener("click", addNames);
+get("clearAttendance").addEventListener("click", () => {
+  attendance.clear();
+  renderAttendance();
+});
 get("demo").addEventListener("click", () => {
   get("club").value ||= "Eksempel Dartklub";
-  get("roster").value = example.join("\n");
   draw(true);
 });
 get("printAll").addEventListener("click", () => printProgram());

@@ -47,6 +47,21 @@ button, .button, input, textarea, select { font: inherit; color: inherit; }
 input, textarea, select { width: 100%; background: #fff; border: 1px solid #9db2a4; border-radius: .55rem; padding: .53rem .65rem; }
 input, select { min-height: 2.75rem; }
 textarea { display: block; min-height: 7rem; resize: vertical; }
+.attendance { margin-top: 1rem; }
+.attendance-heading { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.attendance-heading button { font-size: .875rem; }
+.attendance #attendanceCount { margin: .15rem 0 .45rem; font-size: .9rem; }
+#attendanceList { max-height: 19rem; overflow-y: auto; overscroll-behavior: contain; }
+#attendanceList label {
+  display: flex; align-items: center; gap: .65rem; min-height: 2.75rem;
+  margin: 0; padding: .3rem .2rem; border-bottom: 1px solid var(--line);
+  cursor: pointer; overflow-wrap: anywhere;
+}
+#attendanceList input { width: 1.2rem; height: 1.2rem; min-height: 0; margin: 0; flex: none; accent-color: var(--forest); }
+.name-entry { margin-top: .9rem; border-top: 1px solid var(--line); padding-top: .7rem; }
+.name-entry summary { cursor: pointer; font-weight: 650; }
+.name-entry textarea { min-height: 5rem; }
+.name-entry button { margin-top: .48rem; }
 select { appearance: none; padding-right: 1.8rem; background: #fff linear-gradient(45deg, transparent 48%, #465f54 52%, #465f54 60%, transparent 64%) right .86rem center / .35rem .42rem no-repeat; }
 button, .button {
   appearance: none; min-height: 2.75rem; padding: .43rem .76rem; background: var(--surface);

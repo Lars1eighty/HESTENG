@@ -1,12 +1,14 @@
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { parseArgs } from "node:util";
 import "./build.mjs";
 
 const {default: worker} = await import("../dist/server/index.js");
 const database = new DatabaseSync(":memory:");
-database.exec(await readFile("drizzle/0000_club_nights.sql", "utf8"));
+for (const file of (await readdir("drizzle")).filter(name => name.endsWith(".sql")).sort()) {
+  database.exec(await readFile("drizzle/" + file, "utf8"));
+}
 const DB = {prepare: sql => ({bind: (...values) => ({first: () => database.prepare(sql).get(...values)})})};
 
 const { values } = parseArgs({
