@@ -1,0 +1,1584 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101a25"><title>DART Training</title>
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<style>
+:root{color-scheme:dark;--bg:#101a25;--surface:#1d2c3c;--line:#40566a;--text:#f5f7fb;--dim:#aec0d1;--orange:#ff9d42;--green:#16845c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px system-ui,-apple-system,Arial,sans-serif}main{max-width:600px;margin:auto;padding:16px 15px 36px}h1{font-size:23px;margin:4px 0}h2{font-size:23px;margin:7px 0 14px}h3{font-size:18px;margin:8px 0}small,.muted{color:var(--dim)}p{line-height:1.45}header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 18px}header strong{color:var(--orange);letter-spacing:.6px}header small{display:block;font-size:12px;margin-top:3px}
+nav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 20px}button,select,input{font:inherit}button{border:1px solid #62768a;border-radius:11px;background:#304457;color:white;padding:14px 12px;font-weight:700;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.34;cursor:not-allowed}.primary{background:var(--green);border-color:var(--green)}.accent{background:#965220;border-color:#bd7035}.small{padding:10px 12px;font-size:13px}nav button{min-width:0;padding:11px 2px;font-size:14px}nav button.active{border-color:var(--orange);color:var(--orange);background:#35291e}.row{display:flex;gap:9px;flex-wrap:wrap}.row>button{flex:1;min-width:110px}.card{background:var(--surface);border:1px solid #3a5064;border-radius:15px;padding:17px;margin:13px 0}.metric{font-size:42px;font-weight:800;line-height:1.12;margin:8px 0}.pill{border:1px solid #566b80;border-radius:30px;padding:5px 9px;font-size:12px;color:var(--dim);display:inline-block;margin:2px}.status{font-size:13px;color:#bed0e0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.tile{background:#152331;border:1px solid #33495e;border-radius:12px;padding:12px}.tile .big{font-size:25px;font-weight:800;margin-top:6px;overflow-wrap:anywhere}.tile small{display:block;font-size:12px}input,select{display:block;width:100%;background:#101a25;border:1px solid #657a8c;color:#fff;border-radius:10px;padding:12px;margin:6px 0 13px}label{font-size:14px;font-weight:650}hr{border:0;border-top:1px solid #46596c;margin:17px 0}.list{margin:8px 0 0;padding-left:18px}.list li{padding:5px 0}details{border-top:1px solid #485f71;padding:11px 0}summary{cursor:pointer;font-weight:650}.good{color:#66dfb0}.bad{color:#fca997}.warn{border-left:4px solid var(--orange);padding:10px 12px;background:#302c2a;font-size:14px;line-height:1.5;border-radius:5px;margin:11px 0}.chart{width:100%;height:auto;display:block}.bar{height:12px;background:#344c60;border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--orange)}.statrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}.statrow span{flex:0 0 95px}.statrow .bar{flex:1}.statrow b{flex:0 0 56px;text-align:right;font-size:13px}#notices{font-size:13px;color:#ffce7f;min-height:10px}#fileImport{margin-bottom:8px}#fileImport::file-selector-button{font:inherit;cursor:pointer}.mutedbox{background:#152432;border-radius:10px;padding:12px;color:#bed0e0;font-size:13px;line-height:1.5}.caption{font-size:12px;color:var(--dim)}
+/* Compact, reliable 501 entry without the mobile OS keyboard. */
+.scoreboard501{display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:7px;align-items:stretch;margin:8px 0 10px}
+.scoreboard501>div{min-width:0;background:#152331;border:1px solid #344d61;border-radius:12px;padding:9px;text-align:center}
+.scoreboard501 .remaining{font-size:40px;font-weight:850;line-height:1.15;color:white}
+.scoreboard501 small{display:block;font-size:11px;margin-bottom:3px}
+.scoreboard501 .smallmetric{font-size:21px;font-weight:850;margin-top:7px;font-variant-numeric:tabular-nums}
+.scoreinput501{width:100%;margin:2px 0 6px;text-align:center;font-size:34px;font-weight:850;padding:8px 12px;line-height:1.15;letter-spacing:1px;caret-color:transparent}
+.scoreinput501[readonly]{cursor:default}
+.scoreOptions501{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:6px}
+.scoreOptions501 button{min-width:0;min-height:44px;padding:8px 2px;font-size:20px}
+.scoreOptions501 button.chosen{border-color:var(--orange);background:#794822;color:white}
+.finish501{margin:9px 0;background:#1b3940;border:1px solid #46796a;border-radius:10px;padding:10px}
+.finish501 .scoreOptions501{grid-template-columns:repeat(3,minmax(0,1fr))}
+#score501Preview{min-height:24px;font-size:13px;color:#c8d7e5;margin:8px 0 4px}
+#save501:disabled{opacity:.45}
+.card-501{padding:12px;margin:9px 0}
+.card-501 hr{margin:11px 0}
+.card-501>h3{margin:5px 0}
+@media(max-width:380px){main{padding:10px 10px 25px}.scoreboard501 .remaining{font-size:35px}.scoreOptions501 button{min-height:41px}}
+
+/* v7.3: thumb-friendly controls across all six games, no change to scoring rules. */
+main{max-width:560px;padding:12px 13px 32px}
+header{margin:0 0 8px}header small{font-size:11px}
+nav{grid-template-columns:repeat(4,minmax(0,1fr));position:sticky;top:0;z-index:5;background:var(--bg);padding:7px 0;margin:0 0 12px;gap:5px}
+nav button{min-width:0;min-height:47px;font-size:14px;padding:8px 3px;border-radius:11px}
+.card{padding:14px;margin:10px 0}
+h2{font-size:22px;margin:7px 0 9px}
+.exercise-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--dim);font-size:13px}
+.stepbar{display:flex;gap:4px;margin:9px 0 14px}.stepbar i{height:5px;background:#354c60;flex:1;border-radius:4px}.stepbar i.done{background:#2aab7c}.stepbar i.current{background:var(--orange)}
+.game-info{margin:7px 0}.game-info summary{font-size:13px;font-weight:650;color:var(--dim)}.game-info p{font-size:13px;margin:7px 0 3px;color:var(--dim)}
+.game-title{font-size:20px;margin:4px 0 5px}.game-card{margin:9px 0}
+.game-card .metric{font-size:58px;line-height:1.1;margin:8px 0}
+.game-card .game-status{margin:5px 0;color:var(--dim);font-size:14px}
+.play-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px}
+.play-actions button{min-width:0;min-height:78px;font-size:22px;padding:12px 4px;border-radius:14px}
+.play-actions button.primary{background:#16845c}
+.play-actions button:not(.primary){background:#3c5064}
+.scoring-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:15px}
+.scoring-actions button{min-width:0;min-height:66px;font-size:16px;padding:8px 6px;line-height:1.2}
+.scoring-actions button:last-child{grid-column:1/-1}
+.scoring-actions button strong{display:block;font-size:25px;line-height:1.3}
+.completed-game{text-align:center;padding:18px 0 10px}.completed-game .metric{font-size:42px}
+.game-footer{display:grid;grid-template-columns:1fr;gap:7px;margin-top:10px}
+.game-footer button.next{min-height:60px;font-size:18px}
+.game-footer button.next:disabled{min-height:50px;opacity:.35}
+.game-footer .secondary-actions{display:flex;justify-content:space-between;gap:10px}
+.game-footer .secondary-actions button{min-width:0;font-size:13px;min-height:42px;flex:1}
+.scoreboard501{margin-top:4px}.scoreboard501 .remaining{font-size:42px}
+.scoreinput501{margin:5px 0 8px;font-size:29px;min-height:51px}
+.scoreOptions501 button{min-height:49px}
+#score501Preview{margin:10px 0}
+.card-501{padding:12px}.card-501 .game-footer{margin-top:5px}
+.backup-banner{padding:11px;background:#152432;border-radius:10px;margin:11px 0;font-size:13px;color:var(--dim)}
+.backup-banner button{padding:7px 10px;font-size:13px;margin-top:7px}
+@media(max-width:380px){.game-card .metric{font-size:52px}.scoreboard501 .remaining{font-size:37px}.play-actions button{min-height:73px}nav button{font-size:13px}}
+
+/* v7.4: historical dart journal. Display-only: original storage and games remain unchanged. */
+.journal-top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.journal-top h2{margin:6px 0}.journal-action{width:100%;min-height:50px;margin-top:10px}
+.journal-entry{margin:9px 0;padding:14px}.journal-entry .journal-summary{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.journal-date{font-weight:800;font-size:20px}.journal-tags{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0 0}
+.journal-tags span{border:1px solid #496477;border-radius:8px;padding:6px 8px;font-size:12px;color:#d4e2ec}
+.journal-tags span.good{border-color:#2d8565;color:#73e9b7}
+.journal-headline{border-radius:11px;background:#132433;border:1px solid #364e60;padding:12px;margin-top:10px}
+.journal-headline p{margin:5px 0}.journal-exercise{margin:9px 0;padding:12px;background:var(--surface);border:1px solid #3a5064;border-radius:13px}
+.journal-exercise summary{display:flex;justify-content:space-between;align-items:center;gap:8px;list-style:none;min-height:45px}
+.journal-exercise summary::-webkit-details-marker{display:none}.journal-exercise summary:after{content:'▾';margin-left:6px;color:var(--orange)}
+.journal-exercise[open] summary:after{content:'▴'}
+.journal-exercise summary>span{flex:1;min-width:0}.journal-exercise .detail-content{padding-top:11px;border-top:1px solid #405466;margin-top:9px}
+.journal-exercise .detail-content p{margin:6px 0}.journal-kpi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.journal-kpi>div{background:#142533;border:1px solid #34485b;border-radius:10px;padding:10px}
+.journal-kpi small{display:block}.journal-kpi strong{font-size:21px;display:block;margin-top:5px;overflow-wrap:anywhere}
+.journal-delta{font-size:13px;color:var(--dim);margin:8px 0}.journal-delta.good{color:#78e3b5}.journal-delta.bad{color:#ffafa6}
+.journal-select{margin-top:9px}.journal-empty{color:var(--dim);font-size:14px;line-height:1.5}
+.journal-focus{border-left:4px solid var(--orange);background:#242c32;padding:12px 14px;border-radius:9px;margin:12px 0}
+.journal-focus p{font-size:14px;margin:8px 0}.journal-focus p:last-child{margin-bottom:0}
+.journal-micro{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.journal-micro span{font-size:12px;padding:6px 7px;border:1px solid #4b5f72;border-radius:8px}
+@media(max-width:380px){.journal-date{font-size:17px}.journal-entry{padding:11px}.journal-exercise{padding:10px}}
+
+/* v8: a single automatically selected day's programme, and saved partials. */
+.program-entry{border-top:1px solid #3d5467;padding:11px 0}
+.program-entry small{display:block;color:var(--dim);line-height:1.5;font-size:12px;margin-top:3px}
+.program-rest{border-top:1px solid #42586b;padding:14px 0 2px;font-size:13px;color:#bcd1df}
+.game-footer .secondary-actions{flex-wrap:wrap}
+.game-footer .secondary-actions button{min-width:31%}
+
+/* v8.4: social cards are rendered from stored results only (offline; no third party). */
+.share-section{border:1px solid #8a5b2c;background:linear-gradient(160deg,#203346,#142333);padding:14px 13px 18px;border-radius:16px;margin:4px 0 18px;box-shadow:0 5px 26px #0005}
+.share-section h2{margin:3px 0 5px}.share-section .subtle{color:#b9cbd8;font-size:13px;line-height:1.45;margin:0 0 12px}
+.share-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.share-switch button{min-width:0;padding:11px 6px}.share-switch .chosen{border:2px solid #ff9d42;background:#493322;color:#ffc28f}
+.share-section label{font-size:13px}.share-section select{margin:6px 0 10px;padding:10px}
+.share-preview{background:#0b1625;border:1px solid #4b6278;border-radius:12px;overflow:hidden;max-width:330px;margin:12px auto;line-height:0;box-shadow:0 9px 30px #0009}
+.share-preview canvas{width:100%;height:auto;aspect-ratio:9/16;display:block}
+.share-export{display:block;width:100%;min-height:54px;background:#d47a26;border-color:#ff9d42;color:#fff;font-size:17px}
+.share-note{font-size:12px;color:#afc0ce;line-height:1.4;margin:11px 0 0}
+
+.stats-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0 17px}
+.stats-nav button{min-width:0;padding:10px 3px;font-size:14px}
+.stats-nav button[aria-pressed=true],.progress-metrics button[aria-pressed=true]{border-color:var(--orange);background:#433223;color:#ffd2a8}
+.progress-card{padding:13px;margin:10px 0}
+.progress-heading{display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap}
+.progress-heading h3{margin:0}.progress-heading small{font-size:12px}
+.progress-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:10px 0 12px}
+.progress-metrics button{min-width:0;text-align:left;padding:8px;min-height:44px;font-size:13px}
+.progress-metrics small{display:block;margin-top:3px;font-size:11px;color:inherit;font-weight:500}
+.progress-card .tile{padding:9px}.progress-card .tile .big{font-size:20px;margin-top:3px}
+.progress-range{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.progress-comparison{border-top:1px solid var(--line);padding:8px 0;font-size:13px;line-height:1.4}
+.progress-comparison p{margin:0 0 3px}.progress-card .journal-action{margin:5px 0 0}
+.progress-empty{font-size:13px;margin:7px 0 0}
+.exercise-history-row{width:100%;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;text-align:left;margin:6px 0;padding:9px;font-size:14px}
+.exercise-history-row small{font-weight:500;color:var(--dim)}
+</style><link rel="stylesheet" href="training.css"></head>
+<body><main><header><div><strong>DART<span> Training</span></strong></div><div><span class="pill" id="saved">Gemmes lokalt</span><span class="pill" id="sync-status" role="status">Historik afventer synkronisering</span></div></header>
+<nav aria-label="Navigation"><button id="nav-train" onclick="showTab('train')">Start</button><button id="nav-stats" onclick="showTab('stats')">Udvikling</button><button id="nav-history" onclick="showTab('history')">Historik</button><button id="nav-backup" onclick="showTab('backup')">Backup</button></nav><div id="notices" role="status"></div><div id="app"></div></main>
+<script>
+'use strict';
+const EX=[['doubles','Jorden rundt – doubler','D1 til D20. Registrer hver pil. RAMT går straks videre.'],['singles','Store singler','S1 til S20. To træffere i samme single i én indgang.'],['scoring','Scoring 20','Under 60 = 0, 60–99 = 1, 100–139 = 2, 140–179 = 3, 180 = 4. Saml 20 point.'],['checkout','Lukninger 60–69 (gammel historik)','Den gamle øvelse: ét besøg med tre pile fra 60 til 69.'],['catch40','Catch40 – 61–100','40 lukninger, én ad gangen fra 61 til 100. Højst 6 pile pr. lukning. 2 pile = 3 point, 3 pile = 2 point, 4–6 pile = 1 point. 99 i 3 pile giver 3 point.'],['checkout6080','Catch40 – kort 60–80','Kort variant af Catch40-reglerne: 21 lukninger, fra 60 til 80, højst 6 pile pr. lukning. Egen statistik; ikke det klassiske Catch40-resultat.'],['combos','Double-kombinationer','5 runder med fire indgange: D20–D10–D5, D16–D8–D4, D12–D6–D3 og D8–D4–D2. Én pil på hver double.'],['501','501 – 5 legs','Spil 5 legs fra 501. Tast scoren med store knapper, og registrér 0–3 doubleforsøg pr. indgang.']];
+EX.push(['resultlog','Registreret øvelsesresultat','Samlet resultat fra en færdig træning.'],['jdc','JDC Challenge','Tre pile på hvert tal fra 10–15, én på hver double og bull, og dernæst tre pile på hvert tal fra 15–20.'],
+ ['170','170 Challenge','Spil fem legs fra 170. Hvert leg slutter på en double eller bull.'],
+ ['501cpu','501 mod CPU','Spil bedst af fem legs fra 501 med double-out. Du starter første leg, og derefter skifter I til at starte. Først til tre vinder.'],
+ ['170cpu','170 mod CPU','Du starter. I spiller hver jeres indgange fra 170. Appen spiller CPU’ens tur, når du gemmer din. Bedst af 7 legs – først til 4 vundne. Du starter hvert leg.'],
+ ['121','121 Challenge','Spil 10 runder med op til 9, 12 eller 15 pile. Start på 121, og gå ét tal op ved lukning. En lukning på tre pile låser tallet. Bust afslutter runden med det samme. Ved miss eller bust starter næste runde på det låste tal.'],
+ ['501log','501 – hurtigregistrering','Gem totalsummen fra en træning, du allerede har spillet.']);
+const LEGACY_EX_IDS=['doubles','singles','scoring','checkout','combos','501'];
+const CHECKOUT_121_ROUNDS=10, CHECKOUT_121_LIMITS=[9,12,15], PLAN_VERSION=7;
+const CATCH_RANGES={catch40:[61,100],checkout6080:[60,80]};
+const KEY='HESTENG_TRAIN_V8',OLD_KEY='HESTENG_TRAIN_V7',EARLIER_KEY='HESTENG_TRAIN_V6',COMBOS=[[20,10,5],[16,8,4],[12,6,3],[8,4,2]];
+const fresh=()=>({version:8,step:0,results:{},history:[],startedAt:null,plan:null,planName:null,focus:null,planDate:null,planVersion:PLAN_VERSION,status:'ready',inBreak:false,breakUntil:null,stepStartedAt:null,exerciseSeconds:{}});
+let state=fresh(),tab='train',selectedExercise='doubles',storageOk=true,notice='';
+function safeString(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function copy(v){return JSON.parse(JSON.stringify(v));}
+function validEvents(id, a) {
+ if (!Array.isArray(a) || a.length > 10000) return false;
+ if (CATCH_RANGES[id]) return a.every(v=>Number.isInteger(v)&&(v===0||(v>=2&&v<=6))) && a.length<=CATCH_RANGES[id][1]-CATCH_RANGES[id][0]+1;
+ if (id === '121') return a.length<=CHECKOUT_121_ROUNDS && a.every(e=>e&&CHECKOUT_121_LIMITS.includes(e.limit)&&e.limit===a[0].limit&&Number.isInteger(e.darts)&&(e.darts===0||(e.darts>=2&&e.darts<=e.limit)));
+ if (id === 'resultlog') return a.length<=1 && a.every(validResultLog);
+ if (id === '501log') return a.length<=1 && a.every(validQuick501);
+ if (id === 'jdc') return a.length<=JDC_TARGETS.length && a.every((v,i)=>Number.isInteger(v)&&v>=0&&(JDC_TARGETS[i].double?v===0||v===JDC_TARGETS[i].points:v<=9*JDC_TARGETS[i].number||v===100+6*JDC_TARGETS[i].number));
+ if (id === '501cpu') return !!cpu501Match(a);
+ if (id === '170cpu') return validCpu170Events(a);
+ if (id === '170' || id === '501') return a.every(validScoredVisit);
+ if (id === 'singles' || id === 'checkout') return a.every(e=>Number.isInteger(e)&&e>=0&&e<=3);
+ return a.every(e => Number.isInteger(e) && (id === 'scoring' ? e >= 0 && e <= 4 : e === 0 || e === 1));
+}
+function validScoredVisit(e){
+ return e && typeof e==='object' && Number.isInteger(e.score) && e.score>=0 && e.score<=180 &&
+  Number.isInteger(e.darts) && e.darts>=1 && e.darts<=3 && typeof e.finish==='boolean' &&
+  (e.thrown===undefined||(e.bust===true&&!e.finish&&Number.isInteger(e.thrown)&&e.thrown>=Math.max(1,e.doubleAttempts??0)&&e.thrown<=e.darts)) &&
+  (e.doubleAttempts===undefined||(Number.isInteger(e.doubleAttempts)&&e.doubleAttempts>=0&&
+   e.doubleAttempts<=e.darts&&(!e.finish||e.doubleAttempts>=1)));
+}
+function validCpu170Events(events){
+ if(events[0]?.bestOf===7)return !!cpu501Match(events,170,4);
+ let player=170,cpu=170;
+ for(const turn of events){
+  if(!player||!cpu||!validScoredVisit(turn)||!Object.hasOwn(CPU_170_LEVELS,turn.level)||turn.level!==events[0].level)return false;
+  player-=turn.score;
+  if(player<0||player===1||turn.finish!==(player===0))return false;
+  if(turn.finish){if(turn.cpu!==null)return false;continue;}
+  if(!validScoredVisit(turn.cpu))return false;
+  cpu-=turn.cpu.score;
+  if(cpu<0||cpu===1||turn.cpu.finish!==(cpu===0))return false;
+ }
+ return true;
+}
+function validResults(results) {
+ return results && typeof results === 'object' && !Array.isArray(results) &&
+  EX.every(([id]) => !Object.hasOwn(results,id) || (results[id] && validEvents(id, results[id].events) && validCheckoutProgress(id,results[id])));
+}
+// V8.2 stores new sessions separately from v7.4. Old files and old localStorage are read-only.
+// Old v8 backups are compatible. No existing records are rewritten.
+const MAX_SESSION_MS=90*60*1000, BREAK_MS=5*60*1000;
+// Estimates are provisional until this phone has measured completed exercises.
+const DEFAULT_MINUTES={doubles:25,singles:14,scoring:15,catch40:25,checkout6080:15,combos:12,'501':30,'501cpu':40,jdc:18,'170':24,'170cpu':10,'121':22};
+const PROGRAMS=[
+ {name:'Scoring og kamp',plan:['scoring','170','501'],skills:['scoring','501']},
+ {name:'Præcision og doubler',plan:['doubles','jdc'],skills:['doubles','scoring']},
+ {name:'Lukninger under pres',plan:['121','combos','501'],skills:['doubles','501']},
+ {name:'Scoring og checkout',plan:['jdc','170cpu','501'],skills:['scoring','501']},
+ {name:'Doubler og variation',plan:['doubles','checkout6080'],skills:['doubles']}
+];
+function minutesFor(id,history){
+ const measured=(history||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)))
+  .filter(h=>completedGame(id,h.results?.[id]))
+  .map(h=>h.exerciseSeconds?.[id]).filter(n=>Number.isFinite(n)&&n>=60&&n<=MAX_SESSION_MS/1000)
+  .slice(0,8).sort((a,b)=>a-b);
+ if(!measured.length)return DEFAULT_MINUTES[id];
+ const m=Math.floor(measured.length/2);
+ return (measured.length%2?measured[m]:(measured[m-1]+measured[m])/2)/60;
+}
+function activeMinutes(plan,history){return Math.round(plan.reduce((s,id)=>s+minutesFor(id,history),0));}
+function balancePlan(program,history,rotation){
+ const plan=program.plan.slice();
+ const recent=history.slice().sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)).slice(0,4);
+ const rotationPool=Object.keys(DEFAULT_MINUTES);
+ const lastPlayed=id=>recent.findIndex(h=>h.results?.[id]?.events?.length);
+ const candidates=rotationPool.filter(id=>!['501','501cpu'].includes(id)&&!plan.includes(id))
+  .map((id,i)=>({id,minutes:minutesFor(id,history),last:lastPlayed(id),order:(i-rotation+rotationPool.length)%rotationPool.length}));
+ while(plan.length<6){
+  const minutes=activeMinutes(plan,history);
+  if(plan.length>=4&&minutes>=70)break;
+  const ranked=candidates.filter(({id})=>!plan.includes(id)&&
+   !(id==='170cpu'&&(plan.includes('170')||plan.includes('501cpu')))&&!(id==='170'&&plan.includes('170cpu'))&&
+   !(id==='catch40'&&plan.includes('checkout6080'))&&!(id==='checkout6080'&&plan.includes('catch40')))
+   .map(item=>({...item,total:minutes+item.minutes}));
+  ranked.sort((a,b)=>{
+   const rank=item=>Math.max(0,item.total-83)*7+Math.abs(item.total-75)+
+    (item.last===-1?0:(4-item.last)*4);
+   return rank(a)-rank(b)||a.order-b.order;
+  });
+  const best=ranked[0];
+  if(!best||(plan.length>=4&&best.total>83))break;
+  const finish=plan.findIndex(id=>id==='501'||id==='501cpu');
+  plan.splice(finish===-1?plan.length:finish,0,best.id);
+ }
+ return plan;
+}
+function localDayKey(d=new Date()){
+ const z=new Date(d);return [z.getFullYear(),String(z.getMonth()+1).padStart(2,'0'),String(z.getDate()).padStart(2,'0')].join('-');
+}
+function skillFocus(history){
+ // Compare only recent completed exercises; absent exercises are not treated as failures.
+ const recent=(history||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,5);
+ let doubleAttempts=0,doubleWins=0,scoringPoints=0,scoringVisits=0,legScore=0,legDarts=0;
+ for(const h of recent){
+  const a=h.results?.['501']?.events||[];
+  if(completedGame('501',h.results?.['501'])){
+   const x=get501(a);if(x.attemptsComplete){doubleAttempts+=x.doubleAttempts;doubleWins+=x.legs.length;}
+   legScore+=x.score;legDarts+=x.darts;
+  }
+  const sc=h.results?.scoring?.events||[];
+  if(completedGame('scoring',h.results?.scoring)){scoringPoints+=sc.reduce((sum,n)=>sum+n,0);scoringVisits+=sc.length;}
+ }
+ const doubleRate=doubleAttempts?pct(doubleWins,doubleAttempts):null;
+ if(doubleRate!==null&&doubleRate<23)return {name:'doubler',skill:'doubles',reason:'Lukningerne er dit vigtigste fokus ud fra de seneste 501-legs.'};
+ if(legDarts&&legScore*3/legDarts<50)return {name:'scoring',skill:'scoring',reason:'501-snittet ligger under målet på 50–55.'};
+ if(scoringVisits&&scoringPoints/scoringVisits<.7)return {name:'scoring',skill:'scoring',reason:'Scoring 20 viser, at vi kan arbejde med stabilitet.'};
+ return {name:'allround',skill:'501',reason:'Dagens øvelser varierer, mens 501 fortsat er pejlemærket.'};
+}
+function programFor(history){
+ const focus=skillFocus(history),key=localDayKey(),days=Math.floor(new Date(key+'T12:00:00').getTime()/86400000);
+ const latest=(history||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).find(h=>h.planName);
+ const takenToday=(history||[]).filter(h=>localDayKey(h.date)===key).length;
+ const rotation=(days+takenToday)%PROGRAMS.length;
+ const ranked=PROGRAMS.map((p,i)=>({p,i,rank:((i-rotation+PROGRAMS.length)%PROGRAMS.length===0?6:0)+(p.skills.includes(focus.skill)?4:0)-(latest?.planName===p.name?100:0)}));
+ ranked.sort((a,b)=>b.rank-a.rank||((a.i-rotation+PROGRAMS.length)%PROGRAMS.length)-((b.i-rotation+PROGRAMS.length)%PROGRAMS.length));
+ const selected=ranked[0].p;
+ const variant=(days+takenToday)%2===0&&selected.plan.includes('501')?
+  {...selected,plan:selected.plan.map(id=>id==='501'?'501cpu':id==='170cpu'?'170':id)}:selected;
+ return {...variant,plan:balancePlan(variant,history,(days+takenToday)%Object.keys(DEFAULT_MINUTES).length),focus};
+}
+function validV7State(v){return !!(v&&typeof v==='object'&&Number.isInteger(v.step)&&v.step>=0&&v.step<=LEGACY_EX_IDS.length&&validResults(v.results)&&Array.isArray(v.history)&&v.history.every(h=>h&&typeof h.date==='string'&&!Number.isNaN(Date.parse(h.date))&&validResults(h.results)&&(!h.plan||(Array.isArray(h.plan)&&h.plan.every(id=>typeof id==='string')))));}
+function validV8State(v){return !!(v&&typeof v==='object'&&v.version===8&&Array.isArray(v.plan)&&v.plan.length>=1&&v.plan.length<=6&&new Set(v.plan).size===v.plan.length&&v.plan.every(id=>EX.some(e=>e[0]===id))&&Number.isInteger(v.step)&&v.step>=0&&v.step<=v.plan.length&&validResults(v.results)&&Array.isArray(v.history)&&v.history.every(h=>h&&typeof h.date==='string'&&!Number.isNaN(Date.parse(h.date))&&validResults(h.results)&&(!h.plan||(Array.isArray(h.plan)&&h.plan.every(id=>typeof id==='string')))));}
+function existingEntries(results){return Object.values(results||{}).some(v=>hasGameEntries(v));}
+function importedPartial(v){
+ if(typeof v?.startedAt!=='string'||!Number.isFinite(Date.parse(v.startedAt))||!existingEntries(v.results))return null;
+ if(v.version===8){if(v.status!=='active')return null;return {id:'import-'+v.startedAt,date:v.startedAt||new Date().toISOString(),startedAt:v.startedAt,status:'partial',plan:(v.plan||[]).slice(),planName:v.planName||'Importeret træning',exerciseSeconds:copy(v.exerciseSeconds||{}),results:copy(v.results)};}
+ if(v.step>=LEGACY_EX_IDS.length)return null;
+ return {id:'import-v7-'+v.startedAt,date:v.startedAt,startedAt:v.startedAt,status:'partial',plan:LEGACY_EX_IDS.slice(),planName:'Ældre afbrudt træning',results:copy(v.results)};
+}
+function restoreV7(v){
+ state=fresh();state.history=copy(v.history);
+ const pending=importedPartial(v);if(pending&&!state.history.some(h=>h.id===pending.id))state.history.push(pending);
+ notice='Historik fra v7 er overført. Behold din gamle sikkerhedskopi.';
+}
+function ensurePlan(){
+ if(Array.isArray(state.plan)&&state.plan.length)return;
+ const p=programFor(state.history);state.plan=p.plan.slice();state.planName=p.name;state.focus=p.focus.reason;state.planDate=localDayKey();state.planVersion=PLAN_VERSION;
+}
+function refreshReadyPlan(){
+ // Upgrade a not-yet-started v8 plan safely; preserve anything in progress.
+ if(state.status!=='ready'||(state.planVersion===PLAN_VERSION&&state.planDate===localDayKey()))return;
+ const p=programFor(state.history);state.plan=p.plan.slice();state.planName=p.name;state.focus=p.focus.reason;state.planDate=localDayKey();state.planVersion=PLAN_VERSION;
+}
+function rollToToday(){
+ if(!state.planDate||state.planDate===localDayKey()||state.status==='active')return false;
+ resetTraining();ensurePlan();save();
+ return true;
+}
+function resetTraining(){
+ const {history,syncDeleted}=state;
+ state={...fresh(),history,syncDeleted};
+}
+// Never replace unreadable storage. Keep the previous bytes before every successful write.
+let historyStorageBlocked=false;
+const RECOVERY_KEY=KEY+'_RECOVERY';
+function historyIdentity(record){return JSON.stringify([Date.parse(record.date),archiveResultKey(record)]);}
+function mergeStoredHistory(nextState,stored,removedRecords=[],acknowledgedDeletes=[]){
+ const removed=new Set(removedRecords.map(historyIdentity));
+ const seen=new Set(nextState.history.map(historyIdentity));
+ for(const record of stored.history){
+  const key=historyIdentity(record);
+  if(!removed.has(key)&&!seen.has(key)){nextState.history.push(record);seen.add(key);}
+ }
+ nextState.syncDeleted=[...new Set([...(stored.syncDeleted||[]),...(nextState.syncDeleted||[])])].filter(key=>!acknowledgedDeletes.includes(key));
+}
+function save(nextState=state,removedRecords=[],acknowledgedDeletes=[]){
+ try{
+  if(historyStorageBlocked)throw new Error('Historikken er beskyttet efter en læsefejl.');
+  const raw=localStorage.getItem(KEY);
+  if(raw!==null){
+   let stored;
+   try{stored=JSON.parse(raw);if(!validV8State(stored))throw new Error('invalid');}
+   catch{historyStorageBlocked=true;throw new Error('Gemte data kunne ikke læses og er bevaret.');}
+   mergeStoredHistory(nextState,stored,removedRecords,acknowledgedDeletes);
+   const serialized=JSON.stringify(nextState);
+   if(serialized!==raw){localStorage.setItem(RECOVERY_KEY,raw);localStorage.setItem(KEY,serialized);}
+  }else localStorage.setItem(KEY,JSON.stringify(nextState));
+  storageOk=true;
+ }catch(e){storageOk=false;notice='Data kunne ikke gemmes. Eksisterende data er bevaret. Eksportér en sikkerhedskopi.';}
+ const saved=document.getElementById('saved');
+ if(saved)saved.textContent=storageOk?'Gemmes lokalt':'Eksport nødvendig';
+ return storageOk;
+}
+function activeExerciseId(){return state.plan?.[state.step]||null;}
+function datum(){const id=activeExerciseId();if(!id)return null;return state.results[id]||(state.results[id]={events:[]});}
+function events(id){return state.results[id]?.events||[];}
+function add(v){if(state.status!=='active'||checkDeadline())return;const d=datum();if(!d)return;d.events.push(v);save();render();}
+function undo(){
+ if(state.status!=='active'||checkDeadline())return;
+ const entry=datum();
+ if(!hasGameEntries(entry))return;
+ if(isCheckoutDrill(activeExerciseId()))undoCheckoutVisit(entry);
+ else entry.events.pop();
+ save();render();
+}
+function recordExerciseTime(endAt=Date.now()){
+ if(!state.stepStartedAt||state.status!=='active'||state.inBreak)return;
+ const id=activeExerciseId(),start=Date.parse(state.stepStartedAt),deadline=Date.parse(state.startedAt)+MAX_SESSION_MS;
+ if(id&&Number.isFinite(start)&&Number.isFinite(deadline)){
+  const seconds=Math.max(0,(Math.min(endAt,deadline)-start)/1000);
+  if(seconds>0){state.exerciseSeconds=state.exerciseSeconds||{};state.exerciseSeconds[id]=(state.exerciseSeconds[id]||0)+seconds;}
+ }
+ state.stepStartedAt=null;
+}
+function archiveCurrent(status){
+ if(state.archivedSessionId)return;
+ recordExerciseTime();
+ if(existingEntries(state.results)){
+  const id=makeId();state.history.unshift({id,date:new Date().toISOString(),startedAt:state.startedAt,plan:state.plan.slice(),planName:state.planName,status,exerciseSeconds:copy(state.exerciseSeconds||{}),results:copy(state.results)});state.archivedSessionId=id;historySync.changed();
+ }
+ state.status=status==='complete'?'complete':'stopped';state.step=state.plan.length;state.inBreak=false;state.breakUntil=null;state.stepStartedAt=null;save();
+}
+function checkDeadline(){
+ if(state.plan.length>1&&state.status==='active'&&state.startedAt&&Date.now()-Date.parse(state.startedAt)>=MAX_SESSION_MS){archiveCurrent('partial');notice='90 minutter er gået. Resultaterne er gemt, også hvis en øvelse ikke var færdig.';return true;}
+ return false;
+}
+function startTraining(){if(state.status!=='ready')return;ensurePlan();state.startedAt=new Date().toISOString();state.stepStartedAt=state.startedAt;state.exerciseSeconds={};state.status='active';save();render();}
+function advance(){
+ if(state.status!=='active'||checkDeadline())return;
+ if(state.step>=state.plan.length)return;
+ if(state.step===state.plan.length-1){archiveCurrent('complete');render();return;}
+ recordExerciseTime();
+ const old=state.step;state.step++;
+ // Two planned breaks distributed across the selected programme.
+ const breaks=state.plan.length<=4?[0,2]:state.plan.length===5?[1,3]:[1,4];
+ if(breaks.includes(old)){state.inBreak=true;state.breakUntil=new Date(Date.now()+BREAK_MS).toISOString();}
+ else state.stepStartedAt=new Date().toISOString();
+ save();render();
+}
+function continueBreak(){if(state.status!=='active'||!state.inBreak||checkDeadline())return;if(Date.now()<Date.parse(state.breakUntil))return;state.inBreak=false;state.breakUntil=null;state.stepStartedAt=new Date().toISOString();save();render();}
+function back(){if(state.status!=='active'||checkDeadline())return;if(state.step>0){recordExerciseTime();state.step--;state.inBreak=false;state.breakUntil=null;state.stepStartedAt=new Date().toISOString();save();render();}}
+function stopTraining(){if(state.status!=='active')return;if(!confirm('Afslutte dagens træning? Alle registrerede indgange gemmes i historikken, også uafsluttede øvelser.'))return;archiveCurrent('partial');render();}
+function restart(){
+ if(state.status==='active'&&!confirm('Begynde ny træning? Den igangværende gemmes som afbrudt.'))return;
+ if(state.status==='active')archiveCurrent('partial');
+ resetTraining();ensurePlan();save();showTab('train');
+}
+function makeId(){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);}
+function button(label,call,cl='',disabled=false){return '<button class="'+cl+'" '+(disabled?'disabled ':'')+'onclick="'+call+'">'+label+'</button>';}
+function pct(a,b){return b>0?(100*a/b):null;}
+function num(v,dp=1){return v===null||!Number.isFinite(v)?'–':Number(v).toLocaleString('da-DK',{maximumFractionDigits:dp});}
+function day(d){try{return new Date(d).toLocaleDateString('da-DK',{day:'numeric',month:'short',year:'numeric'});}catch(e){return 'Ukendt dato';}}
+// Checkout % = successful finishes / all darts thrown at doubles.
+// Historical entries without doubleAttempts remain "unknown", never assumed zero.
+function get501(a,start=501){
+ let legs=[],rest=start,legDarts=0,legDoubleAttempts=0,legAttemptsKnown=true;
+ let legThrown={darts:0,incomplete:false};
+ let visits=0,busts=0,score=0,darts=0,doubleAttempts=0,knownDoubleAttempts=0;
+ for(const e of a){
+  if(!e||typeof e!=='object')continue;
+  const n=Number(e.score)||0,nd=Number(e.darts)||3,known=Number.isInteger(e.doubleAttempts);
+  visits++;score+=n;darts+=nd;legDarts+=nd;
+  legThrown.darts+=visitDartsThrown(e);
+  if(visitDartsUnknown(e))legThrown.incomplete=true;
+  if(known){doubleAttempts+=e.doubleAttempts;legDoubleAttempts+=e.doubleAttempts;knownDoubleAttempts++;}
+  else legAttemptsKnown=false;
+  if(e.bust)busts++;
+  if(e.finish){
+   legs.push({checkout:n,darts:legDarts,thrown:legThrown,doubleAttempts:legDoubleAttempts,
+    checkoutPercent:legAttemptsKnown&&legDoubleAttempts>=1?pct(1,legDoubleAttempts):null,
+    knownDoubleAttempts:legAttemptsKnown});
+   legDarts=0;legThrown={darts:0,incomplete:false};legDoubleAttempts=0;legAttemptsKnown=true;rest=start;
+  }else rest-=n;
+ }
+ const measuredLegs=legs.length>=5?legs.slice(0,5):[];
+ const sorted=measuredLegs.slice().sort((a,b)=>a.darts-b.darts);
+ const bestAverage=n=>sorted.length>=n?501*3*n/sorted.slice(0,n).reduce((s,leg)=>s+leg.darts,0):null;
+ const best3=bestAverage(3),best4=bestAverage(4);
+ const bestLeg=legs.length?Math.min(...legs.map(l=>l.darts)):null;
+ const worstLeg=legs.length?Math.max(...legs.map(l=>l.darts)):null;
+ const attemptsComplete=a.length>0&&knownDoubleAttempts===a.length;
+ const checkoutPercent=attemptsComplete&&doubleAttempts>=legs.length&&doubleAttempts>0?pct(legs.length,doubleAttempts):null;
+ return {legs,rest,score,darts,visits,busts,doubleAttempts,knownDoubleAttempts,attemptsComplete,checkoutPercent,best3,best4,bestLeg,worstLeg,
+  currentLegThrown:legThrown,currentLegDoubleAttempts:legDoubleAttempts,
+  avg:darts?score*3/darts:null,
+  high100:a.filter(e=>e.score>=100).length,high140:a.filter(e=>e.score>=140).length,high180:a.filter(e=>e.score===180).length};
+}
+function percent501(x){return x.checkoutPercent===null?'Ikke registreret':num(x.checkoutPercent,1)+'%';}
+function catchScore(darts,target){return darts===2?3:darts===3?(target===99?3:2):darts>=4&&darts<=6?1:0;}
+function catchInfo(id,events){
+ const [start,end]=CATCH_RANGES[id],total=end-start+1,a=events||[];
+ const closed=a.filter(n=>n>=2).length;
+ const points=a.reduce((sum,n,i)=>sum+catchScore(n,start+i),0);
+ const used=a.filter(n=>n>=2).reduce((sum,n)=>sum+n,0);
+ return {start,end,total,closed,points,attempts:a.length,rate:pct(closed,a.length),successfulDarts:closed?used/closed:null};
+}
+function statsFor(id,entry){let a=entry?.events||[],hits=a.filter(Boolean).length,n=a.length;
+ if(id==='resultlog'){const x=a[0];return {main:x?x.value+' '+(QUICK_GAMES[x.game][3]?'pile':'point'):'–',primary:null,sub:x?QUICK_GAMES[x.game][0]:'',extra:{}};}
+ if(id==='jdc'){const points=a.reduce((sum,v)=>sum+v,0);return {main:n?points+' point':'–',primary:n===JDC_TARGETS.length?points:null,direction:'higher',sub:n+'/33 mål registreret',extra:{}};}
+ if(id==='121'){
+  const x=checkout121(a,entry.locked121);
+  return {main:x.best?x.best+' lukket':'–',primary:x.best||null,direction:'higher',
+   sub:`${x.closed}/${n} lukket · ${x.limit} pile pr. runde · ${x.fourToNine} på 4–9 pile`,extra:x};
+ }
+ if(id==='501cpu'){
+  const match=cpu501Match(a);
+  if(!match)return {main:'–',primary:null,sub:'',extra:{}};
+  const {player}=match;
+  return {main:player.legs.length+' – '+match.losses,primary:null,
+   sub:(match.winner==='player'?'Sejr':match.winner==='cpu'?'Nederlag':'Uafsluttet')+' · '+CPU_170_LEVELS[match.level].label+
+    ' · '+num(player.avg,2)+' i snit · '+player.darts+' pile · Double '+percent501(player),extra:match};
+ }
+ if(id==='170cpu'){
+  const match=cpu170Match(a),leg=match.player.legs[0];
+  const main=(match.bestOf===7?match.player.legs.length+' – '+match.losses+' · ':'')+(match.winner==='player'?'Sejr':match.winner==='cpu'?'Nederlag':'Uafsluttet');
+  return {main,primary:null,sub:CPU_170_LEVELS[match.level].label+' · '+match.player.darts+' pile · '+
+   (leg?'Lukket '+leg.checkout:match.player.rest+' tilbage')+' · Double '+percent501(match.player),extra:match};
+ }
+ if(id==='170'){
+  const x=get501(a,170),goal=solo170Goal(entry),count=x.legs.length;
+  const average=count?x.legs.reduce((sum,leg)=>sum+leg.darts,0)/count:null;
+  return {main:count?num(average)+' pile pr. leg':x.rest+' tilbage',
+   primary:count>=goal?average:null,direction:'lower',
+   sub:count+'/'+goal+' legs lukket · '+x.darts+' pile brugt'+(count?' · Hurtigste '+x.bestLeg+' pile':''),extra:x};
+ }
+ if(id==='501log'){const x=a[0];return {main:x?num(x.avg,2)+' i snit':'–',primary:x?.avg??null,direction:'higher',sub:x?quick501Details(x):'',extra:{}};}
+
+ if(id==='doubles')return {main:n?(hits>=20?num(pct(20,n))+' %':hits+'/20 ramt'):'–',rate:pct(hits,n),primary:n? n : null,direction:'lower',sub:`${hits}/20 doubler · ${n} pile · ${Math.ceil(n/3)} indgange`,extra:{first:pct(firstHitsDoubles(a),Math.ceil(n/3)),hits,n,visits:Math.ceil(n/3)}};
+ if(id==='singles')return {main:n+' indgange',primary:n||null,direction:'lower',rate:pct(hits,n),sub:`${hits}/20 singler · ${n} indgange`,extra:{hits,n}};
+ if(id==='scoring')return {main:n+' indgange',primary:n||null,direction:'lower',rate:pct(a.filter(x=>x>0).length,n),sub:`${a.reduce((s,v)=>s+v,0)} point · ${n} indgange`,extra:{points:a.reduce((s,v)=>s+v,0),n}};
+ if(CATCH_RANGES[id]){
+  const x=catchInfo(id,a);
+  return {main:x.points+' point',primary:n===x.total?x.points:null,direction:'higher',rate:x.rate,sub:`${x.closed}/${x.total} lukninger · ${n}/${x.total} forsøg · ${num(x.rate)} % lukket`,extra:x};
+ }
+ if(id==='checkout')return {main:num(pct(hits,n))+' %',primary:pct(hits,n),direction:'higher',rate:pct(hits,n),sub:`${hits}/10 lukninger · ${n} forsøg`,extra:{hits,n}};
+ if(id==='combos')return {main:num(pct(hits,n))+' %',primary:pct(hits,n),direction:'higher',rate:pct(hits,n),sub:`${hits}/60 double-træffere · ${n} pile`,extra:{hits,n}};
+ if(id==='501'){const x=get501(a);return {main:num(x.avg)+' avg',primary:x.avg,direction:'higher',sub:`${x.legs.length}/5 legs · ${x.darts} pile · Double ${percent501(x)} · ${x.high100} indgange 100+`,extra:x};}return {main:'–',primary:null,sub:'',extra:{}};}
+function checkout121(events,locked=false){
+ let target=121,floor=121,best=0,closed=0,fourToNine=0;
+ for(const {darts} of events){
+  if(!darts){target=floor;continue;}
+  closed++;
+  if(darts>=4&&darts<=9)fourToNine++;
+  if(locked&&darts===3)floor=target;
+  best=Math.max(best,target++);
+ }
+ return {target,floor,best,closed,fourToNine,limit:events[0]?.limit??9};
+}
+function set121Limit(limit){
+ if(state.status!=='active'||activeExerciseId()!=='121'||!CHECKOUT_121_LIMITS.includes(limit)||checkDeadline())return;
+ const entry=datum();
+ if(hasGameEntries(entry))return;
+ entry.limit=limit;
+ save();render();
+}
+function render121(entry){
+ const n=entry.events.length,x=checkout121(entry.events,entry.locked121),limit=entry.events[0]?.limit??entry.limit??9;
+ const setup=hasGameEntries(entry)?'':`<div class="row" role="group" aria-label="Pile pr. runde">${CHECKOUT_121_LIMITS.map(d=>`<button type="button" class="${d===limit?'primary':''}" aria-pressed="${d===limit}" onclick="set121Limit(${d})">${d} pile</button>`).join('')}</div>`;
+ const previous=entry.roundVisits?.[n-1];
+ const bustStatus=previous?.at(-1)?.roundBust&&!entry.roundVisits?.[n]?.length
+  ?`<p class="caption" role="status">Runde ${n} sluttede med bust efter ${previous.reduce((sum,v)=>sum+visitDartsThrown(v),0)} kastede pile.</p>`:'';
+ return setup+bustStatus+renderCheckoutDrill('121',entry,'Runde '+Math.min(n+1,CHECKOUT_121_ROUNDS)+' af '+CHECKOUT_121_ROUNDS,
+  x.closed+'/'+n+' lukket · Bedste '+(x.best||'–')+' · Bund '+x.floor);
+}
+function firstHitsDoubles(a){return a.filter((hit,i)=>i%3===0&&hit).length;}
+function showTab(v){if(v!=='train')quickMode=null;tab=v;render();window.scrollTo(0,0);}
+function render(){['train','stats','history','backup'].forEach(v=>document.getElementById('nav-'+v).classList.toggle('active',tab===v));document.getElementById('notices').textContent=notice+(storageOk?'':' ADVARSEL: Lager er ikke tilgængeligt. Brug eksport.');let root=document.getElementById('app');root.innerHTML=tab==='train'?renderTrain():tab==='stats'?renderStats():tab==='history'?renderHistory():tab==='admin'?renderAdministration():renderBackup();if(tab==='train'&&state.status==='active')root.innerHTML+=renderSafeFinish();if(tab==='stats'&&statsView==='share')renderSharePreview();}
+function playButtons(...actions){return '<div class="play-actions">'+actions.join('')+'</div>';}
+function exerciseProgress(step){return '<div class="stepbar" aria-label="Øvelse '+(step+1)+' af '+state.plan.length+'">'+state.plan.map((id,i)=>'<i class="'+(i<step?'done':i===step?'current':'')+'"></i>').join('')+'</div>';}
+function renderTrain(){
+ ensurePlan();
+ if(checkDeadline())save();
+ rollToToday();
+ if(state.status==='ready'){
+  const info=state.plan.map((id,i)=>{const ex=EX.find(e=>e[0]===id);return '<div class="program-entry"><b>'+(i+1)+'. '+safeString(ex[1])+'</b><small>'+safeString(ex[2])+'</small></div>';}).join('');
+  return renderDashboard(`<details class="card"><summary>Dagens automatiske program</summary><h3>${safeString(state.planName)}</h3><p class="muted">${safeString(state.focus)}</p>${info}<p class="caption">Ca. ${activeMinutes(state.plan,state.history)} min + 10 min pauser</p>${button('Start program','startTraining()','primary journal-action')}</details>`);
+
+ }
+ if((state.status==='complete'||state.status==='stopped')&&state.plan.length===1)return renderDashboard('');
+ if(state.status==='complete'||state.status==='stopped'){
+  const complete=state.status==='complete';
+  const items=state.plan.map(id=>{const e=EX.find(x=>x[0]===id),a=state.results[id]?.events||[];return `<p><b>${safeString(e[1])}:</b> ${a.length?safeString(statsFor(id,state.results[id]).sub):'Ikke påbegyndt'} ${a.length&&!completedGame(id,state.results[id])?'(delvist)':''}</p>`;}).join('');
+  return dartTotalCard('Dagens pile',dartsForDay(completedSessions(),localDayKey()))+`<div class="card"><h2>${complete?'Træning gennemført':'Træningen er afsluttet'}</h2><p class="good">${complete?'Dagens program er gennemført.':'Alle registreringer er gemt – også fra uafsluttede øvelser.'}</p>${items}${Object.keys(state.exerciseSeconds||{}).length?`<p class="caption">Registreret øvelsestid: ${Math.round(Object.values(state.exerciseSeconds).reduce((s,n)=>s+n,0)/60)} min (pauser ikke medregnet).</p>`:''}<div class="row">${button('Se dartjournal','showTab(\'history\')','accent')}${button('Ny automatisk træning','restart()','primary')}</div></div>`;
+ }
+ if(state.inBreak){
+  const left=Math.max(0,Date.parse(state.breakUntil)-Date.now()),minutes=Math.ceil(left/60000);
+  return `<div class="card" style="text-align:center"><span class="pill">Indlagt pause</span><h2>5 minutters pause</h2><div class="metric">${left>0?minutes+' min':'✓'}</div><p class="muted">Pausen tæller med i de 90 minutter. Næste øvelse: <b>${safeString(EX.find(e=>e[0]===state.plan[state.step])[1])}</b></p>${button(left>0?'Fortsæt efter pausen':'Fortsæt træningen','continueBreak()','primary journal-action',left>0)}</div>`;
+ }
+
+ let [id,title,desc]=EX.find(e=>e[0]===state.plan[state.step]),a=datum().events,n=a.length,hits=a.filter(Boolean).length,content='',done=false,scoreEntryVisible=false;
+ if(id==='doubles'){
+  done=hits===20;const first=firstHitsDoubles(a);
+  content=`<div class="muted">${done?'Alle 20 doubler er ramt':'RAM NU'}</div><div class="metric">${done?'✓':'D'+(hits+1)}</div><p class="game-status">${hits}/20 ramt · ${n} pile · ${Math.ceil(n/3)} indgange</p>${n?`<p class="caption">Første pil i indgangen: ${first} træffere</p>`:''}${done?'':playButtons(button('RAMT','add(1)','primary'),button('MISS','add(0)'))}`;
+ }
+ if(id==='singles'){
+  done=hits===20;
+  content=`<div class="muted">${done?'Alle 20 singler er klaret':'RAM NU'}</div><div class="metric">${done?'✓':'S'+(hits+1)}</div><p class="game-status">${hits}/20 klaret · ${n} indgange</p>${done?'':playButtons(button('Klaret på 2 pile','add(2)','primary'),button('Klaret på 3 pile','add(3)','primary'),button('Ikke klaret','add(0)'))}`;
+ }
+ if(id==='scoring'){
+  const points=a.reduce((sum,value)=>sum+value,0);done=points>=20;
+  content=`<div class="muted">${done?'20 point nået':'SAMLET SCORE'}</div><div class="metric">${points} / 20</div><p class="game-status">${n} indgange · ${n?num(points/n,2):'–'} point pr. indgang</p>${done?'':`<div class="scoring-actions">${['Under 60','60–99','100–139','140–179','180'].map((label,i)=>`<button type="button" onclick="add(${i})" class="${i===4?'primary':''}"><strong>${i}</strong>${label}</button>`).join('')}</div>`}`;
+ }
+ if(id==='checkout'){
+  done=n>=10;
+  content=`<div class="muted">${done?'Alle 10 lukninger forsøgt':'LUK NU'}</div><div class="metric">${done?'✓':60+n}</div><p class="game-status">${hits} af ${n} lukket · ${num(pct(hits,n))}%</p>${done?'':playButtons(button('Lukket på 2 pile','add(2)','primary'),button('Lukket på 3 pile','add(3)','primary'),button('Miss','add(0)'))}`;
+ }
+ if(CATCH_RANGES[id]){
+  const x=catchInfo(id,a);
+  done=n>=x.total;scoreEntryVisible=!done;
+  content=renderCheckoutDrill(id,datum(),'Lukning '+Math.min(n+1,x.total)+' af '+x.total,
+   x.points+' point · '+x.closed+' lukket · '+num(x.rate)+' %');
+ }
+ if(id==='combos'){
+  done=n>=60;let g=Math.floor(n/3)%4,round=Math.floor(n/12)+1,dart=n%3;
+  content=`<div class="muted">${done?'Alle kombinationer gennemført':'Runde '+round+' af 5 · Pil '+(dart+1)+' af 3'}</div><div class="metric">${done?'✓':'D'+COMBOS[g][dart]}</div><p class="game-status">${done?'60 pile':COMBOS[g].map(x=>'D'+x).join(' → ')}</p><p class="caption">${hits} træffere · ${n}/60 pile · ${num(pct(hits,n))}%</p>${done?'':playButtons(button('RAMT','add(1)','primary'),button('MISS','add(0)'))}`;
+ }
+ if(id==='jdc'){
+  done=n===JDC_TARGETS.length;
+  content=renderJdc(a);
+ }
+
+ if(id==='121'){done=n===CHECKOUT_121_ROUNDS;scoreEntryVisible=!done;content=render121(datum());}
+
+ if(['501','170','170cpu','501cpu'].includes(id)){
+  const is501cpu=id==='501cpu';
+  const match=is501cpu?cpu501Match(a):id==='170cpu'?cpu170Match(a):null;
+  const is170=id==='170'||id==='170cpu', target=is170?170:501, legGoal=id==='170'?solo170Goal(datum()):is170?1:5;
+  const x=match?.player??get501(a,target);
+  done=match?!!match.winner:x.legs.length>=legGoal;
+  scoreEntryVisible=!done&&!match?.legWinner;
+  const heading=done?(match?(match.winner==='player'?'Du vandt':'CPU vandt'):'Gennemført'):
+   match?'Din tur':'Leg '+(x.legs.length+1)+' af '+legGoal;
+  const recorded=x.checkoutPercent!==null;
+  content=`${match?.bestOf?renderCpu501Summary(match):''}${match?renderCpuOpponent(id,datum(),match):''}<div class="muted">${match?.bestOf?(match.legWinner?'Leg afsluttet':'Din tur'):heading}${id==='501'?'':' · '+x.darts+' pile'}</div>
+  <div class="scoreboard501"><div><small>${match?'Din rest':'Tilbage'}</small><div class="remaining">${!is501cpu&&x.legs.length&&done?'✓':x.rest}</div></div>
+  <div><small>3-pils snit</small><div class="smallmetric">${num(x.avg,2)}</div></div>
+  <div><small>Double %</small><div class="smallmetric">${recorded?num(x.checkoutPercent,1)+'%':'–'}</div></div></div>
+  ${id==='501'?`<p class="game-status">Kastede pile i alt <b>${dartTotalText(exerciseDarts(id,datum()))}</b></p>${render501LegStrip(x)}`:''}
+  ${done?'<p class="good">Øvelsen er gennemført.</p>':match?.legWinner?'':renderScoreEntry(x.rest,true)}
+  ${id==='170'&&x.legs.length?render170Legs(x):''}
+  ${id==='501'&&done?render501Breakdown(a)+render501Comparison(a):''}`;
+ }
+ const canUndo=hasGameEntries(datum());
+ const intro=`<div class="exercise-head"><span>Øvelse ${state.step+1} af ${state.plan.length}</span><span>${storageOk?'Gemmes automatisk':'HUSK BACKUP'}</span></div>${exerciseProgress(state.step)}<h2 class="game-title">${title}</h2><details class="game-info"><summary>Sådan spiller du</summary><p>${desc}</p></details>`;
+ if(state.plan.length===1){
+  return intro+`<div class="card game-card">${content}</div><div class="row">${scoreEntryVisible?'':button('Fortryd','undo()','small',!canUndo)}</div>`;
+ }
+ const footer=`<div class="game-footer">${state.step===state.plan.length-1?'':button('Næste øvelse', 'advance()', 'primary next', !done)}<div class="secondary-actions">${state.step?button('← Forrige øvelse','back()','small'):''}${scoreEntryVisible?'':button('Fortryd sidste','undo()','small',!canUndo)}</div></div>`;
+ return intro+`<div class="card game-card ${id==='501'?'card-501':''}">${content}</div>`+footer+`<p class="caption" style="text-align:center">${storageOk?'Hvert kast gemmes automatisk. Dine resultater bevares, hvis du lukker appen.':'Gemning er ikke tilgængelig. Brug Backup-fanen for at gemme dine resultater.'}</p>`;
+}
+const DOUBLE_PROMPT_REST=50;
+function renderScoreEntry(rest,standardScores){
+ const route=checkoutRoute(rest,3);
+ const is121=activeExerciseId()==='121';
+ const side=values=>`<div class="quick-column501" role="group" aria-label="Hurtigscorer">${values.map(v=>button(String(v),'quick501('+v+')')).join('')}</div>`;
+ return `${route?`<div class="checkout-help501"><p class="checkout-route">Lukkevej <b>${route.join(' · ')}</b></p>
+   ${button('Luk '+rest,'quick501('+rest+')','accent close-score')}</div>`:''}
+  <label for="score501">Score for indgangen</label>
+  <input id="score501" class="scoreinput501" type="text" readonly inputmode="none" placeholder="Vælg score">
+  <div class="score-keys501">
+   ${side(standardScores?[26,41,45,81]:[20,26,40,41])}
+   <div class="keypad501" role="group" aria-label="Scoretastatur">
+    ${[1,2,3,4,5,6,7,8,9].map(v=>button(String(v),"scoreTap501('"+v+"')")).join('')}
+    <button type="button" class="clear" aria-label="Ryd score" onclick="scoreTap501('C')">C</button>
+    ${button('0',"scoreTap501('0')")}
+    <button type="button" class="del" aria-label="Slet sidste ciffer" onclick="scoreTap501('DEL')">⌫</button>
+   </div>
+   ${side(standardScores?[60,100,140,180]:[45,60,100,140])}
+  </div>
+  <p id="score501Preview" role="status">Tast score og gem indgangen.</p>
+  <div id="finish501Controls" class="finish501" hidden>
+   <label id="darts501Label">Hvilken pil lukkede du på?</label>
+   <input id="darts501" type="hidden" value="">
+   <div class="scoreOptions501" role="group" aria-labelledby="darts501Label">${[1,2,3].map(v=>`<button type="button" id="finishDarts501-${v}" aria-pressed="false" onclick="setDarts501(${v})">${v} ${v===1?'pil':'pile'}</button>`).join('')}</div>
+  </div>
+  <div id="double501Controls" class="double-controls501" ${rest>DOUBLE_PROMPT_REST?'hidden':''}>
+   <label id="double501Label">Hvor mange doubleforsøg?</label>
+   <input id="double501" type="hidden" value="">
+   <div class="scoreOptions501" role="group" aria-labelledby="double501Label">${[0,1,2,3].map(v=>`<button type="button" id="doubleTry501-${v}" aria-pressed="false" onclick="setAttempts501(${v})">${is121&&v===0?'0 forsøg':v}</button>`).join('')}</div>
+  </div>
+  <div class="actions501">
+   <button type="button" id="save501" class="primary" onclick="add501()" disabled>Gem indgang</button>
+   <button type="button" id="bust501" aria-expanded="false" aria-controls="bustDarts501" onclick="toggleBustDarts()" ${rest<=DOUBLE_PROMPT_REST?'disabled':''}>Bust</button>
+   ${button('Fortryd','undo()','',!hasGameEntries(datum()))}
+  </div>
+  <div id="bustDarts501" class="double-controls501" hidden>
+   <label id="bustDarts501Label">Hvor mange pile kastede du før og med bust?</label>
+   <div class="scoreOptions501" role="group" aria-labelledby="bustDarts501Label">${[1,2,3].map(v=>`<button type="button" id="bustDarts501-${v}" onclick="bust501(${v})">${v} ${v===1?'pil':'pile'}</button>`).join('')}</div>
+  </div>`;
+}
+function setScore501(field,value,preset=false){
+ if(field.value!==value){
+  field.value=value;
+  document.getElementById('darts501').value='';
+  select501([1,2,3].map(v=>'finishDarts501-'+v),-1);
+ }
+ field.dataset.preset=preset?'1':'';
+ update501Preview();
+}
+function quick501(value){
+ const field=document.getElementById('score501');
+ if(field)setScore501(field,String(value),true);
+}
+function scoreTap501(key){
+ const field=document.getElementById('score501');
+ if(!field)return;
+ const value=field.value;
+ if(key==='C')setScore501(field,'');
+ else if(key==='DEL')setScore501(field,value.slice(0,-1));
+ else if(/^\d$/.test(key)){
+  const prefix=field.dataset.preset||value==='0'?'':value;
+  if(prefix.length<3)setScore501(field,prefix+key);
+ }
+}
+function select501(ids,current){for(let i=0;i<ids.length;i++){
+ const b=document.getElementById(ids[i]);if(!b)continue;
+ const active=i===current;b.classList.toggle('chosen',active);
+ if(b.setAttribute)b.setAttribute('aria-pressed',String(active));
+}}
+function setAttempts501(n){if(!Number.isInteger(n)||n<0||n>3)return;
+ const node=document.getElementById('double501');if(!node)return;
+ node.value=String(n);select501([0,1,2,3].map(v=>'doubleTry501-'+v),n);update501Preview();
+}
+function setDarts501(n){if(!Number.isInteger(n)||n<1||n>3)return;
+ const node=document.getElementById('darts501');if(!node)return;
+ node.value=String(n);select501([1,2,3].map(v=>'finishDarts501-'+v),n-1);update501Preview();
+}
+function currentScoredRest(){
+ const id=activeExerciseId(),entry=datum();
+ if(isCheckoutDrill(id))return checkoutDrillState(id,entry).rest;
+ if(id==='501cpu')return cpu501Match(entry.events).player.rest;
+ if(id==='170cpu')return cpu170Match(entry.events).player.rest;
+ return get501(entry.events,id==='501'?501:170).rest;
+}
+function scoreEntryState(){
+ const rest=currentScoredRest();
+ const raw=document.getElementById('score501')?.value.trim()??'',score=Number(raw);
+ const valid=raw!==''&&Number.isInteger(score)&&score>=0&&score<=180;
+ const remaining=rest-score;
+ const bust=valid&&(remaining<0||remaining===1);
+ const finish=valid&&!bust&&remaining===0;
+ const allowed=finish?[1,2,3].filter(darts=>checkoutRoute(rest,darts)):[];
+ const darts=finish?Number(document.getElementById('darts501').value):3;
+ const prompt=rest<=DOUBLE_PROMPT_REST||(valid&&!bust&&(finish?allowed.length>0:remaining<=DOUBLE_PROMPT_REST));
+ const minAttempts=finish?1:0, maxAttempts=finish&&darts?darts:3;
+ const value=document.getElementById('double501').value;
+ const attempts=value===''?null:Number(value);
+ const attemptsReady=attempts!==null&&Number.isInteger(attempts)&&attempts>=minAttempts&&attempts<=maxAttempts;
+ const ready=valid&&!bust&&(!finish||allowed.includes(darts))&&(!prompt||attemptsReady);
+ return {raw,score,rest,remaining,valid,bust,finish,allowed,darts,prompt,attempts,minAttempts,maxAttempts,attemptsReady,ready};
+}
+function update501Preview(){
+ if(!document.getElementById('score501'))return;
+ const x=scoreEntryState();
+ const is121=activeExerciseId()==='121';
+ document.getElementById('finish501Controls').hidden=!x.allowed.length;
+ for(const d of [1,2,3])document.getElementById('finishDarts501-'+d).disabled=!x.allowed.includes(d);
+ document.getElementById('double501Controls').hidden=!x.prompt;
+ if(!x.prompt||!x.attemptsReady){
+  document.getElementById('double501').value='';
+  select501([0,1,2,3].map(v=>'doubleTry501-'+v),-1);
+ }
+ for(const a of [0,1,2,3])document.getElementById('doubleTry501-'+a).disabled=a<x.minAttempts||a>x.maxAttempts;
+ document.getElementById('score501Preview').textContent=!x.valid?(x.raw?'Indtast et tal fra 0 til 180.':'Tast score og gem indgangen.'):
+  x.bust?(is121?(x.prompt&&!x.attemptsReady?'Bust. Vælg antal doubleforsøg først.':'Bust. Vælg antal pile for at afslutte runden.'):'Bust. Resten bliver '+x.rest+'.'):
+  x.finish&&!x.allowed.length?'Den rest kan ikke lukkes på tre pile.':
+  x.finish&&!x.allowed.includes(x.darts)?'Vælg pilen, du lukkede på.':
+  is121&&x.prompt&&!x.attemptsReady?'Vælg antal doubleforsøg for at gemme.':
+  x.finish?'Lukning på '+x.darts+(x.darts===1?' pil.':' pile.'):
+  x.rest+' − '+x.score+' = '+x.remaining+' tilbage.';
+ const button=document.getElementById('save501');
+ const registeringBust=is121&&x.bust;
+ button.disabled=registeringBust?(x.prompt&&!x.attemptsReady):!x.ready;
+ button.textContent=registeringBust?'Vælg pile ved bust':x.finish?'Gem lukning':'Gem indgang';
+ const bustButton=document.getElementById('bust501');
+ bustButton.disabled=x.rest<=DOUBLE_PROMPT_REST&&!x.attemptsReady;
+ const bustDarts=document.getElementById('bustDarts501');
+ if(bustButton.disabled&&!bustDarts.hidden){bustDarts.hidden=true;bustButton.setAttribute('aria-expanded','false');}
+ for(const d of [1,2,3])document.getElementById('bustDarts501-'+d).disabled=d<(x.attempts??0);
+}
+function add501(){
+ const x=scoreEntryState();
+ if(activeExerciseId()==='121'&&x.bust){
+  if((!x.prompt||x.attemptsReady)&&document.getElementById('bustDarts501').hidden)toggleBustDarts();
+  return;
+ }
+ if(!x.ready)return;
+ saveScoredVisit({score:x.score,finish:x.finish,darts:x.darts,doubleAttempts:x.prompt?x.attempts:0});
+}
+function toggleBustDarts(){
+ const options=document.getElementById('bustDarts501');
+ options.hidden=!options.hidden;
+ document.getElementById('bust501').setAttribute('aria-expanded',String(!options.hidden));
+}
+function bust501(thrown){
+ const x=scoreEntryState();
+ if(!Number.isInteger(thrown)||thrown<Math.max(1,x.attempts??0)||thrown>3)return;
+ if(x.rest<=DOUBLE_PROMPT_REST&&!x.attemptsReady)return;
+ // A bust consumes the visit for scoring, while the training total uses throws made.
+ saveScoredVisit({score:0,finish:false,darts:3,thrown,bust:true,doubleAttempts:x.prompt?(x.attempts??0):0});
+}
+function completedSessions(){return state.history.filter(h=>h&&h.results&&typeof h.results==='object').slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));}
+function chart(values,direction,describe=(v,i)=>'Træning '+(i+1)+': '+num(v,2),showCaption=true){if(!values.length)return '<p class="muted">Ingen tidligere resultater for denne øvelse.</p>';let w=540,h=150,left=18,right=18,top=18,bottom=28,min=Math.min(...values),max=Math.max(...values),margin=Math.max((max-min)*.18,.8),low=Math.max(0,min-margin),high=max+margin;
+const points=values.map((v,i)=>{let x=values.length===1?w/2:left+i/(values.length-1)*(w-left-right),y=h-bottom-(v-low)/(high-low)*(h-bottom-top);return{x,y,v}});
+return `<svg class="chart" role="img" aria-label="Udvikling · ${values.length} målinger" viewBox="0 0 ${w} ${h}"><path d="M 10 ${h/2} H ${w-10}" stroke="#40566a" stroke-dasharray="4 5"/><polyline fill="none" stroke="#ff9d42" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="${points.map(p=>p.x+','+p.y).join(' ')}"/>${points.map((p,i)=>`<circle cx="${p.x}" cy="${p.y}" r="4.5" fill="#ff9d42"><title>${safeString(describe(p.v,i))}</title></circle>`).join('')}</svg>${showCaption?`<div class="caption">${direction==='lower'?'Lavere er bedre':'Højere er bedre'} · seneste ${values.length} målinger</div>`:''}`;
+}
+let statsView='compare',exerciseHistoryLimit=15;
+const progressMetric={};
+const PROGRESS_GAMES=[
+ ['501','501 – 5 legs',[
+  ['all','Alle 5 legs','i snit'],['top4','4 bedste legs','i snit'],['top3','3 bedste legs','i snit'],
+  ['doubleRate','Doubleprocent','%']]],
+ ['jdc','JDC Challenge',[['primary','Samlet score','point']]],
+ ['170','170 Challenge',[['primary','Gns. pile pr. leg · 5 legs','pile']]],
+ ['121','121 Challenge',CHECKOUT_121_LIMITS.map(limit=>['limit'+limit,'Højeste lukning · '+limit+' pile',''])],
+ ['catch40','Catch40 · 61–100',[['primary','Point','point'],['rate','Lukkeprocent','%']]],
+ ['checkout6080','Catch40 kort · 60–80',[['primary','Point','point'],['rate','Lukkeprocent','%']]],
+ ['doubles','Jorden rundt – doubler',[['primary','Pile til 20 doubler','pile'],['rate','Træfprocent','%']]],
+ ['combos','Double-kombinationer',[['primary','Træfprocent','%']]],
+ ['singles','Store singler',[['primary','Indgange til 20 singler','indgange'],['rate','Indgange med træf','%']]],
+ ['scoring','Scoring 20',[['primary','Indgange til 20 point','indgange']]],
+ ['checkout','Lukninger 60–69 (historik)',[['primary','Lukkeprocent','%']]]
+];
+function changeStatsView(view){
+ statsView=view;render();
+ document.getElementById('stats-'+view)?.focus({preventScroll:true});
+ window.scrollTo(0,0);
+}
+function showExerciseStats(id){
+ selectedExercise=id;exerciseHistoryLimit=15;changeStatsView('exercise');
+}
+function changeProgressMetric(id,key){
+ progressMetric[id]=key;render();
+ document.getElementById('progress-'+id+'-'+key)?.focus({preventScroll:true});
+}
+function renderStats(){
+ const nav=[['goals','Mine mål'],['compare','Sammenlign'],['progress','Spiludvikling'],['exercise','Spilhistorik'],['share','TikTok']].map(([view,label])=>
+  `<button type="button" id="stats-${view}" aria-pressed="${statsView===view}" onclick="changeStatsView('${view}')">${label}</button>`).join('');
+ const content=statsView==='goals'?renderGoals():statsView==='compare'?renderCompare():statsView==='progress'?renderProgress():statsView==='exercise'?renderExerciseStats():renderSharePanel();
+ return '<div class="stats-nav" role="group" aria-label="Tal">'+nav+'</div>'+content;
+}
+function progressMeasurements(id,sessions){
+ const rows=[];
+ for(const h of sessions){
+  const entry=h.results[id];
+  if(id==='501'){
+   const five=fiveLegStats(entry?.events||[]);
+   if(five)rows.push({date:h.date,...five,doubleRate:five.attempts===null?null:pct(5,five.attempts)});
+  }else if(completedGame(id,entry)){
+   const {primary,rate}=statsFor(id,entry);
+   if(id==='121'&&entry.locked121){
+    rows.push({date:h.date,['limit'+entry.events[0].limit]:primary});
+   }else if(id!=='121'&&(id!=='170'||solo170Goal(entry)===5)){
+    rows.push({date:h.date,primary,rate});
+   }
+  }
+ }
+ return rows;
+}
+function progressValue(value,unit){
+ return num(value,unit==='i snit'?2:1)+' '+unit;
+}
+function progressComparison(values,unit,lower){
+ if(values.length<10)return '<div class="progress-comparison muted">5 mod 5 spil vises efter 10 målinger ('+values.length+'/10).</div>';
+ const mean=group=>group.reduce((sum,n)=>sum+n,0)/group.length;
+ const recent=mean(values.slice(-5)),previous=mean(values.slice(-10,-5));
+ const improvement=(recent-previous)*(lower?-1:1),amount=num(Math.abs(improvement),unit==='i snit'?2:1);
+ const delta=amount==='0'?'Uændret':(improvement>0?'Bedre':'Tilbage')+' med '+amount+' '+(unit==='%'?'procentpoint':unit);
+ const tone=amount==='0'?'':improvement>0?'good':'bad';
+ return `<div class="progress-comparison"><p><small>Snit i seneste 5 · snit i de 5 før</small></p>
+  <p>${progressValue(recent,unit)} · ${progressValue(previous,unit)}</p><strong class="${tone}">${delta}</strong></div>`;
+}
+function renderProgressCard(id,title,metrics,sessions){
+ const rows=progressMeasurements(id,sessions);
+ const [key,label,unit]=metrics.find(metric=>metric[0]===progressMetric[id])||metrics[0];
+ const measured=rows.filter(row=>Number.isFinite(row[key]));
+ const last=measured.at(-1);
+ const games=id==='121'?rows.filter(row=>Object.hasOwn(row,key)).length:rows.length;
+ const head=`<div class="progress-heading"><h3>${safeString(title)}</h3><small>${games} færdige spil</small></div>`;
+ const open=`<button type="button" class="journal-action small" onclick="showExerciseStats('${id}')">Se spilhistorik</button>`;
+ if(!rows.length)return '<section class="card progress-card">'+head+'<p class="progress-empty muted">Ingen færdige spil endnu.</p>'+open+'</section>';
+ const buttons=metrics.length>1?`<div class="progress-metrics" role="group" aria-label="Måling for ${safeString(title)}">
+  ${metrics.map(([metric,name,measure])=>{
+   const latest=id==='121'?rows.findLast(row=>Object.hasOwn(row,metric))?.[metric]:rows.at(-1)[metric];
+   const value=Number.isFinite(latest)?progressValue(latest,measure):id==='121'?'Ingen måling':'Mangler i seneste spil';
+   return `<button type="button" id="progress-${id}-${metric}" aria-pressed="${metric===key}" onclick="changeProgressMetric('${id}','${metric}')">${name}<small>${value}</small></button>`;
+  }).join('')}</div>`:'';
+ const lower=key==='primary'&&['doubles','singles','scoring','170'].includes(id);
+ let body=`<p class="caption">${label}</p>`;
+ if(last){
+  const values=measured.map(row=>row[key]),best=lower?Math.min(...values):Math.max(...values);
+  const plot=measured.slice(-12);
+  body+=`<div class="grid"><div class="tile"><small>Seneste måling · ${day(last.date)}</small><div class="big">${progressValue(last[key],unit)}</div></div>
+   <div class="tile"><small>Personlig rekord</small><div class="big">${progressValue(best,unit)}</div></div></div>`+
+   chart(plot.map(row=>row[key]),lower?'lower':'higher',(value,i)=>day(plot[i].date)+' · '+progressValue(value,unit));
+  if(plot.length>1)body+=`<div class="progress-range caption"><span>${day(plot[0].date)}</span><span>${day(last.date)}</span></div>`;
+  body+=progressComparison(values,unit,lower);
+ }else{
+  body+='<p class="progress-empty muted">'+(id==='121'?'Ingen lukninger med dette antal pile.':'Doubleforsøg mangler i de gemte 501-spil.')+'</p>';
+ }
+ return '<section class="card progress-card">'+head+buttons+body+open+'</section>';
+}
+function renderProgress(){
+ const sessions=completedSessions();
+ const games=PROGRESS_GAMES.filter(([id])=>id!=='checkout'||sessions.some(h=>h.results[id]?.events?.length));
+ return '<h2>Min udvikling</h2><p class="muted">Seneste resultat, rekord og udvikling for hvert spil. Sammenligningen bruger afsluttede spil i samme øvelse.</p>'+
+  games.map(([id,title,metrics])=>renderProgressCard(id,title,metrics,sessions)).join('');
+}
+function openExerciseSession(index){
+ const done=completedSessions();
+ const h=done[index];
+ if(!h)return;
+ journalIndex=done.length-1-index;
+ journalExercise=selectedExercise;
+ showTab('history');
+ const detail=document.getElementById('journal-game-'+selectedExercise);
+ if(detail){detail.open=true;detail.scrollIntoView({block:'start'});}
+}
+function renderExerciseStats(){let done=completedSessions(),opts=EX.map(([id,title])=>`<option value="${id}" ${id===selectedExercise?'selected':''}>${safeString(title)}</option>`).join('');const history=done.map((h,index)=>({h,index,entry:h.results[selectedExercise]})).filter(x=>hasGameEntries(x.entry)).reverse();
+const comparable=history.find(x=>completedGame(selectedExercise,x.entry))?.entry;
+const rows=history.filter(x=>completedGame(selectedExercise,x.entry)&&gameVariant(selectedExercise,x.entry)===gameVariant(selectedExercise,comparable)).reverse().map(({entry,h})=>{
+ const s=statsFor(selectedExercise,entry);
+ if(selectedExercise==='501')s.primary=fiveLegStats(entry.events).all;
+ return {s,events:entry.events,session:h};
+});
+let completed=rows.filter(x=>x.s.primary!==null),vals=completed.map(x=>x.s.primary),recent=vals.slice(-5),first=vals.length?vals[0]:null,last=vals.length?vals.at(-1):null;let direction=completed[0]?.s.direction||'higher',improvement=first!==null&&last!==null&&vals.length>1?(direction==='lower'?first-last:last-first):null;
+let caption=selectedExercise==='121'?'Højeste lukning'+(comparable?' · '+comparable.events[0].limit+' pile'+(comparable.locked121?'':' · tidligere regler'):''):selectedExercise==='170'?'Gns. pile pr. leg'+(comparable?' · '+solo170Goal(comparable)+(solo170Goal(comparable)===1?' leg':' legs'):''):selectedExercise==='doubles'?'Pile for 20 doubler':selectedExercise==='singles'?'Indgange for 20 singler':selectedExercise==='scoring'?'Indgange for 20 point':selectedExercise==='checkout'?'Gammel øvelse: lukninger 60–69':selectedExercise==='catch40'?'Catch40-point (61–100)':selectedExercise==='checkout6080'?'Point: lukninger 60–80':selectedExercise==='combos'?'Doubleprocent':'501 – tre-pils-gennemsnit';
+let pending=(state.plan||[]).filter(id=>hasGameEntries(state.results[id]));
+let live=pending.length&&state.status==='active'?`<div class="backup-banner"><b>Træning i gang:</b> ${pending.length} øvelse${pending.length===1?'':'r'} med registreringer. Disse tal gemmes også, hvis dagens træning afsluttes før tid. ${button('Fortsæt træning',"showTab('train')",'small primary')}</div>`:'';
+let body=`<h2>Spilhistorik</h2>${live}<div class="card"><label for="exerciseStats">Vælg øvelse</label><select id="exerciseStats" onchange="showExerciseStats(this.value)">${opts}</select><h3>${safeString(caption)}</h3><div class="grid"><div class="tile"><small>Seneste</small><div class="big">${last===null?'–':num(last,1)}</div></div><div class="tile"><small>Bedste</small><div class="big">${vals.length?num(direction==='lower'?Math.min(...vals):Math.max(...vals),1):'–'}</div></div><div class="tile"><small>Snit, seneste 5</small><div class="big">${recent.length?num(recent.reduce((s,x)=>s+x,0)/recent.length,1):'–'}</div></div><div class="tile"><small>Udvikling fra første</small><div class="big ${improvement>0?'good':improvement<0?'bad':''}">${improvement===null?'–':(improvement>0?'+':'')+num(improvement,1)}</div></div></div>${chart(vals.slice(-12),direction)}</div>`;
+let entries='';
+if(history.length){
+ entries='<div class="card"><h3>Alle registrerede spil</h3>'+history.slice(0,exerciseHistoryLimit).map(({h,index,entry})=>{
+  const complete=completedGame(selectedExercise,entry),result=statsFor(selectedExercise,entry);
+  const summary=selectedExercise==='501'&&complete?progressValue(fiveLegStats(entry.events).all,'i snit'):result.main;
+  return `<button type="button" class="exercise-history-row" onclick="openExerciseSession(${index})"><span>${day(h.date)}${complete?'':' · delvist'}</span><small>${safeString(summary+(selectedExercise==='121'&&entry.events.length?' · '+entry.events[0].limit+' pile'+(entry.locked121?'':' · tidligere regler'):selectedExercise==='170'?' · '+solo170Goal(entry)+(solo170Goal(entry)===1?' leg':' legs'):''))}</small></button>`;
+ }).join('')+(history.length>exerciseHistoryLimit?'<button type="button" class="journal-action small" onclick="exerciseHistoryLimit+=15;render()">Vis flere spil</button>':'')+'</div>';
+}
+if(!rows.length)return body+entries;
+const latest=rows.at(-1).events;const s=rows.at(-1).s;let special='';
+if(selectedExercise==='doubles'){
+let target=1,byTarget=Array.from({length:20},()=>({hit:0,miss:0})),firstHits=0,firstAttempts=0,streak=0,bestStreak=0;
+for(let i=0;i<latest.length;i++){if(target>20)break;let hit=!!latest[i];byTarget[target-1][hit?'hit':'miss']++;if(i%3===0){firstAttempts++;if(hit)firstHits++;}if(hit){target++;streak++;bestStreak=Math.max(streak,bestStreak);}else streak=0;}
+special=`<div class="card"><h3>Seneste: doubler</h3><div class="grid"><div class="tile"><small>Pile brugt</small><div class="big">${latest.length}</div></div><div class="tile"><small>Træfprocent</small><div class="big">${num(pct(20,latest.length))}%</div></div><div class="tile"><small>Træf med første pil i en indgang</small><div class="big">${num(pct(firstHits,firstAttempts))}%</div></div><div class="tile"><small>Længste træfrække</small><div class="big">${bestStreak}</div></div></div><h3>Hvilke doubler kræver flest pile?</h3>${byTarget.map((v,i)=>({d:i+1,n:v.hit+v.miss})).sort((a,b)=>b.n-a.n).slice(0,6).map(x=>`<div class="statrow"><span>D${x.d}</span><div class="bar"><i style="width:${Math.min(100,x.n/Math.max(...byTarget.map(x=>x.hit+x.miss))*100)}%"></i></div><b>${x.n} pile</b></div>`).join('')}</div>`;}
+if(selectedExercise==='singles')special=`<div class="card"><h3>Seneste: store singler</h3><div class="grid"><div class="tile"><small>Succesfulde indgange</small><div class="big">${latest.filter(Boolean).length}</div></div><div class="tile"><small>Succesrate</small><div class="big">${num(pct(latest.filter(Boolean).length,latest.length))}%</div></div></div><p class="caption">Denne øvelse registrerer succes pr. indgang – ikke hvert enkelt piletræf.</p></div>`;
+if(selectedExercise==='scoring'){let c=[0,1,2,3,4].map(x=>latest.filter(v=>v===x).length),points=latest.reduce((s,v)=>s+v,0);special=`<div class="card"><h3>Seneste: scoring</h3><div class="grid"><div class="tile"><small>Point pr. indgang</small><div class="big">${num(points/latest.length,2)}</div></div><div class="tile"><small>100+ point</small><div class="big">${c[2]+c[3]+c[4]}</div></div></div><h3>Scorefordeling</h3>${c.map((v,i)=>`<div class="statrow"><span>${['Under 60','60–99','100–139','140–179','180'][i]}</span><div class="bar"><i style="width:${100*v/latest.length}%"></i></div><b>${v}</b></div>`).join('')}</div>`;}
+if(CATCH_RANGES[selectedExercise]){
+ const x=catchInfo(selectedExercise,latest);
+ special=`<div class="card"><h3>Seneste: ${safeString(EX.find(e=>e[0]===selectedExercise)[1])}</h3>
+ <div class="grid"><div class="tile"><small>Point</small><div class="big">${x.points}/${x.total*3}</div></div>
+ <div class="tile"><small>Lukket</small><div class="big">${x.closed}/${x.total}</div></div>
+ <div class="tile"><small>Lukkeprocent</small><div class="big">${num(x.rate)} %</div></div>
+ <div class="tile"><small>Pile pr. lukning (lukket)</small><div class="big">${num(x.successfulDarts,2)}</div></div></div>
+ <details><summary>Alle lukninger</summary><div class="journal-micro">${latest.map((d,i)=>`<span class="${d?'good':'bad'}">${x.start+i}: ${d?d+' pile / '+catchScore(d,x.start+i)+'p':'MISS'}</span>`).join('')}</div></details>
+ </div>`;
+}
+if(selectedExercise==='checkout')special=`<div class="card"><h3>Seneste: lukninger 60–69</h3><div class="grid"><div class="tile"><small>Lukkede</small><div class="big">${latest.filter(Boolean).length}/10</div></div><div class="tile"><small>Lukkeprocent</small><div class="big">${num(pct(latest.filter(Boolean).length,latest.length))}%</div></div></div><p>${latest.map((x,i)=>`<span class="pill">${60+i}: <b class="${x?'good':'bad'}">${x?'Lukket':'Miss'}</b></span>`).join(' ')}</p></div>`;
+if(selectedExercise==='combos'){let target={};for(let i=0;i<latest.length;i++){let t='D'+COMBOS[Math.floor(i/3)%4][i%3],v=target[t]||(target[t]={hits:0,attempts:0});v.attempts++;if(latest[i])v.hits++;}special=`<div class="card"><h3>Seneste: double-kombinationer</h3><div class="grid"><div class="tile"><small>Træffere</small><div class="big">${latest.filter(Boolean).length}/60</div></div><div class="tile"><small>Træfprocent</small><div class="big">${num(pct(latest.filter(Boolean).length,latest.length))}%</div></div></div>${Object.entries(target).sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([k,v])=>`<div class="statrow"><span>${k}</span><div class="bar"><i style="width:${pct(v.hits,v.attempts)}%"></i></div><b>${v.hits}/${v.attempts}</b></div>`).join('')}</div>`;}
+if(selectedExercise==='501'){
+ let x=get501(latest);
+ let recorded=x.checkoutPercent!==null;
+ special=`<div class="card"><h3>Seneste: 501</h3>
+ <div class="tile" style="margin:10px 0;border-color:var(--orange)">
+ <small>501 – Lukkeprocent</small><div class="metric">${percent501(x)}</div>
+ <p class="caption">${recorded?`${x.legs.length} lukninger / ${x.doubleAttempts} pile mod doubler`:'Historiske 501-indgange uden doubleforsøg kan ikke beregnes. Fremover vælger du 0–3 doubleforsøg ved hver indgang.'}</p></div>
+ <div class="grid"><div class="tile"><small>Alle 5 legs</small><div class="big">${num(s.primary,2)}</div></div>
+ <div class="tile"><small>4 bedste legs</small><div class="big">${num(x.best4,2)}</div></div>
+ <div class="tile"><small>3 bedste legs</small><div class="big">${num(x.best3,2)}</div></div>
+ <div class="tile"><small>Bedste leg</small><div class="big">${x.bestLeg===null?'–':x.bestLeg+' pile'}</div></div>
+ <div class="tile"><small>Scoring 100+</small><div class="big">${x.high100}</div></div>
+ <div class="tile"><small>Scoring 140+</small><div class="big">${x.high140}</div></div>
+ <div class="tile"><small>180'ere</small><div class="big">${x.high180}</div></div>
+ <div class="tile"><small>Gns. pile pr. leg</small><div class="big">${x.legs.length?num(x.legs.reduce((s,v)=>s+v.darts,0)/x.legs.length,1):'–'}</div></div>
+ <div class="tile"><small>Doubleforsøg</small><div class="big">${x.attemptsComplete?x.doubleAttempts:'Ikke kendt'}</div></div></div>
+ <p class="caption">Bedste legs vælges ud fra færrest pile. Snittet beregnes som 501 × 3 × antal legs / summen af deres pile. Kun gennemførte fem-legs-serier sammenlignes i historikken.</p>
+ ${render501Breakdown(latest)}${render501Comparison(latest,rows.at(-1).session)}
+ </div>`;
+}
+return body+special+entries;}
+// The journal is a read-only view of finished sessions. State/history and backup
+// formats are deliberately unchanged so users can switch between v7.x versions.
+let journalIndex=null, journalExercise='501', journalLimit=15;
+const JOURNAL_METRICS=[...EX.filter(([id])=>!['170cpu','501cpu'].includes(id)),['501-top4','501 – 4 bedste legs'],['501-top3','501 – 3 bedste legs']];
+function completedGame(id,record){
+ const a=record?.events;
+ if(!Array.isArray(a)||a.length===0)return false;
+ if(id==='jdc')return a.length===JDC_TARGETS.length;
+ if(id==='121')return a.length===CHECKOUT_121_ROUNDS;
+ if(id==='501log'||id==='resultlog')return a.length===1;
+ if(id==='170')return get501(a,170).legs.length>=solo170Goal(record);
+ if(id==='501cpu')return !!cpu501Match(a)?.winner;
+ if(id==='170cpu')return !!cpu170Match(a)?.winner;
+ if(id==='doubles')return a.filter(Boolean).length>=20;
+ if(id==='singles')return a.filter(Boolean).length>=20;
+ if(id==='scoring')return a.reduce((s,x)=>s+x,0)>=20;
+ if(CATCH_RANGES[id])return a.length===CATCH_RANGES[id][1]-CATCH_RANGES[id][0]+1;
+ if(id==='checkout')return a.length>=10;
+ if(id==='combos')return a.length>=60;
+ if(id==='501')return get501(a).legs.length>=5;
+ return false;
+}
+function journalMetric(id,h){
+ if(id==='501-top3'||id==='501-top4'){
+  const record=h?.results?.['501'];
+  if(!completedGame('501',record))return null;
+  const x=get501(record.events);
+  return id==='501-top3'?x.best3:x.best4;
+ }
+ const entry=h?.results?.[id];
+ if(!completedGame(id,entry))return null;
+ const s=statsFor(id,entry);
+ return typeof s.primary==='number'&&Number.isFinite(s.primary)?s.primary:null;
+}
+function journalUnit(id,value){
+ const v=num(value,id.startsWith('501')?2:['checkout','combos','170'].includes(id)?1:0);
+ if(id==='jdc')return v+' point';
+ if(id==='170')return v+' pile';
+ if(id==='121')return v+' lukket';
+ if(id.startsWith('501'))return v+' i snit';
+ if(CATCH_RANGES[id])return v+' point';
+ if(id==='checkout'||id==='combos')return v+' %';
+ return v+' '+(id==='doubles'?'pile':'indgange');
+}
+function journalBetter(id,value,previous){
+ if(id==='170')return previous-value;
+ if(id==='doubles'||id==='singles'||id==='scoring')return previous-value;
+ return value-previous;
+}
+function journalChange(id,value,previous){
+ if(value===null||previous===null)return '<span class="journal-delta">Første sammenlignelige resultat</span>';
+ const diff=journalBetter(id,value,previous),amount=num(Math.abs(diff),id.startsWith('501')?2:['checkout','combos','170'].includes(id)?1:0);
+ const unit=CATCH_RANGES[id]?' point':id==='checkout'||id==='combos'?' procentpoint':id.startsWith('501')?' i snit':id==='doubles'||id==='170'?' pile':id==='121'?' point':' indgange';
+ return '<span class="journal-delta '+(diff>0?'good':diff<0?'bad':'')+'">'+
+  (diff>0?'Bedre':diff<0?'Tilbage':'Uændret')+(diff===0?'':' med '+amount+unit)+' fra forrige træning</span>';
+}
+function journalPrevious(done,index,id){
+ const variant=gameVariant(id,done[index].results[id]);
+ // done is sorted from newest to oldest, so higher indices are older.
+ for(let i=index+1;i<done.length;i++){
+  if(gameVariant(id,done[i].results[id])!==variant)continue;
+  const result=journalMetric(id,done[i]);if(result!==null)return result;
+ }
+ return null;
+}
+function journalRecord(done,index,id){
+ const current=journalMetric(id,done[index]);
+ if(current===null)return false;
+ const variant=gameVariant(id,done[index].results[id]);
+ const earlier=done.slice(index+1).filter(h=>gameVariant(id,h.results[id])===variant)
+  .map(h=>journalMetric(id,h)).filter(Number.isFinite);
+ return earlier.length>0&&earlier.every(old=>journalBetter(id,current,old)>0);
+}
+function journalFocus(done){
+ if(!done.length)return '';
+ const latest=done[0],targets=[],combos=latest.results.combos?.events||[],x=get501(latest.results['501']?.events||[]);
+ const catchIds=['catch40','checkout6080'];
+ for(const id of catchIds){
+  const record=latest.results[id];if(completedGame(id,record)){
+   const x=catchInfo(id,record.events);
+   if(x.rate<35)targets.push(EX.find(e=>e[0]===id)[1]+': '+x.closed+' af '+x.total+' lukket. Dagens fokus bør fortsat være afslutninger.');
+  }
+ }
+ if(combos.length===60){
+  const hits=combos.filter(Boolean).length;
+  if(pct(hits,combos.length)<25)targets.push('Double-kombinationer: '+hits+' af 60 pile ramt. Fokusér på præcisionen i de fire kombinationer.');
+ }
+ if(x.legs.length===5 && x.checkoutPercent===null){
+  targets.push('501: Der mangler registreringer af doubleforsøg. Brug valget 0–3 ved hver indgang, så din lukkeprocent kan måles fremover.');
+ }else if(x.legs.length===5&&x.checkoutPercent<20){
+  targets.push('501: Lukkeprocenten er '+num(x.checkoutPercent)+' %. Hold særligt øje med doubleforsøgene i næste fem-legs-træning.');
+ }
+ if(!targets.length){
+  const history=done.slice(0,2).map(h=>journalMetric('501',h)).filter(v=>v!==null);
+  if(history.length===2&&history[0]<history[1])targets.push('501-snittet er lavere end i forrige træning. Gentag fem legs og sammenlign resultatet.');
+  else targets.push('Appen vælger næste program automatisk og varierer træningen.');
+ }
+ return '<section class="journal-focus"><b>Træningsfokus fra seneste træning</b>'+targets.slice(0,2).map(x=>'<p>'+safeString(x)+'</p>').join('')+'</section>';
+}
+function journalDetails(id,entry,session){
+ if(id==='501cpu'){
+  const match=cpu501Match(entry?.events||[]);
+  if(!match?.player.legs.length)return '';
+  return '<ul class="list">'+match.player.legs.map(leg=>'<li>Leg '+leg.number+' · '+leg.darts+' pile · lukket '+leg.checkout+'</li>').join('')+'</ul>';
+ }
+
+ if(id==='170')return render170Legs(get501(entry.events,170));
+ const a=entry?.events||[],hits=a.filter(Boolean).length,n=a.length;
+ if(id==='doubles'){
+  let target=1,targets=Array.from({length:20},()=>0);
+  for(const v of a){if(target>20)break;targets[target-1]++;if(v)target++;}
+  const first=firstHitsDoubles(a),visits=Math.ceil(n/3);
+  const most=targets.map((count,i)=>({d:i+1,count})).sort((x,y)=>y.count-x.count).slice(0,3);
+  return '<div class="journal-kpi"><div><small>Træfprocent</small><strong>'+num(pct(hits,n))+' %</strong></div><div><small>Første pil i indgang</small><strong>'+num(pct(first,visits))+' %</strong></div><div><small>Pile brugt</small><strong>'+n+'</strong></div><div><small>Doubler ramt</small><strong>'+hits+'/20</strong></div></div><p class="caption">Flest forsøg: '+most.map(x=>'D'+x.d+' ('+x.count+' pile)').join(', ')+'</p>';
+ }
+ if(id==='singles')return '<div class="journal-kpi"><div><small>Klarede singler</small><strong>'+hits+'/20</strong></div><div><small>Indgange</small><strong>'+n+'</strong></div><div><small>Andel godkendt</small><strong>'+num(pct(hits,n))+' %</strong></div></div><p class="caption">Appen registrerer 2 ramt / ikke klaret pr. indgang, ikke hver enkelt pil.</p>';
+ if(id==='scoring'){
+  const points=a.reduce((s,x)=>s+x,0),levels=[0,1,2,3,4].map(x=>a.filter(v=>v===x).length);
+  return '<div class="journal-kpi"><div><small>Samlet point</small><strong>'+points+'</strong></div><div><small>Indgange</small><strong>'+n+'</strong></div><div><small>Point pr. indgang</small><strong>'+num(points/n,2)+'</strong></div><div><small>100+-indgange</small><strong>'+(levels[2]+levels[3]+levels[4])+'</strong></div></div><div class="journal-micro">'+levels.map((x,i)=>'<span>'+['Under 60','60–99','100–139','140–179','180'][i]+': '+x+'</span>').join('')+'</div>';
+ }
+ if(CATCH_RANGES[id]){
+  const x=catchInfo(id,a);
+  return '<div class="journal-kpi"><div><small>Point</small><strong>'+x.points+' / '+(x.total*3)+'</strong></div><div><small>Lukket</small><strong>'+x.closed+' / '+x.total+'</strong></div><div><small>Lukkeprocent</small><strong>'+num(x.rate)+' %</strong></div><div><small>Pile pr. lukning</small><strong>'+num(x.successfulDarts,2)+'</strong></div></div><div class="journal-micro">'+a.map((d,i)=>'<span class="'+(d?'good':'bad')+'">'+(x.start+i)+': '+(d?d+' pile, '+catchScore(d,x.start+i)+' point':'MISS')+'</span>').join('')+'</div><p class="caption">Catch40 og 60–80-varianten har hver sin historik. Miss registreres med 0 point; gemt pileantal gælder afsluttede lukninger.</p>';
+ }
+ if(id==='checkout')return '<div class="journal-kpi"><div><small>Lukket</small><strong>'+hits+'/'+n+'</strong></div><div><small>Andel lukket</small><strong>'+num(pct(hits,n))+' %</strong></div></div><div class="journal-micro">'+a.map((x,i)=>'<span class="'+(x?'good':'bad')+'">'+(60+i)+': '+(x?'lukket':'miss')+'</span>').join('')+'</div><p class="caption">Procenten gælder lukninger pr. indgang, ikke doubleforsøg i 501.</p>';
+ if(id==='combos'){
+  const byTarget={};for(let i=0;i<n;i++){const t='D'+COMBOS[Math.floor(i/3)%4][i%3];if(!byTarget[t])byTarget[t]={hits:0,attempts:0};byTarget[t].attempts++;byTarget[t].hits+=a[i];}
+  return '<div class="journal-kpi"><div><small>Træffere</small><strong>'+hits+'/'+n+'</strong></div><div><small>Doubleprocent</small><strong>'+num(pct(hits,n))+' %</strong></div></div><div class="journal-micro">'+Object.entries(byTarget).sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([target,v])=>'<span>'+target+': '+v.hits+'/'+v.attempts+'</span>').join('')+'</div>';
+ }
+ if(id==='501'){
+  const x=get501(a);
+  return '<div class="journal-kpi"><div><small>Alle 5 legs</small><strong>'+num(x.legs.length>=5?x.avg:null,2)+'</strong></div><div><small>4 bedste legs</small><strong>'+num(x.best4,2)+'</strong></div><div><small>3 bedste legs</small><strong>'+num(x.best3,2)+'</strong></div><div><small>Bedste / dårligste leg</small><strong>'+(x.bestLeg===null?'–':x.bestLeg+' / '+x.worstLeg+' pile')+'</strong></div><div><small>Lukkeprocent</small><strong>'+percent501(x)+'</strong></div><div><small>Pile i alt</small><strong>'+x.darts+'</strong></div><div><small>100+ / 140+ / 180</small><strong>'+x.high100+' / '+x.high140+' / '+x.high180+'</strong></div></div>'+(!x.attemptsComplete?'<p class="caption">Ikke alle doubleforsøg er registreret. Vi viser ingen beregnet lukkeprocent for disse gamle legs.</p>':'')+render501Breakdown(a)+render501Comparison(a,session)+'<p class="caption">Busts: '+x.busts+' · Doubleprocent = afsluttede legs / registrerede pile mod double.</p>';
+ }
+ return '<p class="journal-empty">Ingen detaljer registreret.</p>';
+}
+function openJournal(index){journalIndex=index;render();window.scrollTo(0,0);}
+function backJournal(){journalIndex=null;render();window.scrollTo(0,0);}
+function chooseJournalExercise(id){if(JOURNAL_METRICS.some(e=>e[0]===id)){journalExercise=id;render();}}
+function renderHistory(){
+ const done=completedSessions().reverse();
+ if(journalIndex!==null){
+  if(journalIndex<0||journalIndex>=done.length)journalIndex=null;
+  else return renderJournalDay(done,journalIndex);
+ }
+ let graphSessions=done.filter(h=>journalMetric(journalExercise,h)!==null);
+ const graphVariant=gameVariant(journalExercise,graphSessions[0]?.results[journalExercise]);
+ graphSessions=graphSessions.filter(h=>gameVariant(journalExercise,h.results[journalExercise])===graphVariant).reverse();
+ const chartData=graphSessions.map(h=>journalMetric(journalExercise,h));
+ const desc={'121':'Højeste lukning i 121 Challenge',doubles:'Pile for 20 doubler',singles:'Indgange for 20 singler',scoring:'Indgange til 20 point',checkout:'Gammel lukkeprocent 60–69',catch40:'Catch40-point fra 61–100',checkout6080:'Checkout-point fra 60–80',combos:'Træfprocent på double-kombinationer','501':'501 – alle 5 legs','501-top4':'501 – de 4 bedste af 5 legs','501-top3':'501 – de 3 bedste af 5 legs'}[journalExercise];
+ let body='<div class="journal-top"><h2>Min dartjournal</h2><span class="pill">'+done.length+' '+(done.length===1?'træningsdag':'træningsdage')+'</span></div>';
+ body+='<p class="muted">Vælg en dato for resultater, 501-legs og sammenligning med tidligere træninger.</p>';
+ if(!done.length)return body+'<div class="mutedbox">Ingen træninger gemt endnu. Også afbrudte træninger vises her.</div>';
+ body+=journalFocus(done);
+ body+='<div class="card"><h3>Udvikling over tid</h3><label for="journalExercise">Vælg øvelse</label><select id="journalExercise" class="journal-select" onchange="chooseJournalExercise(this.value)">'+JOURNAL_METRICS.map(e=>'<option value="'+e[0]+'" '+(e[0]===journalExercise?'selected':'')+'>'+safeString(e[1])+'</option>').join('')+'</select><p class="caption">'+safeString(desc)+'</p>';
+ if(chartData.length){
+  const newest=chartData.at(-1),best=(journalExercise==='doubles'||journalExercise==='singles'||journalExercise==='scoring'||journalExercise==='170')?Math.min(...chartData):Math.max(...chartData);
+  body+='<div class="journal-kpi"><div><small>Seneste</small><strong>'+journalUnit(journalExercise,newest)+'</strong></div><div><small>Personlig rekord</small><strong>'+journalUnit(journalExercise,best)+'</strong></div></div>'+chart(chartData.slice(-12),journalExercise==='doubles'||journalExercise==='singles'||journalExercise==='scoring'||journalExercise==='170'?'lower':'higher');
+  if(chartData.length<2)body+='<p class="caption">Mindst to træninger kræves for at vise udvikling.</p>';
+ }else body+='<p class="journal-empty">Ingen færdige resultater i denne øvelse endnu.</p>';
+ body+='</div>';
+ body+='<h3>Træningsdage</h3>';
+ done.slice(0,journalLimit).forEach((h,i)=>{
+  const legs=get501(h.results['501']?.events||[]),played=EX.filter(e=>completedGame(e[0],h.results[e[0]])).length;
+  let marks=[];
+  const avg=journalMetric('501',h)??journalMetric('501log',h);if(h.results.jdc?.events?.length)marks.push('<span>JDC: '+statsFor('jdc',h.results.jdc).main+'</span>');if(avg!==null)marks.push('<span>501: '+num(avg,2)+' avg</span>');
+  if(legs.best3!==null)marks.push('<span>3 bedste: '+num(legs.best3,1)+' avg</span>');
+  if(legs.best4!==null)marks.push('<span>4 bedste: '+num(legs.best4,1)+' avg</span>');
+  if(legs.checkoutPercent!==null)marks.push('<span>501-double: '+num(legs.checkoutPercent)+' %</span>');
+  const match=h.results['501cpu'];if(match?.events?.length)marks.push('<span>501 mod CPU: '+safeString(statsFor('501cpu',match).main)+'</span>');
+  const cpu=h.results['170cpu'];if(cpu?.events?.length)marks.push('<span>170 mod CPU: '+safeString(statsFor('170cpu',cpu).main)+'</span>');
+  const log=h.results.resultlog?.events?.[0];if(log)marks.push('<span>'+QUICK_GAMES[log.game][0]+' · '+log.value+' '+(QUICK_GAMES[log.game][3]?'pile':'point')+'</span>');
+  const catchScore=journalMetric('catch40',h);if(catchScore!==null)marks.push('<span>Catch40: '+catchScore+' point</span>');
+  const shortScore=journalMetric('checkout6080',h);if(shortScore!==null)marks.push('<span>60–80: '+shortScore+' point</span>');
+  const check=journalMetric('checkout',h);if(check!==null)marks.push('<span>Ældre lukninger: '+num(check)+' %</span>');
+  const pbs=EX.filter(e=>journalRecord(done,i,e[0])).length;
+  if(pbs)marks.push('<span class="good">'+pbs+' ny'+(pbs===1?' rekord':'e rekorder')+'</span>');
+  body+='<section class="card journal-entry"><div class="journal-summary"><span class="journal-date">'+day(h.date)+'</span><small>'+played+' af '+(h.plan?.length||6)+' øvelser'+(h.status==='partial'?' · afbrudt':'')+'</small></div><div class="journal-tags">'+marks.join('')+'</div><button type="button" class="journal-action primary" onclick="openJournal('+i+')">Se træningen og sammenlign</button></section>';
+ });
+ if(done.length>journalLimit)body+='<button type="button" class="journal-action" onclick="journalLimit+=15;render()">Vis flere træninger</button>';
+ return body;
+}
+function renderJournalDay(done,index){
+ const h=done[index];let body='<div class="journal-top"><h2>'+day(h.date)+'</h2><button type="button" class="small" onclick="backJournal()">← Alle datoer</button></div><p class="muted">'+safeString(h.planName||'Tidligere træningsprogram')+' · '+(h.status==='partial'?'Afbrudt træning':'Gennemført træning')+'</p>';
+ body+=dartTotalCard('Pile på dagen',dartsForDay(done,localDayKey(h.date)));
+ for(const [id,title] of EX.filter(([id])=>hasGameEntries(h.results[id])||(h.plan?h.plan.includes(id):!CATCH_RANGES[id]))){
+  const entry=h.results[id],a=entry?.events||[],s=statsFor(id,entry);
+  const current=journalMetric(id,h),previous=journalPrevious(done,index,id),record=journalRecord(done,index,id);
+  body+='<details id="journal-game-'+id+'" class="journal-exercise" '+(id==='501'?'open':'')+'><summary><span>'+safeString(title)+'</span><b>'+safeString(a.length?s.main:hasGameEntries(entry)?'Delvist registreret':'Ikke registreret')+'</b></summary><div class="detail-content">';
+  if(!a.length)body+=hasGameEntries(entry)?'<p class="caption">Uafsluttet runde med '+entry.roundVisits.at(-1).length+' indgange.</p>':'<p class="journal-empty">Ingen pile/indgange registreret.</p>';
+  else{
+   body+='<p class="caption">'+safeString(s.sub)+'</p>';
+   if(current!==null){body+=journalChange(id,current,previous);if(record)body+='<p class="good"><b>Ny personlig rekord!</b></p>';}
+   else if(!completedGame(id,entry))body+='<p class="caption">Øvelsen er delvist registreret.</p>';
+   body+=journalDetails(id,entry,h);
+  }
+  body+='</div></details>';
+ }
+ if(index+1<done.length)body+='<button type="button" class="journal-action" onclick="openJournal('+(index+1)+')">Se forrige træning ('+day(done[index+1].date)+')</button>';
+ if(index>0)body+='<button type="button" class="journal-action" onclick="openJournal('+(index-1)+')">Se næste træning ('+day(done[index-1].date)+')</button>';
+
+ return body;
+}
+
+
+// -------- v8.4: independent daily / weekly social cards; stored data only, offline --------
+let shareKind='daily',shareDayId=null,shareWeekId=null;
+const SHARE_W=1080, SHARE_H=1920;
+const SHARE_C={bg:'#081320',panel:'#172c40',panel2:'#112338',ink:'#f5f9fd',muted:'#b8cad8',orange:'#ffa246',blue:'#77caef',green:'#7ce7b2',red:'#ffaaa5',border:'#385773',grid:'#355067'};
+function shareSessions(){return completedSessions().slice().reverse().filter(h=>h&&h.results&&Object.values(h.results).some(v=>v?.events?.length));}
+function shareRecordId(h){return JSON.stringify([h.id||'',h.date]);}
+function shareWeekStart(input){const d=new Date(input);d.setHours(12,0,0,0);const offset=(d.getDay()+6)%7;d.setDate(d.getDate()-offset);return localDayKey(d);}
+function shareWeekNumber(key){const d=new Date(key+'T12:00:00'),th=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));th.setUTCDate(th.getUTCDate()+4-(th.getUTCDay()||7));const ys=new Date(Date.UTC(th.getUTCFullYear(),0,1));return 1+Math.floor((th-ys)/86400000/7);}
+function shareWeekLabel(key){const d=new Date(key+'T12:00:00'),e=new Date(d);e.setDate(e.getDate()+6);return 'Uge '+shareWeekNumber(key)+' · '+day(d)+' – '+day(e);}
+function shareAllWeeks(){return [...new Set(shareSessions().map(h=>shareWeekStart(h.date)))].sort().reverse();}
+function shareGetDay(){const sessions=shareSessions();return sessions.find(h=>shareRecordId(h)===shareDayId)||sessions[0]||null;}
+function shareGetWeek(){const weeks=shareAllWeeks();return weeks.includes(shareWeekId)?shareWeekId:(weeks[0]||null);}
+function shareChangeKind(kind){shareKind=kind==='weekly'?'weekly':'daily';render();}
+function shareChangeDay(i){const list=shareSessions();shareDayId=list[Number(i)]?shareRecordId(list[Number(i)]):null;renderSharePreview();}
+function shareChangeWeek(key){shareWeekId=shareAllWeeks().includes(key)?key:null;renderSharePreview();}
+function renderSharePanel(){
+ const sessions=shareSessions(),weeks=shareAllWeeks(),record=shareGetDay(),week=shareGetWeek();
+ let selector='';
+ if(shareKind==='daily')selector=`<label for="sharePick">Vælg træningsdag</label><select id="sharePick" onchange="shareChangeDay(this.value)">${sessions.map((h,i)=>`<option value="${i}" ${h===record?'selected':''}>${safeString(day(h.date))}${h.status==='partial'?' · afbrudt':''}</option>`).join('')}</select>`;
+ else selector=`<label for="sharePick">Vælg uge</label><select id="sharePick" onchange="shareChangeWeek(this.value)">${weeks.map(w=>`<option value="${w}" ${w===week?'selected':''}>${safeString(shareWeekLabel(w))}</option>`).join('')}</select>`;
+ return `<section class="share-section"><h2>Min udvikling · TikTok</h2><p class="subtle">To resultatkort i 9:16. 501 får hovedpladsen efter fem færdige legs. Ellers fremhæves en øvelse fra træningen.</p><div class="share-switch"><button class="${shareKind==='daily'?'chosen':''}" type="button" onclick="shareChangeKind('daily')">Dagens træning</button><button class="${shareKind==='weekly'?'chosen':''}" type="button" onclick="shareChangeKind('weekly')">Ugens udvikling</button></div>${sessions.length?selector:'<p class="muted">Gennemfør en træning eller indlæs din sikkerhedskopi først.</p>'}<div class="share-preview"><canvas id="shareCanvas" width="1080" height="1920" role="img" aria-label="Statistikbillede til TikTok, 1080 gange 1920 pixel"></canvas></div><button type="button" class="share-export" onclick="shareSavePng()" ${sessions.length?'':'disabled'}>Gem billede til TikTok (PNG)</button><p class="share-note">1080 × 1920 · Tallene kommer kun fra dine registrerede resultater. Scoring før doubler beregnes kun ud fra hele indgange uden doubleforsøg, før det første doubleforsøg i hvert leg. Ugekortet sammenligner færdige spil i samme øvelse med forrige uge.</p></section>`;
+}
+// Exclude mixed visits because the source records only a visit score and total double attempts,
+// not the score/dart breakdown within a visit. Do not invent exact pre-double values.
+function shareScoringBefore(h){
+ if(!h)return null;const events=h.results?.['501']?.events||[];
+ if(get501(events).legs.length<5)return null;
+ let darts=0,score=0,firstDouble=false,finished=0;
+ for(const e of events){
+  if(finished>=5)break;
+  if(!Number.isInteger(e?.doubleAttempts))return null;
+  if(!firstDouble&&e.doubleAttempts===0){score+=e.score;darts+=e.darts;}
+  if(e.doubleAttempts>0)firstDouble=true;
+  if(e.finish){finished++;firstDouble=false;}
+ }
+ return finished===5&&darts>0?{score,darts,avg:score*3/darts}:null;
+}
+function fiveLegStats(events){
+ const x=get501(events);if(x.legs.length<5)return null;
+ const legs=x.legs.slice(0,5),ds=legs.map(l=>l.darts),total=ds.reduce((a,b)=>a+b,0),counts=legs.reduce((sum,l)=>sum+l.doubleAttempts,0);
+ const known=legs.every(l=>l.knownDoubleAttempts)&&counts>=5,sorted=ds.slice().sort((a,b)=>a-b);
+ return {all:501*15/total,top4:501*12/sorted.slice(0,4).reduce((a,b)=>a+b,0),top3:501*9/sorted.slice(0,3).reduce((a,b)=>a+b,0),best:sorted[0],worst:sorted[4],darts:total,attempts:known?counts:null,legs};
+}
+function shareFive(h){
+ if(!h)return null;
+ const events=h.results?.['501']?.events||[],five=fiveLegStats(events);
+ return five?{...five,scoring:shareScoringBefore(h),high180:events.filter(e=>e?.score===180).length}:null;
+}
+function shareWeekData(key){
+ const sessions=key?shareSessions().filter(h=>shareWeekStart(h.date)===key):[],games=sessions.map(shareFive).filter(Boolean),legCount=games.length*5;
+ const sum=k=>games.reduce((a,v)=>a+v[k],0);
+ const all=games.length?501*3*legCount/sum('darts'):null;
+ const top4=games.length?501*12*games.length/games.reduce((a,g)=>501*12/g.top4+a,0):null;
+ const top3=games.length?501*9*games.length/games.reduce((a,g)=>501*9/g.top3+a,0):null;
+ const attemptsKnown=games.length>0&&games.every(g=>g.attempts!==null),attempts=attemptsKnown?sum('attempts'):null;
+ // Only calculate a weekly pre-double rate if every five-leg session has known double data.
+ const scoringKnown=games.length>0&&games.every(g=>g.scoring&&g.scoring.darts>0);
+ const scoring=scoringKnown?{score:games.reduce((a,g)=>a+g.scoring.score,0),darts:games.reduce((a,g)=>a+g.scoring.darts,0)}:null;
+ return {key,sessions,games,all,top4,top3,best:games.length?Math.min(...games.map(g=>g.best)):null,worst:games.length?Math.max(...games.map(g=>g.worst)):null,doubleRate:attempts?pct(legCount,attempts):null,scoringBefore:scoring?3*scoring.score/scoring.darts:null,legs:legCount};
+}
+// Prefer completed games, then use this order to choose the featured drill.
+const SHARE_EXERCISES=[
+ ['catch40','Catch40'],['checkout6080','Catch40 kort'],['doubles','Jorden rundt'],
+ ['combos','Double-kombi'],['scoring','Scoring 20'],['singles','Store singler'],['checkout','Luk 60–69']
+];
+function shareExercise(h,id,label){
+ const a=h?.results?.[id]?.events;
+ if(!a?.length)return null;
+ const s=statsFor(id,{events:a}),done=completedGame(id,{events:a});
+ const {hits,points,closed,total}=s.extra,n=a.length;
+ const rate=shareNumber(s.rate)+' %';
+ let big,unit,detail,metrics;
+ if(CATCH_RANGES[id]){
+  big=points+' point';unit='point';detail=closed+'/'+total+' lukket';
+  metrics=[['LUKNINGER',closed+' / '+total],['LUKKEPROCENT',rate],['SPILLEDE LUKNINGER',n+' / '+total]];
+ }else if(id==='doubles'||id==='singles'||id==='scoring'){
+  const doubles=id==='doubles',scoring=id==='scoring';
+  unit=doubles?'pile':'indgange';
+  const progress=scoring?points+'/20 point':hits+'/20 '+(doubles?'doubler':'singler');
+  big=done?n+' '+unit:progress;
+  detail=done?progress:n+' '+unit;
+  metrics=[[scoring?'POINT':'RAMT',scoring?points+' / 20':hits+' / 20'],
+   [doubles?'PILE BRUGT':'INDGANGE',n],
+   [doubles?'TRÆFPROCENT':scoring?'INDGANGE MED POINT':'INDGANGE MED TRÆF',rate]];
+ }else{
+  const target=id==='combos'?60:10;
+  big=rate;unit='%';detail=hits+'/'+n+' '+(id==='combos'?'ramt':'lukket');
+  metrics=[[id==='combos'?'RAMTE DOUBLER':'LUKNINGER',hits+' / '+n],
+   [id==='combos'?'PILE KASTET':'FORSØG',n+' / '+target]];
+ }
+ return {id,label,big,detail,metrics,done,unit,value:done?s.primary:null};
+}
+function sharePartial501(h){
+ const a=h?.results?.['501']?.events;
+ if(!a?.length)return null;
+ const x=get501(a);
+ return {id:'501',label:'501',big:x.legs.length+'/5 legs',detail:x.darts+' pile',
+  metrics:[['PILE KASTET',x.darts],['SNIT · ALLE PILE',shareNumber(x.avg)]],done:false};
+}
+function shareOther(h){
+ return SHARE_EXERCISES.map(([id,label])=>shareExercise(h,id,label)).filter(Boolean);
+}
+// Compare only complete games from the same drill and the previous calendar week.
+function shareBestExercise(id,label,sessions){
+ const results=sessions.map(h=>shareExercise(h,id,label)).filter(Boolean);
+ let best=null,count=0;
+ for(const item of results){
+  if(!item.done||!Number.isFinite(item.value))continue;
+  count++;
+  if(!best||journalBetter(id,item.value,best.value)>0)best=item;
+ }
+ return {best,count,partial:results[0]||null};
+}
+function shareOtherWeek(sessions,previous){
+ const out=[];
+ for(const [id,label] of SHARE_EXERCISES){
+  const {best,count,partial}=shareBestExercise(id,label,sessions);
+  if(!best){if(partial)out.push(partial);continue;}
+  const {best:prev}=shareBestExercise(id,label,previous);
+  const delta=prev?best.value-prev.value:null;
+  const shownDelta=delta===null?null:Number(delta.toFixed(best.unit==='%'?1:0));
+  const change=prev?(shownDelta===0?'Uændret fra forrige uge':
+   (shownDelta>0?'+':'')+shareNumber(shownDelta,best.unit==='%'?1:0)+(best.unit==='%'?' procentpoint':' '+best.unit)):null;
+  const good=shownDelta?journalBetter(id,best.value,prev.value)>0:null;
+  out.push({...best,count,change,good,previous:prev?.big});
+ }
+ return out;
+}
+function shareFeature(entries){
+ return entries.find(r=>r.done)||entries[0]||null;
+}
+function shareNumber(n,decimals=1){return Number.isFinite(n)?num(n,decimals):'–';}
+function sharePreviousWeek(key){if(!key)return null;const d=new Date(key+'T12:00:00');d.setDate(d.getDate()-7);return localDayKey(d);}
+function shareRecord(h,five){
+ if(!five)return null;
+ const older=shareSessions().filter(r=>new Date(r.date)<new Date(h.date)).map(shareFive).filter(Boolean);
+ if(!older.length)return null;
+ if(five.top3>Math.max(...older.map(g=>g.top3))+0.001)return 'NY REKORD · 3 BEDSTE';
+ if(five.all>Math.max(...older.map(g=>g.all))+0.001)return 'NY REKORD · 501';
+ if(five.best<Math.min(...older.map(g=>g.best)))return 'NY REKORD · BEDSTE LEG';
+ return null;
+}
+function shareDayFocus(five){
+ if(five.attempts!==null&&100*5/five.attempts<20)return 'Lukningerne koster mange pile. Fokusér på doubler.';
+ if(five.top3-five.all>=7)return 'Topniveauet er højere. Fokusér på stabilitet.';
+ return 'Følg både 501-snittet og dine doubleforsøg.';
+}
+function shareWeekFocus(w,prev){
+ if(!prev?.games.length)return 'Første uge med 501-data. Næste uge kan sammenlignes.';
+ if(w.doubleRate!==null&&w.doubleRate<20)return 'Doubleprocenten er lav. Giv lukningerne ekstra fokus.';
+ if(w.top3-w.all>=7)return 'Topniveau og dagsniveau ligger langt fra hinanden.';
+ if(w.all<prev.all)return '501-snittet faldt. Se, hvor mange pile hvert leg kræver.';
+ if(w.all>prev.all)return '501-snittet steg. Arbejd på at gøre niveauet stabilt.';
+ return '501-snittet er uændret. Byg videre på stabiliteten.';
+}
+function shareDrawing(canvas){
+ const c=canvas.getContext('2d');if(!c)return;const W=SHARE_W,H=SHARE_H,C=SHARE_C;
+ c.clearRect(0,0,W,H);
+ function box(x,y,w,h,r,fill,stroke,width=2){c.beginPath();c.roundRect(x,y,w,h,r);if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke()}}
+ function txt(str,x,y,size=28,color=C.ink,bold=false,align='left',maxWidth){c.fillStyle=color;c.font=(bold?'800 ':'500 ')+size+'px system-ui,Arial,sans-serif';c.textAlign=align;c.textBaseline='top';if(maxWidth)c.fillText(String(str),x,y,maxWidth);else c.fillText(String(str),x,y);}
+ function line(x1,y1,x2,y2,color=C.border,w=2){c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.strokeStyle=color;c.lineWidth=w;c.stroke()}
+ function labelPill(str,x,y,w){box(x,y,w,48,24,'#53361f','#a3632a',2);txt(str,x+w/2,y+12,20,'#ffbd81',true,'center',w-24)}
+ function glowBg(){const g=c.createLinearGradient(0,0,1050,1920);g.addColorStop(0,'#06111f');g.addColorStop(.55,'#10263d');g.addColorStop(1,'#071421');c.fillStyle=g;c.fillRect(0,0,W,H);
+  c.save();c.translate(1000,95);c.globalAlpha=.15;for(let i=1;i<=6;i++){c.beginPath();c.arc(0,0,i*35,0,2*Math.PI);c.strokeStyle=C.blue;c.lineWidth=5;c.stroke()}for(let i=0;i<20;i++){let a=2*Math.PI*i/20;c.beginPath();c.moveTo(0,0);c.lineTo(205*Math.cos(a),205*Math.sin(a));c.strokeStyle=C.blue;c.lineWidth=2;c.stroke()}c.restore();
+  const spot=c.createRadialGradient(80,300,40,80,300,760);spot.addColorStop(0,'#213e5544');spot.addColorStop(1,'#09152400');c.fillStyle=spot;c.fillRect(0,0,W,H);
+ }
+ function header(title,sub){glowBg();
+  // Logo mark: a small dart-flight silhouette, original vector drawn directly on canvas.
+  c.fillStyle=C.orange;c.beginPath();c.moveTo(63,73);c.lineTo(100,53);c.lineTo(95,94);c.lineTo(136,110);c.lineTo(102,130);c.lineTo(79,105);c.closePath();c.fill();
+  txt('HESTENG',153,43,67,C.ink,true);txt('T R A I N I N G',157,126,23,C.orange,true);line(65,183,1015,183,C.orange,4);
+  txt(title,66,208,60,C.ink,true);txt(sub,69,290,27,C.muted,false,'left',930);
+ }
+ function heading501(badge){box(48,365,984,937,28,'#102538','#ee963e',3);
+  txt('501',80,387,76,C.ink,true);txt('HOVEDFOKUS',264,419,28,C.orange,true);
+  if(badge)labelPill(badge,690,406,315);
+ }
+ function metric(title,value,x,y,highlight=false,sub=''){box(x,y,296,130,18,C.panel2,highlight?'#a36836':C.border,2);txt(title,x+17,y+15,21,C.muted,false,'left',266);txt(value,x+17,y+52,52,highlight?C.orange:C.ink,true,'left',265);if(sub)txt(sub,x+17,y+110,15,C.muted,false,'left',265)}
+ function metrics(vals){const names=['ALLE 5 LEGS','4 BEDSTE','3 BEDSTE','DOUBLE %','SCORING FØR DOUBLER','BEDSTE LEG'];for(let i=0;i<6;i++)metric(names[i],vals[i],75+(i%3)*319,508+Math.floor(i/3)*150,i===2,i===4?'Hele indgange uden doubleforsøg':'');}
+ function graph(series,labels){const x=76,y=820,w=930,h=266;box(x,y,w,h,18,'#0c2135','#36546d',2);txt('UDVIKLING I 501',x+24,y+15,28,C.ink,true);
+  const legend=[{text:'Alle 5',color:C.ink,x:102},{text:'4 bedste',color:C.blue,x:315},{text:'3 bedste',color:C.orange,x:543}];
+  legend.forEach(q=>{line(q.x,y+62,q.x+27,y+62,q.color,5);txt(q.text,q.x+35,y+49,19,C.muted)});
+  const vals=series.flatMap(s=>s.values).filter(Number.isFinite),xx=x+76,yy=y+90,gw=802,gh=125;
+  for(let k=0;k<=3;k++){let py=yy+gh*k/3;line(xx,py,xx+gw,py,C.grid,1)}
+  if(vals.length<2){txt('Flere 501-forløb giver en udviklingsgraf',x+w/2,y+152,23,C.muted,false,'center',w-60);return;}
+  let low=Math.floor((Math.min(...vals)-2)/5)*5,high=Math.ceil((Math.max(...vals)+2)/5)*5;if(high-low<10){low-=5;high+=5}low=Math.max(0,low);
+  txt(shareNumber(high,0),x+14,yy-6,18,C.muted);txt(shareNumber(low,0),x+14,yy+gh-16,18,C.muted);
+  let n=labels.length;for(let i=0;i<n;i++){if(n>5&&i%2===1&&i!==n-1)continue;let px=xx+(n===1?.5:i/(n-1))*gw;txt(labels[i],px,y+h-32,18,C.muted,false,'center',128)}
+  series.forEach(s=>{let prev=null;s.values.forEach((value,i)=>{if(!Number.isFinite(value)){prev=null;return}let p={x:xx+(n===1?.5:i/(n-1))*gw,y:yy+gh*(high-value)/(high-low)};if(prev)line(prev.x,prev.y,p.x,p.y,s.color,4);c.beginPath();c.arc(p.x,p.y,6,0,2*Math.PI);c.fillStyle=s.color;c.fill();prev=p;});});
+ }
+ function legStrip(five){txt('LEG FOR LEG',91,1116,26,C.orange,true);
+  txt('Dårligste leg: '+five.worst+' pile',998,1119,21,C.muted,false,'right');
+  five.legs.forEach((leg,i)=>{const x=78+i*187;box(x,1156,176,113,16,C.panel,C.border,1.5);txt('LEG '+(i+1),x+16,1171,20,C.orange,true);txt(leg.darts+' pile',x+16,1198,27,C.ink,true);txt('Snit '+shareNumber(1503/leg.darts),x+16,1239,18,C.muted)});
+ }
+ function weekStrip(w,prev,prevKey){txt('MOD FORRIGE UGE',90,1113,27,C.orange,true);
+  txt(prevKey?'Uge '+shareWeekNumber(prevKey)+' → '+(w?'uge '+shareWeekNumber(w.key):'denne uge'):'Sammenligning',998,1118,22,C.muted,false,'right');
+  const items=[['501-SNIT',w?.all,prev?.all,''],['3 BEDSTE',w?.top3,prev?.top3,''],['DOUBLE %',w?.doubleRate,prev?.doubleRate,' pct.point']];
+  items.forEach((a,i)=>{let x=78+i*316;box(x,1150,299,118,17,C.panel,C.border,2);txt(a[0],x+18,1167,19,C.muted,true);
+   const delta=Number.isFinite(a[1])&&Number.isFinite(a[2])?a[1]-a[2]:null;
+   txt(delta===null?'–':(delta>0?'+':'')+shareNumber(delta,1)+(a[3]?' pp':''),x+18,1200,40,delta===null?C.muted:delta>0?C.green:delta<0?C.red:C.ink,true,'left',260);
+  });
+ }
+ function exerciseDetail(r){
+  const detail=r.count?(r.change||('Bedste af '+r.count+' spil')):r.detail;
+  return detail+(r.done?'':' · delvist');
+ }
+ function exerciseColor(r){return r.good===true?C.green:r.good===false?C.red:C.orange;}
+ function otherCards(entries,title){
+  if(!entries.length)return;
+  txt(title,66,1330,36,C.ink,true);line(66,1382,1015,1382,C.border,2);
+  const compact=entries.length>6;
+  entries.forEach((r,i)=>{
+   const x=65+i%3*321,y=1404+Math.floor(i/3)*(compact?91:125);
+   box(x,y,306,compact?82:111,17,C.panel,C.border,2);
+   txt(r.label,x+17,y+(compact?6:11),compact?19:23,C.muted,true,'left',280);
+   txt(r.big,x+17,y+(compact?27:44),compact?29:33,C.ink,true,'left',276);
+   txt(exerciseDetail(r),x+17,y+(compact?60:84),18,exerciseColor(r),false,'left',280);
+  });
+ }
+ function exerciseFeature(feature,entries,weekly){
+  if(!feature){txt('Gennemfør en træning eller indlæs din sikkerhedskopi.',69,402,31,C.muted,false,'left',930);return;}
+  box(48,365,984,620,28,'#102538','#ee963e',3);
+  const heading=weekly&&feature.done?'UGENS BEDSTE · '+feature.count+(feature.count===1?' SPIL':' SPIL'):
+   weekly?'SENESTE SPIL': 'DAGENS HOVEDØVELSE';
+  txt(heading,79,408,26,C.orange,true);
+  if(!feature.done)labelPill('DELVIST SPILLET',746,399,254);
+  txt(feature.label,77,462,69,C.ink,true,'left',925);
+  txt(feature.big,75,560,125,C.orange,true,'left',921);
+  const width=feature.metrics.length===2?465:305;
+  feature.metrics.forEach(([label,value],i)=>{
+   const x=76+i*(width+15);
+   box(x,746,width,125,18,C.panel,C.border,2);
+   txt(label,x+18,762,21,C.muted,true,'left',width-35);
+   txt(value,x+18,797,48,C.ink,true,'left',width-35);
+  });
+  if(weekly&&feature.previous){
+   line(79,895,1000,895,C.border,2);
+   txt('FORRIGE UGE  '+feature.previous,79,921,23,C.muted,true,'left',490);
+   txt(feature.change,997,918,27,exerciseColor(feature),true,'right',395);
+  }
+  const other=entries.filter(r=>r!==feature);
+  if(!other.length)return;
+  txt(weekly?'UGENS ØVRIGE ØVELSER':'DAGENS ØVRIGE ØVELSER',66,1036,36,C.ink,true);
+  line(66,1088,1015,1088,C.border,2);
+  other.forEach((r,i)=>{
+   const x=65+i%2*480,y=1111+Math.floor(i/2)*173;
+   box(x,y,465,152,18,C.panel,C.border,2);
+   txt(r.label,x+20,y+15,28,C.muted,true,'left',422);
+   txt(r.big,x+20,y+52,46,C.ink,true,'left',422);
+   txt(exerciseDetail(r),x+20,y+115,22,exerciseColor(r),false,'left',422);
+  });
+ }
+ function insight(heading,msg){box(51,1687,978,150,21,'#252b2c','#ee963e',3);line(88,1721,88,1805,C.orange,7);txt(heading,118,1706,36,C.orange,true);c.font='500 25px system-ui,Arial,sans-serif';const words=String(msg).split(' ');let rows=[],part='';for(const word of words){const next=part?part+' '+word:word;if(c.measureText(next).width>835&&part){rows.push(part);part=word;}else part=next;}if(part)rows.push(part);rows.slice(0,2).forEach((s,i)=>txt(s,118,1753+i*33,25,C.ink,false,'left',855));}
+ function footer(){line(65,1871,1015,1871,C.border,2);txt('DART TRAINING · MIN DARTREJSE',66,1886,21,C.muted,true);txt('Målt ved skiven',1008,1886,18,C.muted,false,'right');}
+ if(shareKind==='daily'){
+  const h=shareGetDay(),five=shareFive(h),entries=shareOther(h);
+  header('DAGENS TRÆNING',h?day(h.date)+(h.status==='partial'?' · afbrudt':''):'Ingen gemte træninger');
+  if(five){
+   const history=shareSessions().filter(r=>new Date(r.date)<=new Date(h.date)).map(r=>({date:r.date,five:shareFive(r)})).filter(r=>r.five).reverse().slice(-7);
+   heading501(shareRecord(h,five));
+   metrics([shareNumber(five.all),shareNumber(five.top4),shareNumber(five.top3),five.attempts!==null?shareNumber(500/five.attempts)+'%':'–',shareNumber(five.scoring?.avg),five.best+' pile']);
+   graph([{values:history.map(r=>r.five.all),color:C.ink},{values:history.map(r=>r.five.top4),color:C.blue},{values:history.map(r=>r.five.top3),color:C.orange}],history.map(r=>new Date(r.date).toLocaleDateString('da-DK',{day:'numeric',month:'short'})));
+   legStrip(five);otherCards(entries,'DAGENS ANDRE ØVELSER');insight('DAGENS FOKUS',shareDayFocus(five));
+  }else{
+   const partial501=sharePartial501(h);
+   if(partial501)entries.push(partial501);
+   exerciseFeature(shareFeature(entries),entries,false);
+  }
+ }else{
+  const key=shareGetWeek(),prevKey=sharePreviousWeek(key),w=shareWeekData(key),prev=shareWeekData(prevKey);
+  const entries=shareOtherWeek(w.sessions,prev.sessions);
+  header('UGENS UDVIKLING',key?shareWeekLabel(key):'Ingen gemte træninger');
+  if(w.games.length){
+   const allWeeks=shareAllWeeks().filter(k=>k<=key).sort().map(shareWeekData);
+   const prior501Weeks=allWeeks.filter(q=>q.key<key&&Number.isFinite(q.top3));
+   const weeklyRecord=prior501Weeks.length>0&&w.top3>Math.max(...prior501Weeks.map(q=>q.top3))+0.001?'UGENS REKORD · 3 BEDSTE':null;
+   heading501(weeklyRecord);
+   metrics([shareNumber(w.all),shareNumber(w.top4),shareNumber(w.top3),w.doubleRate!==null?shareNumber(w.doubleRate)+'%':'–',shareNumber(w.scoringBefore),w.best+' pile']);
+   const weeks=allWeeks.slice(-7);
+   graph([{values:weeks.map(s=>s.all),color:C.ink},{values:weeks.map(s=>s.top4),color:C.blue},{values:weeks.map(s=>s.top3),color:C.orange}],weeks.map(q=>'U'+shareWeekNumber(q.key)));
+   weekStrip(w,prev,prevKey);otherCards(entries,'ØVRIGE ØVELSER · UGEN');insight('UGENS FOKUS',shareWeekFocus(w,prev));
+  }else{
+   const partial501=w.sessions.map(sharePartial501).find(Boolean);
+   if(partial501)entries.push(partial501);
+   exerciseFeature(shareFeature(entries),entries,true);
+  }
+ }
+ footer();
+}
+function renderSharePreview(){const cv=document.getElementById('shareCanvas');if(cv)try{shareDrawing(cv)}catch(e){notice='Kunne ikke danne statistikbilledet: '+e.message;document.getElementById('notices').textContent=notice;}}
+function shareSavePng(){const cv=document.getElementById('shareCanvas');if(!cv)return;
+ const record=shareGetDay(),week=shareGetWeek();if(shareKind==='daily'&&!record||shareKind==='weekly'&&!week){alert('Ingen træning gemt endnu.');return;}
+ try{shareDrawing(cv);const key=shareKind==='daily'?localDayKey(record.date):week;const filename='HESTENG-'+(shareKind==='daily'?'dag-':'uge-')+key+'.png';
+ cv.toBlob(blob=>{if(!blob){alert('Kunne ikke lave billedfilen.');return;}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);},'image/png');}
+ catch(e){alert('Kunne ikke gemme billedet: '+e.message);}
+}
+
+let backupImport=null;
+function renderBackup(){
+ return `<h2>Sikkerhedskopi</h2><div class="card">
+  <h3>Importér sikkerhedskopi</h3>
+  <label for="fileImport">Vælg en JSON-sikkerhedskopi fra v7, v8 eller DART Training</label>
+  <input type="file" id="fileImport" accept=".json,application/json" onchange="importArchive(this)">
+  <p class="caption">Historikken flettes med dine eksisterende resultater. Dagens plan og din igangværende træning bevares.</p>
+  ${renderImportStatus()}
+ </div><div class="card">
+  <h3>Administration</h3>${button('Åbn Administration',"showTab('admin')",'small')}<h3>Eksportér dine data</h3>
+  <p class="muted">Eksportér en kopi af din historik, hvis du vil have en fil med dine resultater.</p>
+  ${button('Eksportér sikkerhedskopi','exportArchive()','primary')}
+ </div>`;
+}
+function renderImportStatus(){
+ if(!backupImport)return '';
+ const {name,records,error}=backupImport;
+ const filename=safeString(name);
+ if(error&&!records)return `<p class="warn" role="alert">${filename}: ${safeString(error)}</p>`;
+ if(!records)return `<p role="status">Læser ${filename}…</p>`;
+ const {added,duplicates}=mergeArchiveRecords(records);
+ return `<p role="status">${filename} · ${importSummary(added,duplicates)}</p>
+  ${error?`<p class="warn" role="alert">${safeString(error)}</p>`:''}
+  <div class="row">
+   ${added.length?button('Indlæs træninger','applyArchiveImport()','primary'):button('Se historik','applyArchiveImport()','primary')}
+   ${button('Annullér','cancelArchiveImport()')}
+  </div>`;
+}
+function exportArchive(){let recovery;try{recovery={current:localStorage.getItem(KEY),previous:localStorage.getItem(RECOVERY_KEY)};}catch{}const archive={recovery,format:'DART-TRAINING-V1',exportedAt:new Date().toISOString(),state:copy(state)};const blob=new Blob([JSON.stringify(archive,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='DART-Training-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);notice='Sikkerhedskopien er oprettet. Kontrollér, at filen ligger i Downloads.';render();}
+function archiveRecords(parsed){
+ const format=parsed?.format;
+ const incoming=parsed?.state??parsed;
+ const version=archiveVersion(format,incoming);
+ const valid=version===8?validV8State(incoming):validV7State(incoming);
+ if(!valid)throw new Error('Sikkerhedskopien mangler gyldige træningsdata.');
+ const records=incoming.history.slice();
+ const unfinished=importedPartial(incoming);
+ if(unfinished)records.push(unfinished);
+ return records;
+}
+function archiveVersion(format,incoming){
+ if(format==='HESTENG-MOBILE-V7')return 7;
+ if(format==='HESTENG-MOBILE-V8'||format==='DART-TRAINING-V1')return 8;
+ if(!format)return incoming?.version===8?8:7;
+ throw new Error('Filtypen understøttes ikke. Vælg en sikkerhedskopi fra DART Training, v7 eller v8.');
+}
+function sortedBackupValue(value){
+ if(Array.isArray(value))return value.map(sortedBackupValue);
+ if(value&&typeof value==='object'){
+  return Object.fromEntries(Object.keys(value).sort().map(key=>[key,sortedBackupValue(value[key])]));
+ }
+ return value;
+}
+function archiveResultKey(record){
+ const events=Object.entries(record.results)
+  .filter(([,result])=>Array.isArray(result?.events)&&result.events.length)
+  .map(([exercise,result])=>[exercise,result.events]);
+ return JSON.stringify(sortedBackupValue(Object.fromEntries(events)));
+}
+function mergeArchiveRecords(records){
+ const ids=new Set();
+ const resultKeys=new Set();
+ const sessionKeys=new Set();
+ function keys(record){
+  const results=archiveResultKey(record);
+  const startedAt=Date.parse(record.startedAt);
+  return {
+   date:JSON.stringify([Date.parse(record.date),results]),
+   session:Number.isFinite(startedAt)?JSON.stringify([startedAt,results]):null
+  };
+ }
+ function remember(record,key){
+  if(record.id)ids.add(JSON.stringify([record.id,archiveResultKey(record)]));
+  resultKeys.add(key.date);
+  if(key.session)sessionKeys.add(key.session);
+ }
+ for(const record of state.history)remember(record,keys(record));
+ const active=state.status==='active'&&existingEntries(state.results)?
+  keys({date:state.startedAt,startedAt:state.startedAt,results:state.results}).session:null;
+ const added=[];
+ for(const record of records){
+  const key=keys(record);
+  const localActiveDuplicate=record.status==='partial'&&active&&key.session===active;
+  if(localActiveDuplicate||(record.id&&ids.has(JSON.stringify([record.id,archiveResultKey(record)])))||resultKeys.has(key.date)||(key.session&&sessionKeys.has(key.session)))continue;
+  added.push(record);
+  remember(record,key);
+ }
+ return {added,duplicates:records.length-added.length};
+}
+function importSummary(added,duplicates){
+ const partial=added.filter(record=>record.status==='partial').length;
+ const dates=added.map(record=>Date.parse(record.date)).sort((a,b)=>a-b);
+ const range=dates.length?(day(dates[0])===day(dates.at(-1))?day(dates[0]):day(dates[0])+' – '+day(dates.at(-1))):'';
+ return `${added.length} nye træninger (${partial} afbrudte)${range?' · '+range:''} · ${duplicates} dubletter sprunget over.`;
+}
+async function importArchive(input){
+ const file=input.files?.[0];
+ if(!file)return;
+ const request={name:file.name};
+ backupImport=request;
+ if(tab==='backup')render();
+ try{
+  if(file.size>4000000)throw new Error('Filen er for stor (maks. 4 MB).');
+  const contents=await file.text().catch(()=>{throw new Error('Filen kunne ikke læses. Vælg den igen.');});
+  let parsed;
+  try{parsed=JSON.parse(contents);}
+  catch(e){throw new Error('Filen kunne ikke læses som JSON. Vælg den oprindelige sikkerhedskopi.');}
+  request.records=archiveRecords(parsed);
+ }catch(e){request.error=e.message;}
+ if(backupImport===request&&tab==='backup')render();
+}
+function cancelArchiveImport(){
+ backupImport=null;
+ render();
+ document.getElementById('fileImport')?.focus();
+}
+function applyArchiveImport(){
+ if(!backupImport?.records)return;
+ const {added,duplicates}=mergeArchiveRecords(backupImport.records);
+ if(added.length){
+  const history=[...state.history,...added].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date));
+  const nextState={...state,history};
+  if(!save(nextState)){
+   backupImport.error='Importen kunne ikke gemmes i browseren. Prøv igen, når lokal lagring er tilgængelig.';
+   render();
+   return;
+  }
+  state=nextState;
+  historySync.changed();
+ }
+ journalIndex=null;
+ notice=importSummary(added,duplicates);
+ backupImport=null;
+ showTab('history');
+}
+async function deleteSession(id,date,selectedRecord=null){
+ if(tab!=='admin')return false;
+ const record=selectedRecord&&state.history.includes(selectedRecord)?selectedRecord:state.history.find(h=>(h.id||'')===id&&h.date===date);
+ if(!record){notice='Træningen kunne ikke findes.';render();return false;}
+ if(!confirm(`Flytte træningen fra ${day(date)} til papirkurven på alle dine enheder? Den kan gendannes under Administration.`))return false;
+ try{await historySync.deleteRecord(record);notice='Træningen er flyttet til papirkurven.';render();return true;}
+ catch(e){notice='Træningen kunne ikke slettes. '+e.message;render();return false;}
+}
+
+</script><script src="training.js"></script><script src="goals.js"></script><script src="sync.js"></script><script src="safety.js"></script><script>
+try{
+ let raw=localStorage.getItem(KEY);
+ if(raw){const d=JSON.parse(raw);if(validV8State(d))state=d;else{historyStorageBlocked=true;storageOk=false;notice='Gemte data kunne ikke læses. Originalen er bevaret.';}}
+ else{
+  const prior=localStorage.getItem(OLD_KEY)||localStorage.getItem(EARLIER_KEY);
+  if(prior){const d=JSON.parse(prior);if(validV7State(d))restoreV7(d);else throw new Error('invalid legacy data');}
+ }
+}catch(e){historyStorageBlocked=true;storageOk=false;notice='Browserens lager kunne ikke læses. Eksportér en sikkerhedskopi efter hver træning.';}
+ensurePlan();refreshReadyPlan();
+checkDeadline();rollToToday();save();render();historySync.start();
+setInterval(()=>{const ended=checkDeadline();if(ended||state.inBreak&&(Date.now()>=Date.parse(state.breakUntil)))render();},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden && !quickMode){checkDeadline();render();}});
+window.addEventListener('storage',event=>{
+ if(event.key!==KEY||!event.newValue)return;
+ try{
+  const updated=JSON.parse(event.newValue);
+  if(!validV8State(updated))return;
+  // Keep this tab's in-progress scoring; only merge completed history and deletions.
+  mergeStoredHistory(state,updated);
+  historySync.changed();
+  journalIndex=null;
+  if(!quickMode)render();
+ }catch{}
+});
+</script></body></html>

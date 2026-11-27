@@ -1,0 +1,369 @@
+{
+  "121": [
+    {
+      "main": "130 lukket",
+      "primary": 130,
+      "direction": "higher",
+      "sub": "10/10 lukket \u00b7 9 pile pr. runde \u00b7 0 p\u00e5 4\u20139 pile",
+      "extra": {
+        "target": 131,
+        "floor": 130,
+        "best": 130,
+        "closed": 10,
+        "fourToNine": 0,
+        "limit": 9
+      }
+    },
+    true,
+    true
+  ],
+  "170": [
+    {
+      "main": "5 pile pr. leg",
+      "primary": 5,
+      "direction": "lower",
+      "sub": "5/5 legs lukket \u00b7 25 pile brugt \u00b7 Hurtigste 5 pile",
+      "extra": {
+        "legs": [
+          {
+            "checkout": 70,
+            "darts": 5,
+            "thrown": {
+              "darts": 5,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          },
+          {
+            "checkout": 70,
+            "darts": 5,
+            "thrown": {
+              "darts": 5,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          },
+          {
+            "checkout": 70,
+            "darts": 5,
+            "thrown": {
+              "darts": 5,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          },
+          {
+            "checkout": 70,
+            "darts": 5,
+            "thrown": {
+              "darts": 5,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          },
+          {
+            "checkout": 70,
+            "darts": 5,
+            "thrown": {
+              "darts": 5,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          }
+        ],
+        "rest": 170,
+        "score": 850,
+        "darts": 25,
+        "visits": 10,
+        "busts": 0,
+        "doubleAttempts": 5,
+        "knownDoubleAttempts": 10,
+        "attemptsComplete": true,
+        "checkoutPercent": 100,
+        "best3": 300.6,
+        "best4": 300.6,
+        "bestLeg": 5,
+        "worstLeg": 5,
+        "currentLegThrown": {
+          "darts": 0,
+          "incomplete": false
+        },
+        "currentLegDoubleAttempts": 0,
+        "avg": 102,
+        "high100": 5,
+        "high140": 0,
+        "high180": 0
+      }
+    },
+    true,
+    true
+  ],
+  "501": [
+    {
+      "main": "167 avg",
+      "primary": 167,
+      "direction": "higher",
+      "sub": "5/5 legs \u00b7 45 pile \u00b7 Double 100% \u00b7 15 indgange 100+",
+      "extra": {
+        "legs": [
+          {
+            "checkout": 141,
+            "darts": 9,
+            "thrown": {
+              "darts": 9,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          },
+          {
+            "checkout": 141,
+            "darts": 9,
+            "thrown": {
+              "darts": 9,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          },
+          {
+            "checkout": 141,
+            "darts": 9,
+            "thrown": {
+              "darts": 9,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          },
+          {
+            "checkout": 141,
+            "darts": 9,
+            "thrown": {
+              "darts": 9,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          },
+          {
+            "checkout": 141,
+            "darts": 9,
+            "thrown": {
+              "darts": 9,
+              "incomplete": false
+            },
+            "doubleAttempts": 1,
+            "checkoutPercent": 100,
+            "knownDoubleAttempts": true
+          }
+        ],
+        "rest": 501,
+        "score": 2505,
+        "darts": 45,
+        "visits": 15,
+        "busts": 0,
+        "doubleAttempts": 5,
+        "knownDoubleAttempts": 15,
+        "attemptsComplete": true,
+        "checkoutPercent": 100,
+        "best3": 167,
+        "best4": 167,
+        "bestLeg": 9,
+        "worstLeg": 9,
+        "currentLegThrown": {
+          "darts": 0,
+          "incomplete": false
+        },
+        "currentLegDoubleAttempts": 0,
+        "avg": 167,
+        "high100": 15,
+        "high140": 15,
+        "high180": 10
+      }
+    },
+    true,
+    true
+  ],
+  "doubles": [
+    {
+      "main": "20 %",
+      "rate": 20,
+      "primary": 100,
+      "direction": "lower",
+      "sub": "20/20 doubler \u00b7 100 pile \u00b7 34 indgange",
+      "extra": {
+        "first": 20.58823529411765,
+        "hits": 20,
+        "n": 100,
+        "visits": 34
+      }
+    },
+    true,
+    true
+  ],
+  "singles": [
+    {
+      "main": "40 indgange",
+      "primary": 40,
+      "direction": "lower",
+      "rate": 50,
+      "sub": "20/20 singler \u00b7 40 indgange",
+      "extra": {
+        "hits": 20,
+        "n": 40
+      }
+    },
+    true,
+    true
+  ],
+  "scoring": [
+    {
+      "main": "20 indgange",
+      "primary": 20,
+      "direction": "lower",
+      "rate": 100,
+      "sub": "20 point \u00b7 20 indgange",
+      "extra": {
+        "points": 20,
+        "n": 20
+      }
+    },
+    true,
+    true
+  ],
+  "catch40": [
+    {
+      "main": "81 point",
+      "primary": 81,
+      "direction": "higher",
+      "rate": 100,
+      "sub": "40/40 lukninger \u00b7 40/40 fors\u00f8g \u00b7 100 % lukket",
+      "extra": {
+        "start": 61,
+        "end": 100,
+        "total": 40,
+        "closed": 40,
+        "points": 81,
+        "attempts": 40,
+        "rate": 100,
+        "successfulDarts": 3
+      }
+    },
+    true,
+    true
+  ],
+  "checkout6080": [
+    {
+      "main": "21 point",
+      "primary": 21,
+      "direction": "higher",
+      "rate": 100,
+      "sub": "21/21 lukninger \u00b7 21/21 fors\u00f8g \u00b7 100 % lukket",
+      "extra": {
+        "start": 60,
+        "end": 80,
+        "total": 21,
+        "closed": 21,
+        "points": 21,
+        "attempts": 21,
+        "rate": 100,
+        "successfulDarts": 6
+      }
+    },
+    true,
+    true
+  ],
+  "combos": [
+    {
+      "main": "100 %",
+      "primary": 100,
+      "direction": "higher",
+      "rate": 100,
+      "sub": "60/60 double-tr\u00e6ffere \u00b7 60 pile",
+      "extra": {
+        "hits": 60,
+        "n": 60
+      }
+    },
+    true,
+    true
+  ],
+  "checkout": [
+    {
+      "main": "100 %",
+      "primary": 100,
+      "direction": "higher",
+      "rate": 100,
+      "sub": "10/10 lukninger \u00b7 10 fors\u00f8g",
+      "extra": {
+        "hits": 10,
+        "n": 10
+      }
+    },
+    true,
+    true
+  ],
+  "jdc": [
+    {
+      "main": "0 point",
+      "primary": 0,
+      "direction": "higher",
+      "sub": "33/33 m\u00e5l registreret",
+      "extra": {}
+    },
+    true,
+    true
+  ],
+  "bust501": {
+    "legs": [
+      {
+        "checkout": 40,
+        "darts": 13,
+        "thrown": {
+          "darts": 11,
+          "incomplete": false
+        },
+        "doubleAttempts": 2,
+        "checkoutPercent": null,
+        "knownDoubleAttempts": false
+      }
+    ],
+    "rest": 501,
+    "score": 501,
+    "darts": 13,
+    "visits": 5,
+    "busts": 1,
+    "doubleAttempts": 2,
+    "knownDoubleAttempts": 2,
+    "attemptsComplete": false,
+    "checkoutPercent": null,
+    "best3": null,
+    "best4": null,
+    "bestLeg": 13,
+    "worstLeg": 13,
+    "currentLegThrown": {
+      "darts": 0,
+      "incomplete": false
+    },
+    "currentLegDoubleAttempts": 0,
+    "avg": 115.61538461538461,
+    "high100": 3,
+    "high140": 2,
+    "high180": 2
+  }
+}
