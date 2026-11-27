@@ -1,0 +1,11 @@
+{
+  "name": "dart-training",
+  "private": true,
+  "version": "1.0.0",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node tests/history.test.mjs && node tests/safety.test.mjs && node tests/sync.test.mjs && node tests/goals.test.mjs",
+    "build": "node scripts/build.mjs",
+    "prepare-site": "node scripts/prepare-site.mjs"
+  }
+}
