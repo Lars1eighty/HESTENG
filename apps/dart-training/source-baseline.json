@@ -1,0 +1,25 @@
+{
+  "siteProjectId": "appgprj_6afb528b597c8191a9592c30e60c71cf",
+  "siteCommit": "3cb7ac93406c5c53a13e81316949796dc42831e7",
+  "files": {
+    ".gitignore": "fe56da5f27d174b011ca65d2c1c9be83ca19ce1428e1594f8ed3ca037e8814ed",
+    ".openai/hosting.json": "2fd130488b46c7d9b1cfd69e311902ecc806b6ceeea24413a4b7c403fd63789f",
+    "app/goals.js": "a5348f18fee3e2178a568a9294e819825fbe4839c65a81e25aef473f36a09fe0",
+    "app/icon-192.png": "9128154e10baa9ccb7e996f5bdf057d92a4d52328251289b312eb536c8d6bbdb",
+    "app/icon-512.png": "f2d87c77bd3f8ccc194bbee05fa8c97de4fcd6a6ab12b55f1a9bee6df986173c",
+    "app/index.html": "073565ed2a8a1fb6254add775bf9c25586ce4ce48ff3a0aea90cb2a719417420",
+    "app/manifest.webmanifest": "713e6b1aa06a252cb4ba966f8cdf6abf434a9777b8dfb4e7e6bb7b6a7344367b",
+    "app/safety.js": "f31a06865277ed4f93bb2b10c8d37d12d2039600b1d54acd8067e77a02306f37",
+    "app/sync.js": "2785d3f05d2907a681fbc41abae4b7a6cfddc6e35dd4547036cc855b3c3362b5",
+    "app/training.css": "8298bdf6a02f8d3d3eebddefbe66b12f12f9aa416b84db38561637e50b43397e",
+    "app/training.js": "0a8064e77b2c73a3013f0b951d35214be2f80a3daec4316d30424c659758a3dd",
+    "drizzle/0000_training_history.sql": "4b6de9dfeadbfd0d73f0e12e162674e491a0d7409cf97e30b1f281ce0377df08",
+    "drizzle/meta/_journal.json": "93f9b5df0c87e9fc16cb9bf77534705700712ba14fbec99ce78e85d664f87b6a",
+    "scripts/build.mjs": "7d66e165d3fe621c4f7e9c9a76851fc22ec0333cda4ad1fa853e79c519d55eac",
+    "tests/goals.test.mjs": "cc30b49eae727897cf9a04bdafd47ed80f463e45addd72bdbeab31d0aaf67054",
+    "tests/history.test.mjs": "c3e97e09ac707856a28326cbbcfe47e9a77ab38467fc1c4f14b0688f1d336713",
+    "tests/safety.test.mjs": "a4abc758f1cae2272fbc3bd9f16c07cce7dd8a3b280646f9251972ecb9769760",
+    "tests/sync.test.mjs": "35c0cf1a93e9aff2d6f2697ab49121aad504c74f40828a0e324282f005891d9d",
+    "worker/index.js": "3cfe3cc1996318e6ea0a9975c007193180b35b2ce6756642ae2014069a1145fd"
+  }
+}
