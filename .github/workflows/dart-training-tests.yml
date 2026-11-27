@@ -1,0 +1,22 @@
+name: DART Training tests
+on:
+  push:
+    branches: [main]
+    paths: ['apps/dart-training/**', '.github/workflows/dart-training-tests.yml']
+  pull_request:
+    paths: ['apps/dart-training/**', '.github/workflows/dart-training-tests.yml']
+permissions:
+  contents: read
+jobs:
+  dart-training:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/dart-training
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm test
+      - run: npm run build
